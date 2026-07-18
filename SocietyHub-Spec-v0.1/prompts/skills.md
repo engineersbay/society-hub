@@ -11,7 +11,7 @@ Project Cursor skills for the locked technical stack. Each skill is a folder und
 | Turborepo | [societyhub-turborepo](../../.cursor/skills/societyhub-turborepo/SKILL.md) | Monorepo apps/packages |
 | Modular monolith | [societyhub-modular-monolith](../../.cursor/skills/societyhub-modular-monolith/SKILL.md) | Module boundaries |
 | Redis + BullMQ | [societyhub-redis-bullmq](../../.cursor/skills/societyhub-redis-bullmq/SKILL.md) | Jobs, SLA, side effects |
-| Azure Blob + hosting | [societyhub-azure-blob-hosting](../../.cursor/skills/societyhub-azure-blob-hosting/SKILL.md) | Files and Azure deploy shape |
+| Azure Blob + hosting + devops | [societyhub-azure-blob-hosting](../../.cursor/skills/societyhub-azure-blob-hosting/SKILL.md) | Files, Container Apps, staging/prod, cost |
 | MSG91 OTP | [societyhub-msg91-otp](../../.cursor/skills/societyhub-msg91-otp/SKILL.md) | SMS login |
 | Resend email | [societyhub-resend-email](../../.cursor/skills/societyhub-resend-email/SKILL.md) | Transactional email |
 | Firebase notifications | [societyhub-firebase-notifications](../../.cursor/skills/societyhub-firebase-notifications/SKILL.md) | Web push |
