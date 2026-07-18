@@ -8,6 +8,20 @@
       "when": 1784394931377,
       "tag": "0000_zippy_kinsey_walden",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1784395665481,
+      "tag": "0001_goofy_red_skull",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1784395825159,
+      "tag": "0002_magenta_juggernaut",
+      "breakpoints": true
     }
   ]
 }

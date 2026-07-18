@@ -125,9 +125,13 @@ erDiagram
 
 ### users (auth extras)
 
+- `username` nullable unique (legacy alias; login uses email)
+- `password_hash` nullable (bcrypt; used with email login)
 - `pin_hash` nullable (set after OTP/SSO)
 - `pin_updated_at` nullable
 - Google subject / phone as today
+- Roles via `user_roles.role`: `admin` | `resident` | `superadmin`
+- `password_reset_challenges` for forgot/reset password codes (email delivery via Resend in Phase 2; DEV returns code)
 
 ### bills
 
@@ -165,4 +169,4 @@ erDiagram
 - Default reads: `is_deleted = false` AND matching `tenant_id`
 - Hard delete reserved for ephemeral data (e.g. expired OTP) only
 - Migrations authored via Drizzle; never invent columns outside this doc + PRD without updating Spec first
-- **Local:** `docker compose -f devops/docker/docker-compose.yml up mysql` — MySQL 8 on port `3306` (`societyhub` / `societyhub`)
+- **Local:** `docker compose -f devops/docker/docker-compose.yml up mysql -d` — MySQL 8 on host port `3307`, user `root` / password `1900Summer@`, database `societyhub`. Then `bun run db:migrate && bun run db:seed`. Connection string: `mysql://root:1900Summer%40@127.0.0.1:3307/societyhub`

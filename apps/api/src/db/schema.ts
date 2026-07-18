@@ -79,6 +79,8 @@ export const users = mysqlTable(
     phone: varchar("phone", { length: 20 }),
     email: varchar("email", { length: 200 }),
     name: varchar("name", { length: 120 }),
+    username: varchar("username", { length: 64 }),
+    passwordHash: varchar("password_hash", { length: 255 }),
     googleSub: varchar("google_sub", { length: 128 }),
     pinHash: varchar("pin_hash", { length: 255 }),
     pinUpdatedAt: datetime("pin_updated_at", { mode: "string", fsp: 3 }),
@@ -87,6 +89,7 @@ export const users = mysqlTable(
   (t) => [
     uniqueIndex("users_phone_uidx").on(t.phone),
     uniqueIndex("users_email_uidx").on(t.email),
+    uniqueIndex("users_username_uidx").on(t.username),
   ],
 );
 
@@ -96,7 +99,7 @@ export const userRoles = mysqlTable(
     id: id(),
     tenantId: tenantId(),
     userId: char("user_id", { length: 36 }).notNull(),
-    role: mysqlEnum("role", ["admin", "resident"]).notNull(),
+    role: mysqlEnum("role", ["admin", "resident", "superadmin"]).notNull(),
     ...timestamps,
   },
   (t) => [
@@ -137,6 +140,20 @@ export const otpChallenges = mysqlTable(
     ...timestamps,
   },
   (t) => [index("otp_phone_idx").on(t.phone)],
+);
+
+export const passwordResetChallenges = mysqlTable(
+  "password_reset_challenges",
+  {
+    id: id(),
+    email: varchar("email", { length: 200 }).notNull(),
+    codeHash: varchar("code_hash", { length: 255 }).notNull(),
+    expiresAt: datetime("expires_at", { mode: "string", fsp: 3 }).notNull(),
+    consumedAt: datetime("consumed_at", { mode: "string", fsp: 3 }),
+    attempts: int("attempts").notNull().default(0),
+    ...timestamps,
+  },
+  (t) => [index("password_reset_email_idx").on(t.email)],
 );
 
 export const refreshTokens = mysqlTable(
