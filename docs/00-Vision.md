@@ -23,26 +23,16 @@ Drawn from the Problem Statement Document (PSD):
 
 ## Goals
 
-### MVP (complaint portal)
+### Phase 1 (complaints first)
 
 - Make raising a complaint as easy as logging in (SSO, mobile OTP, or PIN) and submitting a short form.
-- Auto-fill flat from the logged-in resident; support typed description, voice-to-text, and photo/video evidence.
-- Let residents track complaint status; let admins see and update all raised complaints.
-- Onboard admin and residents as the foundation for that flow.
+- Auto-fill flat; typed description, voice-to-text, photo/video evidence.
+- Residents and admins track complaint status.
+- Show **all planned features** in a simple nav; non-complaint modules as **Coming soon**.
 
-### Phase 2 (full society operations)
+### Phase 2
 
-- Full role matrix (Secretary, Treasurer, Committee, Tenant, …)
-- Advanced complaint workflow: assignment, comments, SLA automation
-- Maintenance billing and online/manual payments (Razorpay)
-- Notices with read tracking; in-app / email / web push notifications
-- Ops and finance dashboards; audit trail UI
-- Richer resident/owner/tenant management and verification documents
-- Provide a foundation for a subscription multi-tenant SaaS business
-
-### Future (after Phase 2)
-
-- Visitor, parking, clubhouse, Flutter, WhatsApp, marketplace, AI, builder edition, etc.
+- Replace Coming soon with real billing, payments, notices, SLA, dashboards, full roles, etc.
 
 ## Pilot
 

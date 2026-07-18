@@ -7,7 +7,7 @@
 
 ## 1. Principles
 
-- **PostgreSQL 16** via **Drizzle ORM**
+- **MySQL 8** via **Drizzle ORM** (lightweight locally via Docker; Azure Database for MySQL in cloud)
 - **Multi-tenant:** every business table has `tenant_id`
 - **Soft delete:** `is_deleted` (default queries exclude deleted)
 - **Audit columns** on all tables (below)
@@ -17,11 +17,11 @@
 
 | Column | Notes |
 |--------|--------|
-| `id` | UUID primary key |
+| `id` | CHAR(36) UUID string primary key |
 | `tenant_id` | Society tenant; indexed; required on business tables (`users` may be global with membership via roles/residents) |
-| `created_at` | timestamptz |
+| `created_at` | DATETIME(3) UTC |
 | `created_by` | user id nullable for system |
-| `updated_at` | timestamptz |
+| `updated_at` | DATETIME(3) UTC |
 | `updated_by` | user id nullable |
 | `is_deleted` | boolean default false |
 
@@ -165,3 +165,4 @@ erDiagram
 - Default reads: `is_deleted = false` AND matching `tenant_id`
 - Hard delete reserved for ephemeral data (e.g. expired OTP) only
 - Migrations authored via Drizzle; never invent columns outside this doc + PRD without updating Spec first
+- **Local:** `docker compose -f devops/docker/docker-compose.yml up mysql` — MySQL 8 on port `3306` (`societyhub` / `societyhub`)

@@ -6,7 +6,7 @@ Project Cursor skills for the locked technical stack. Each skill is a folder und
 |-------|------|----------|
 | Bun + TypeScript | [societyhub-bun-typescript](../../.cursor/skills/societyhub-bun-typescript/SKILL.md) | Runtime, workspaces, scripts |
 | Elysia | [societyhub-elysia](../../.cursor/skills/societyhub-elysia/SKILL.md) | API routes, plugins, errors |
-| Drizzle + PostgreSQL | [societyhub-drizzle-postgres](../../.cursor/skills/societyhub-drizzle-postgres/SKILL.md) | Schema, migrations, repositories |
+| Drizzle + MySQL | [societyhub-drizzle-mysql](../../.cursor/skills/societyhub-drizzle-mysql/SKILL.md) | Schema, migrations, repositories; local MySQL Docker |
 | React + Vite + Tailwind | [societyhub-react-vite-tailwind](../../.cursor/skills/societyhub-react-vite-tailwind/SKILL.md) | Responsive web UI |
 | Turborepo | [societyhub-turborepo](../../.cursor/skills/societyhub-turborepo/SKILL.md) | Monorepo apps/packages |
 | Modular monolith | [societyhub-modular-monolith](../../.cursor/skills/societyhub-modular-monolith/SKILL.md) | Module boundaries |

@@ -3,7 +3,7 @@
 **Document:** 03-Architecture  
 **Product:** SocietyHub  
 **Version:** 1.0  
-**Related:** [PRD](02-PRD.md), [Database](04-Database.md), [Coding Standards](06-Coding-Standards.md)
+**Related:** [PRD](02-PRD.md), [Database](04-Database.md), [Tech Stack](07-Tech-Stack.md), [Coding Standards](06-Coding-Standards.md)
 
 ## 1. Goals and style
 
@@ -15,19 +15,21 @@ SocietyHub is implemented as a **modular monolith**: one deployable API with cle
 
 ## 2. Locked technical stack
 
+Canonical explanation: **[07-Tech-Stack.md](07-Tech-Stack.md)**. Summary:
+
 | Layer | Choice |
 |-------|--------|
 | Monorepo | Turborepo + Bun workspaces |
 | API | Bun + TypeScript (strict) + Elysia + Zod |
-| ORM / DB | Drizzle + PostgreSQL 16 |
-| Jobs / cache | Redis 7 + BullMQ |
+| ORM / DB | Drizzle + MySQL 8 |
+| Jobs / cache | Redis 7 + BullMQ (Phase 2) |
 | Files | Azure Blob |
 | Web | React + TypeScript + Vite + Tailwind (+ headless/Radix) |
-| Auth | OTP (MSG91) + Google OAuth + session/JWT (`packages/auth`) |
-| Email | Resend |
-| Push | Firebase Cloud Messaging (web) |
-| Payments | Razorpay + manual cash/cheque/NEFT |
-| Hosting | Azure (Container Apps or App Service, Azure PostgreSQL, Azure Cache for Redis, Blob) |
+| Auth | OTP (MSG91) + Google SSO + PIN |
+| Email | Resend (Phase 2) |
+| Push | Firebase Cloud Messaging web (Phase 2) |
+| Payments | Razorpay + manual (Phase 2) |
+| Hosting | Azure Container Apps, Static Web Apps, Azure Database for MySQL |
 | Tests | Vitest + Playwright (when implementing) |
 
 ## 3. System context
@@ -46,7 +48,7 @@ flowchart TB
   end
 
   subgraph data [Data]
-    PG[(PostgreSQL 16)]
+    MySQL[(MySQL 8)]
     Redis[(Redis 7)]
     Blob[Azure Blob]
   end
@@ -61,7 +63,7 @@ flowchart TB
   Web --> WEB
   WEB --> Pkgs
   WEB --> API
-  API --> PG
+  API --> MySQL
   API --> Redis
   API --> Blob
   API --> Worker
@@ -77,17 +79,23 @@ flowchart TB
 ```text
 society-hub/
   apps/
-    api/                 # Bun + Elysia modular monolith
-    web/                 # React + Vite responsive UI
+    api/                 # Bun + Elysia modular monolith (Phase 1)
+    web/                 # React + Vite responsive UI (Phase 1)
+    mobile/              # Future native — placeholders only
+      android/           # Android target placeholder
+      ios/               # iOS target placeholder
   packages/
-    auth/                # Session/JWT helpers
-    sdk/                 # Typed API client for web
-    validation/          # Shared Zod schemas
-    types/               # Shared DTOs/enums
-  SocietyHub-Spec-v0.1/  # Source of truth
+    auth/
+    sdk/
+    validation/
+    types/
+  devops/                # Azure staging/production, Docker
+  docs/
   AGENTS.md
   .cursor/skills/
 ```
+
+Phase 1 implements **web + api** only. `apps/mobile/**` stays empty of app code until Flutter Future scope starts; see [apps/mobile/README.md](../../apps/mobile/README.md).
 
 Backend feature modules (illustrative):
 
@@ -204,13 +212,15 @@ See [04-Database.md](04-Database.md). Soft delete via `is_deleted`; audit column
 | Web | **Azure Static Web Apps** preferred; or nginx container |
 | API | **Azure Container Apps** (staging min replicas 0; prod min 1) |
 | Worker | Same ACA env; **Phase 2** only when Redis/queues needed |
-| PostgreSQL | Flexible Server **Burstable** |
+| MySQL | Azure Database for MySQL **Flexible Burstable** |
 | Redis | **Omit in Phase 1**; Basic when Phase 2 jobs land |
 | Blob | Azure Storage LRS |
 | Registry | ACR Basic (shared staging+prod) |
 | Secrets | Key Vault per env |
 
 **Do not use AKS** for Phase 1/early Phase 2. Full runbooks, Dockerfiles, staging/production topology, and CI examples live under [`devops/`](../../devops/README.md).  
+
+**Local DB:** MySQL 8 via `devops/docker/docker-compose.yml` (lightweight, easy to run on a laptop).
 
 **Timing:** implement app Phase 1 first; **provision and deploy** staging/production in the DevOps phase after Phase 1 development is ready for UAT.
 

@@ -11,9 +11,9 @@ No sprint calendar. Delivery:
 
 1. Spec defines **MVP (complaint portal)** and **Phase 2 (full ops)** — see PRD
 2. GitHub: `scope:mvp` for MVP; Phase 2 stories use `scope:future` until Phase 2 starts
-3. **Develop Phase 1** (complaint portal) locally / in CI
+3. **Develop Phase 1** — working Complaints + auth/onboard; nav shows other planned features as **Coming soon**
 4. **DevOps phase (after Phase 1 code):** Docker finalize → Azure staging → UAT → production ([devops/](../../devops/README.md))
-5. Then execute product **Phase 2** epics
+5. **Phase 2** — replace Coming soon with real billing, payments, notices, etc.
 6. Future modules remain after Phase 2
 
 Docker templates and Azure staging/production guides are maintained under `devops/` now so deployment is ready when Phase 1 development completes — **do not** burn production Azure spend before the app is ready.

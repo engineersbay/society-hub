@@ -27,12 +27,13 @@
 - Auth + RBAC hooks before handlers
 - No blocking calls to SMS/email/push inside request handlers — enqueue BullMQ jobs
 
-## 4. Data (Drizzle + PostgreSQL)
+## 4. Data (Drizzle + MySQL)
 
-- Schemas match [04-Database.md](04-Database.md)
+- Schemas match [04-Database.md](04-Database.md); **MySQL 8** dialect
 - Migrations via Drizzle only
 - Soft delete; set `updated_at` / `updated_by` on writes
-- Write `audit_logs` for bill, payment, complaint status/delete, and role mutations
+- Write `audit_logs` for bill, payment, complaint status/delete, and role mutations (Phase 2+)
+- Local testing: Docker MySQL from `devops/docker/docker-compose.yml`
 
 ## 5. Web UI/UX (React + Vite + Tailwind)
 
@@ -42,8 +43,8 @@
 - **Responsive:** usable at ~375px (phone browser) and desktop; bottom nav or compact header on small screens; avoid heavy sidebars on mobile
 - Role-aware UI; never rely on UI alone for security
 - Call API only through `packages/sdk`
+- **MVP screens:** login, onboard (admin), complaints (live), plus **Coming soon** placeholders for other planned nav items — no fake submit flows
 - Prefer accessible headless/Radix + Tailwind; **no** gratuitous cards, gradients, badge piles, or generic “AI purple” themes
-- MVP screens focus on: login, onboard (admin), raise complaint, complaint lists/detail — nothing extra without PRD
 
 ## 6. Testing
 
