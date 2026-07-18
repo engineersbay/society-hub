@@ -56,7 +56,7 @@ export function ComplaintDetailPage() {
         </strong>
       </p>
 
-      {user?.role === "admin" && (
+      {user?.role === "admin" || user?.role === "superadmin" ? (
         <div className="mt-4 flex flex-wrap gap-2">
           {STATUSES.map((s) => (
             <button
@@ -71,7 +71,7 @@ export function ComplaintDetailPage() {
             </button>
           ))}
         </div>
-      )}
+      ) : null}
 
       {complaint.attachments.length > 0 && (
         <div className="mt-6">

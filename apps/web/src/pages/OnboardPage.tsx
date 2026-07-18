@@ -14,14 +14,16 @@ export function OnboardPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user?.role !== "admin") return;
+    if (user?.role !== "admin" && user?.role !== "superadmin") return;
     client.listFlats().then((rows) => {
       setFlats(rows);
       if (rows[0]) setFlatId(rows[0].id);
     });
   }, [client, user]);
 
-  if (user?.role !== "admin") return <Navigate to="/complaints" replace />;
+  if (user?.role !== "admin" && user?.role !== "superadmin") {
+    return <Navigate to="/complaints" replace />;
+  }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();

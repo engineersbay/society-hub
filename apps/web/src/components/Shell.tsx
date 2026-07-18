@@ -25,13 +25,13 @@ export function Shell() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {user?.role === "admin" && (
+          {user?.role === "admin" || user?.role === "superadmin" ? (
             <NavLink to="/onboard" className="btn btn-ghost text-sm">
               Onboard
             </NavLink>
-          )}
-          <NavLink to="/pin" className="btn btn-ghost text-sm">
-            PIN
+          ) : null}
+          <NavLink to="/account" className="btn btn-ghost text-sm">
+            Account
           </NavLink>
           <button type="button" className="btn btn-ghost text-sm" onClick={clearSession}>
             Log out
@@ -48,7 +48,7 @@ export function Shell() {
               [
                 "whitespace-nowrap px-3 py-2 text-sm font-medium",
                 isActive
-                  ? "border-b-2 border-[var(--leaf)] text-[var(--leaf-dark)]"
+                  ? "border-b-2 border-[var(--saffron)] text-[var(--leaf-dark)]"
                   : "text-black/55 hover:text-black",
               ].join(" ")
             }

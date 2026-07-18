@@ -1,14 +1,16 @@
 import { FormEvent, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { ApiClientError } from "@society-hub/sdk";
 import { useAuth } from "../auth";
 
-type Mode = "otp" | "pin" | "google";
+type Mode = "password" | "otp" | "pin" | "google";
 
 export function LoginPage() {
   const { user, client, setSession } = useAuth();
-  const [mode, setMode] = useState<Mode>("otp");
-  const [phone, setPhone] = useState("8888888888");
+  const [mode, setMode] = useState<Mode>("password");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [pin, setPin] = useState("");
   const [otpSent, setOtpSent] = useState(false);
@@ -17,6 +19,20 @@ export function LoginPage() {
   const [busy, setBusy] = useState(false);
 
   if (user) return <Navigate to="/complaints" replace />;
+
+  async function loginPassword(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await client.loginPassword(email, password);
+      setSession(res.user, res.tokens);
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.body.message : "Failed");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function requestOtp(e: FormEvent) {
     e.preventDefault();
@@ -75,6 +91,13 @@ export function LoginPage() {
     }
   }
 
+  const modeLabel: Record<Mode, string> = {
+    password: "Email",
+    otp: "OTP",
+    pin: "PIN",
+    google: "Google",
+  };
+
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 py-10">
       <p className="font-display text-4xl text-[var(--leaf-dark)]">SocietyHub</p>
@@ -82,18 +105,59 @@ export function LoginPage() {
         Sign in for your society. Pilot: Keshav Heights.
       </p>
 
-      <div className="mt-6 flex gap-2">
-        {(["otp", "pin", "google"] as Mode[]).map((m) => (
+      <div className="mt-6 flex flex-wrap gap-2">
+        {(["password", "otp", "pin", "google"] as Mode[]).map((m) => (
           <button
             key={m}
             type="button"
             className={`btn text-sm ${mode === m ? "btn-primary" : "btn-ghost"}`}
             onClick={() => setMode(m)}
           >
-            {m === "otp" ? "OTP" : m === "pin" ? "PIN" : "Google"}
+            {modeLabel[m]}
           </button>
         ))}
       </div>
+
+      {mode === "password" && (
+        <form className="mt-6 space-y-4" onSubmit={loginPassword}>
+          <div>
+            <label className="label" htmlFor="email">
+              Email
+            </label>
+            <input
+              id="email"
+              className="input"
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+          <div>
+            <label className="label" htmlFor="password">
+              Password
+            </label>
+            <input
+              id="password"
+              className="input"
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
+          <div className="flex justify-end">
+            <Link to="/forgot-password" className="text-sm text-[var(--leaf)]">
+              Forgot password?
+            </Link>
+          </div>
+          <button className="btn btn-primary w-full" disabled={busy} type="submit">
+            Sign in
+          </button>
+        </form>
+      )}
 
       {mode === "otp" && (
         <form className="mt-6 space-y-4" onSubmit={otpSent ? verifyOtp : requestOtp}>
@@ -189,10 +253,6 @@ export function LoginPage() {
 
       {devHint && <p className="mt-3 text-sm text-[var(--alert)]">{devHint}</p>}
       {error && <p className="mt-3 text-sm text-[var(--danger)]">{error}</p>}
-
-      <p className="mt-8 text-xs text-black/45">
-        Seed phones: admin 9999999999 · resident 8888888888 · OTP 123456
-      </p>
     </div>
   );
 }

@@ -23,7 +23,9 @@ export function ComplaintsPage() {
           <p className="text-sm text-black/55">
             {user?.role === "admin"
               ? "All society complaints"
-              : "Your raised complaints"}
+              : user?.role === "superadmin"
+                ? "All society complaints (superadmin)"
+                : "Your raised complaints"}
           </p>
         </div>
         {(user?.role === "resident" || user?.flatId) && (
