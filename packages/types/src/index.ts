@@ -1,4 +1,4 @@
-export type Role = "admin" | "resident";
+export type Role = "admin" | "resident" | "superadmin";
 
 export type ComplaintStatus = "open" | "in_progress" | "resolved" | "closed";
 
@@ -27,6 +27,7 @@ export type UserDto = {
   phone: string | null;
   email: string | null;
   name: string | null;
+  username: string | null;
   role: Role;
   tenantId: string;
   flatId: string | null;

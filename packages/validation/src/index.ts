@@ -18,6 +18,26 @@ export const loginPinSchema = z.object({
   pin: z.string().regex(/^\d{4,6}$/),
 });
 
+export const loginPasswordSchema = z.object({
+  email: z.string().email().max(200),
+  password: z.string().min(8).max(128),
+});
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().email().max(200),
+});
+
+export const resetPasswordSchema = z.object({
+  email: z.string().email().max(200),
+  code: z.string().min(4).max(8),
+  newPassword: z.string().min(8).max(128),
+});
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(8).max(128),
+  newPassword: z.string().min(8).max(128),
+});
+
 export const refreshSchema = z.object({
   refreshToken: z.string().min(10),
 });

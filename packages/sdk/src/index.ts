@@ -103,6 +103,32 @@ export function createSocietyHubClient(opts: SocietyHubClientOptions) {
         { method: "POST", body: JSON.stringify({ phone, pin }) },
         false,
       ),
+    loginPassword: (email: string, password: string) =>
+      request<{ user: UserDto; tokens: AuthTokens }>(
+        "/v1/auth/password/login",
+        { method: "POST", body: JSON.stringify({ email, password }) },
+        false,
+      ),
+    forgotPassword: (email: string) =>
+      request<{ ok: true; devCode?: string }>(
+        "/v1/auth/password/forgot",
+        { method: "POST", body: JSON.stringify({ email }) },
+        false,
+      ),
+    resetPassword: (email: string, code: string, newPassword: string) =>
+      request<{ ok: true }>(
+        "/v1/auth/password/reset",
+        {
+          method: "POST",
+          body: JSON.stringify({ email, code, newPassword }),
+        },
+        false,
+      ),
+    changePassword: (currentPassword: string, newPassword: string) =>
+      request<{ ok: true }>("/v1/auth/password/change", {
+        method: "POST",
+        body: JSON.stringify({ currentPassword, newPassword }),
+      }),
     loginGoogle: (idToken: string) =>
       request<{ user: UserDto; tokens: AuthTokens }>(
         "/v1/auth/google",
