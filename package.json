@@ -1,0 +1,22 @@
+{
+  "name": "society-hub",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "dev:api": "turbo run dev --filter=@society-hub/api",
+    "dev:web": "turbo run dev --filter=@society-hub/web",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "db:generate": "bun run --filter=@society-hub/api db:generate",
+    "db:migrate": "bun run --filter=@society-hub/api db:migrate",
+    "db:seed": "bun run --filter=@society-hub/api db:seed",
+    "db:up": "docker compose -f devops/docker/docker-compose.yml up mysql -d"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.4",
+    "typescript": "^5.8.3"
+  },
+  "packageManager": "bun@1.3.14"
+}

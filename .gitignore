@@ -1,0 +1,14 @@
+# Dependencies
+node_modules
+.turbo
+dist
+build
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+coverage
+apps/api/uploads
+apps/web/playwright-report
+apps/web/test-results
