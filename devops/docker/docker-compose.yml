@@ -1,0 +1,53 @@
+# Local stack for SocietyHub — activate when apps exist.
+# Usage: docker compose -f devops/docker/docker-compose.yml up --build
+# Redis: docker compose -f devops/docker/docker-compose.yml --profile phase2 up
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: societyhub
+      POSTGRES_PASSWORD: societyhub
+      POSTGRES_DB: societyhub
+    ports:
+      - "5432:5432"
+    volumes:
+      - sh_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U societyhub"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    profiles: ["phase2"]
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  api:
+    profiles: ["app"]
+    build:
+      context: ../..
+      dockerfile: devops/docker/api.Dockerfile
+    environment:
+      DATABASE_URL: postgres://societyhub:societyhub@postgres:5432/societyhub
+      PORT: "3000"
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    profiles: ["app"]
+    build:
+      context: ../..
+      dockerfile: devops/docker/web.Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+
+volumes:
+  sh_pg:

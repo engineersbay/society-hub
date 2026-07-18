@@ -1,0 +1,16 @@
+.git
+.DS_Store
+**/.env
+**/.env.*
+!**/.env.example
+**/node_modules
+**/dist
+**/build
+**/.turbo
+**/coverage
+**/*.md
+!README.md
+SocietyHub-Spec-v0.1
+.cursor
+**/.DS_Store
+society-hub.code-workspace

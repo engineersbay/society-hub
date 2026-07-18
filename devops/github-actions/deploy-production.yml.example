@@ -1,0 +1,31 @@
+# EXAMPLE — copy to .github/workflows/deploy-production.yml when ready
+name: Deploy production
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag already validated on staging (git SHA)"
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Promote image to production
+        run: |
+          echo "TODO: az containerapp update --name ca-societyhub-api-production --image $ACR/societyhub-api:${{ inputs.image_tag }}"
