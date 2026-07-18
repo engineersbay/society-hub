@@ -1,48 +1,50 @@
 # SocietyHub
 
-SocietyHub is a multi-tenant SaaS platform for housing societies. **MVP** is a **complaint portal**: easy login (SSO, mobile OTP, or PIN), onboard admin/residents, raise complaints with type, voice-to-text, photos/videos, and track status—Admin sees all raised complaints. **Phase 2** (billing, payments, notices, full roles, SLA, dashboards, audit) is fully specified in the PRD and retained on the roadmap.
+Multi-tenant SaaS for housing societies. **Phase 1** ships a responsive web app for **auth, onboard, and complaints**, backed by a mobile-ready `/v1` JSON API. Other modules show as **Coming soon**. **Pilot:** Keshav Heights.
 
-**Pilot society:** Keshav Heights
+## Quick start
 
-This repository is currently **specification-first**. Product and technical docs live under [`SocietyHub-Spec-v0.1/`](SocietyHub-Spec-v0.1/). Implementation follows the GitHub Issues backlog derived from the PRD.
+```bash
+# Requires Bun + Docker
+bun install
+bun run db:up          # MySQL 8 on host :3307
+bun run db:migrate
+bun run db:seed
+bun run dev            # API :3000 + web :5173
+```
+
+**Seed (DEV_AUTH):** admin `9999999999` · resident `8888888888` · OTP `123456`  
+OpenAPI: http://localhost:3000/docs
+
+| Path | Role |
+|------|------|
+| `apps/api` | Bun + Elysia + Drizzle/MySQL |
+| `apps/web` | React + Vite + Tailwind |
+| `apps/mobile` | Flutter placeholders (later) |
+| `packages/{sdk,validation,auth,types}` | Shared contract for web + future mobile |
 
 ## Spec pack
 
-Start here: [SocietyHub-Spec-v0.1/README.md](SocietyHub-Spec-v0.1/README.md)
-
 | Doc | Purpose |
 |-----|---------|
-| [Vision](SocietyHub-Spec-v0.1/docs/00-Vision.md) | Product vision and principles |
-| [BRD](SocietyHub-Spec-v0.1/docs/01-BRD.md) | Business requirements and success metrics |
-| [PRD](SocietyHub-Spec-v0.1/docs/02-PRD.md) | Product requirements and module behavior |
-| [Architecture](SocietyHub-Spec-v0.1/docs/03-Architecture.md) | System design and tech stack |
-| [Database](SocietyHub-Spec-v0.1/docs/04-Database.md) | Data model and tenancy |
-| [Development Plan](SocietyHub-Spec-v0.1/docs/05-Development-Plan.md) | Epic/backlog delivery approach |
-| [Coding Standards](SocietyHub-Spec-v0.1/docs/06-Coding-Standards.md) | Engineering conventions |
+| [Vision](docs/00-Vision.md) | Product vision |
+| [BRD](docs/01-BRD.md) | Business requirements |
+| [PRD](docs/02-PRD.md) | Product requirements |
+| [Architecture](docs/03-Architecture.md) | System design |
+| [Database](docs/04-Database.md) | Data model |
+| [Tech Stack](docs/07-Tech-Stack.md) | Stack choices |
+| [Development Plan](docs/05-Development-Plan.md) | Delivery approach |
+| [Coding Standards](docs/06-Coding-Standards.md) | Conventions |
 
-Agent guidance: [AGENTS.md](AGENTS.md) · [prompts/skills.md](SocietyHub-Spec-v0.1/prompts/skills.md)
+Agent guidance: [AGENTS.md](AGENTS.md) · DevOps: [`devops/`](devops/README.md)
 
-**DevOps / Azure:** [`devops/`](devops/README.md) — Docker, staging & production, cost-saving guide. Deploy **after** Phase 1 development.
-
-## Technical stack (MVP)
+## Stack (MVP)
 
 | Layer | Choice |
 |-------|--------|
-| Architecture | Modular monolith |
 | Monorepo | Turborepo + Bun workspaces |
-| API | Bun + TypeScript (strict) + Elysia + Zod |
-| Data | Drizzle + PostgreSQL 16 |
-| Jobs | Redis 7 + BullMQ |
-| Files | Azure Blob |
-| Web client | React + TypeScript + Vite + Tailwind (responsive; mobile browser) |
-| Auth | OTP (MSG91) + Google SSO + PIN |
-| Files | Azure Blob (photos + videos) |
-| Hosting | Azure Container Apps + Static Web Apps + Flexible Postgres (see `devops/`) |
-
-**MVP:** simple responsive **web** complaint portal. **Phase 2:** billing, payments, notices, notifications, full roles, SLA, dashboards, audit (see PRD). Flutter / WhatsApp = future. Voice-to-text uses browser Web Speech API. Keep UI/UX simple for non-technical users.
-
-**Deploy:** Azure staging/production via Docker — documented in [`devops/`](devops/); execute after Phase 1 app development.
-
-## License / status
-
-Spec version **0.1** — living documents; GitHub Issues are the implementation backlog.
+| API | Bun + Elysia + Zod · JWT Bearer (web + mobile) |
+| Data | Drizzle + MySQL 8 |
+| Web | React + Vite + Tailwind |
+| Auth | OTP (MSG91 later) + Google SSO + PIN |
+| Hosting | Azure Container Apps + Static Web Apps (after Phase 1) |
