@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+:root {
+  --ink: #1a2332;
+  --paper: #f7f4ef;
+  --leaf: #1f6b4a;
+  --leaf-dark: #145239;
+  --mist: #e8efe9;
+  --sand: #d9cfc0;
+  --alert: #b45309;
+  --danger: #b91c1c;
+  font-family: "DM Sans", system-ui, sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse 80% 50% at 10% -10%, #d4e8dc 0%, transparent 55%),
+    radial-gradient(ellipse 60% 40% at 100% 0%, #efe6d8 0%, transparent 50%),
+    var(--paper);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.font-display {
+  font-family: "Fraunces", Georgia, serif;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.5rem;
+  padding: 0.65rem 1.1rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn-primary {
+  background: var(--leaf);
+  color: white;
+}
+
+.btn-primary:hover {
+  background: var(--leaf-dark);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--sand);
+}
+
+.input {
+  width: 100%;
+  border: 1px solid var(--sand);
+  background: white;
+  border-radius: 0.5rem;
+  padding: 0.65rem 0.85rem;
+  font: inherit;
+}
+
+.input:focus {
+  outline: 2px solid color-mix(in srgb, var(--leaf) 40%, transparent);
+  border-color: var(--leaf);
+}
+
+.label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
