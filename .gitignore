@@ -12,3 +12,4 @@ coverage
 apps/api/uploads
 apps/web/playwright-report
 apps/web/test-results
+*.tsbuildinfo
