@@ -1,0 +1,149 @@
+# Database
+
+**Document:** 04-Database  
+**Product:** SocietyHub  
+**Version:** 1.0  
+**Related:** [Architecture](03-Architecture.md), [PRD](02-PRD.md)
+
+## 1. Principles
+
+- **PostgreSQL 16** via **Drizzle ORM**
+- **Multi-tenant:** every business table has `tenant_id`
+- **Soft delete:** `is_deleted` (default queries exclude deleted)
+- **Audit columns** on all tables (below)
+- No cross-tenant foreign keys that leak data across societies
+
+## 2. Standard columns (all tables)
+
+| Column | Notes |
+|--------|--------|
+| `id` | UUID primary key |
+| `tenant_id` | Society tenant; indexed; required on business tables (`users` may be global with membership via roles/residents) |
+| `created_at` | timestamptz |
+| `created_by` | user id nullable for system |
+| `updated_at` | timestamptz |
+| `updated_by` | user id nullable |
+| `is_deleted` | boolean default false |
+
+> Platform-level `users` may omit society-only semantics; membership and roles always carry `tenant_id`.
+
+## 3. Core tables
+
+### Hierarchy and tenancy
+
+| Table | Purpose |
+|-------|---------|
+| `societies` | Tenant root (id often equals or maps to `tenant_id`) |
+| `buildings` | Buildings within society |
+| `wings` | Wings within building |
+| `flats` | Flats within wing |
+| `society_settings` | SLA days, billing defaults, notification prefs |
+
+### Identity and residents
+
+| Table | Purpose |
+|-------|---------|
+| `users` | Login identity (phone, email, google subject) |
+| `otp_challenges` | OTP request/verify records |
+| `user_roles` | Role per user per tenant |
+| `residents` | Person linked to flat (owner/tenant flags, contacts) |
+| `resident_documents` | Metadata + blob path for verification docs |
+
+### Complaints
+
+| Table | Purpose |
+|-------|---------|
+| `complaints` | Ticket, status, assignee, SLA due |
+| `complaint_comments` | Thread |
+| `complaint_attachments` | Blob references |
+
+### Billing and payments
+
+| Table | Purpose |
+|-------|---------|
+| `bills` | Period bill per flat |
+| `bill_line_items` | Line amounts/descriptions |
+| `payments` | Razorpay or manual payment rows |
+
+### Notices and notifications
+
+| Table | Purpose |
+|-------|---------|
+| `notices` | Published content + targeting |
+| `notice_reads` | User/notice read receipts |
+| `notifications` | In-app notification inbox |
+
+### Audit
+
+| Table | Purpose |
+|-------|---------|
+| `audit_logs` | Actor, entity, action, payload/diff, timestamp |
+
+## 4. Relationships
+
+```mermaid
+erDiagram
+  societies ||--o{ buildings : has
+  buildings ||--o{ wings : has
+  wings ||--o{ flats : has
+  societies ||--o| society_settings : has
+  flats ||--o{ residents : occupied_by
+  users ||--o{ residents : linked
+  users ||--o{ user_roles : has
+  residents ||--o{ complaints : raises
+  complaints ||--o{ complaint_comments : has
+  complaints ||--o{ complaint_attachments : has
+  flats ||--o{ bills : billed
+  bills ||--o{ bill_line_items : contains
+  bills ||--o{ payments : settled_by
+  societies ||--o{ notices : publishes
+  notices ||--o{ notice_reads : tracked
+  users ||--o{ notifications : receives
+  societies ||--o{ audit_logs : tracks
+```
+
+## 5. Field-level notes (critical paths)
+
+### complaints
+
+- `ticket_number` unique per tenant
+- `status`: Open | Assigned | InProgress | Resolved | Closed
+- `assignee_user_id` required when status ≥ Assigned
+- `sla_due_at` computed from society settings at create/assign
+
+### bills
+
+- `flat_id`, `period_start`, `period_end`, `due_date`
+- `status`: Unpaid | Partial | Paid | Overdue | Void
+- Unique constraint: one non-void bill per flat per period (per tenant)
+
+### payments
+
+- `bill_id`, `amount`, `mode`: razorpay | cash | cheque | neft
+- `provider_payment_id` / `provider_order_id` for Razorpay (unique for idempotency)
+- `reference` for offline modes
+- `status`: created | captured | failed | cancelled
+
+### notices
+
+- `audience`: all | wing | flat (+ `wing_id` / `flat_id` as needed)
+- `published_at`, `is_published`
+
+### audit_logs
+
+- `entity_type`, `entity_id`, `action`, `actor_user_id`, `before_json`, `after_json` (or compact action payload)
+
+## 6. Indexing guidance
+
+- `(tenant_id)` on all tenant tables
+- `(tenant_id, flat_id)` on bills, residents
+- `(tenant_id, status)` on complaints, bills
+- Unique `(tenant_id, ticket_number)` on complaints
+- Unique provider payment ids where not null
+- `(user_id, notice_id)` unique on `notice_reads`
+
+## 7. Soft delete and tenancy rules
+
+- Default reads: `is_deleted = false` AND matching `tenant_id`
+- Hard delete reserved for ephemeral data (e.g. expired OTP) only
+- Migrations authored via Drizzle; never invent columns outside this doc + PRD without updating Spec first
