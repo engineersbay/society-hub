@@ -169,4 +169,5 @@ erDiagram
 - Default reads: `is_deleted = false` AND matching `tenant_id`
 - Hard delete reserved for ephemeral data (e.g. expired OTP) only
 - Migrations authored via Drizzle; never invent columns outside this doc + PRD without updating Spec first
-- **Local:** `docker compose -f devops/docker/docker-compose.yml up mysql -d` — MySQL 8 on host port `3307`, user `root` / password `1900Summer@`, database `societyhub`. Then `bun run db:migrate && bun run db:seed`. Connection string: `mysql://root:1900Summer%40@127.0.0.1:3307/societyhub`
+- **Local (recommended):** native MySQL 8 + Workbench on port `3306`, user `root` / password `1900Summer@`, database `societyhub`. See **[08-Local-Development.md](08-Local-Development.md)**. Connection: `mysql://root:1900Summer%40@127.0.0.1:3306/societyhub`
+- **Local (optional Docker):** `docker compose -f devops/docker/docker-compose.yml up mysql -d` — host port `3307` (avoids clashing with Workbench on `3306`)

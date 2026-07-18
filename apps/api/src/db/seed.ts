@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { hashPassword } from "@society-hub/auth";
-import { db } from "./client";
+import { closeDb, db } from "./client";
 import {
   buildings,
   flats,
@@ -24,7 +24,7 @@ const WING_ID = "55555555-5555-5555-5555-555555555555";
 const FLAT_ID = "66666666-6666-6666-6666-666666666666";
 
 const SUPERADMIN_USERNAME = "superadmin";
-const SUPERADMIN_PASSWORD = process.env.SUPERADMIN_PASSWORD ?? "1900Summer@";
+const SUPERADMIN_PASSWORD = process.env.SUPERADMIN_PASSWORD ?? "Test@1234";
 
 async function ensureSociety() {
   const existing = await db
@@ -175,7 +175,12 @@ async function main() {
   console.log("Superadmin password: (from SUPERADMIN_PASSWORD or default seed)");
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+main()
+  .then(async () => {
+    await closeDb();
+  })
+  .catch(async (err) => {
+    console.error(err);
+    await closeDb().catch(() => undefined);
+    process.exit(1);
+  });

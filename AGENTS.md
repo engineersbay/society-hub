@@ -9,13 +9,14 @@ Build SocietyHub per the Spec. **Docs are source of truth.** Never invent busine
 ## Read first
 
 1. [docs/README.md](docs/README.md)
-2. [docs/02-PRD.md](docs/02-PRD.md) — product behavior
-3. [docs/07-Tech-Stack.md](docs/07-Tech-Stack.md) — tech stack (what & why)
-4. [docs/03-Architecture.md](docs/03-Architecture.md) — system design
-5. [docs/04-Database.md](docs/04-Database.md) — data model
-6. [docs/06-Coding-Standards.md](docs/06-Coding-Standards.md)
-7. [docs/prompts/cursor-system.md](docs/prompts/cursor-system.md)
-8. Skills index: [docs/prompts/skills.md](docs/prompts/skills.md)
+2. [docs/08-Local-Development.md](docs/08-Local-Development.md) — how to run locally (MySQL Workbench / Bun)
+3. [docs/02-PRD.md](docs/02-PRD.md) — product behavior
+4. [docs/07-Tech-Stack.md](docs/07-Tech-Stack.md) — tech stack (what & why)
+5. [docs/03-Architecture.md](docs/03-Architecture.md) — system design
+6. [docs/04-Database.md](docs/04-Database.md) — data model
+7. [docs/06-Coding-Standards.md](docs/06-Coding-Standards.md)
+8. [docs/prompts/cursor-system.md](docs/prompts/cursor-system.md)
+9. Skills index: [docs/prompts/skills.md](docs/prompts/skills.md)
 
 ## Hard rules
 

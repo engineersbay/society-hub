@@ -2,19 +2,29 @@
 
 Multi-tenant SaaS for housing societies. **Phase 1** ships a responsive web app for **auth, onboard, and complaints**, backed by a mobile-ready `/v1` JSON API. Other modules show as **Coming soon**. **Pilot:** Keshav Heights.
 
-## Quick start
+## Run locally (recommended)
+
+Full guide: **[docs/08-Local-Development.md](docs/08-Local-Development.md)**
 
 ```bash
-# Requires Bun + Docker
-bun install
-bun run db:up          # MySQL 8 on host :3307 (root / 1900Summer@)
-bun run db:migrate
-bun run db:seed
-bun run dev            # API :3000 + web :5173
+# 1) Bun on PATH
+export PATH="$HOME/.bun/bin:$PATH"
+
+# 2) One-time setup (install + .env + MySQL migrate/seed)
+bun run setup
+
+# 3) Start API (:3000) + web (:5173)
+bun run dev
 ```
 
-**Seed (DEV_AUTH):** admin `9999999999` · resident `8888888888` · OTP `123456`  
-**Superadmin (email/password):** `superadmin@societyhub.local` / `1900Summer@` (override with `SUPERADMIN_PASSWORD`)  
+Requires a **local MySQL 8 server** (Workbench GUI is optional). Default:
+
+- Host `127.0.0.1:3306`
+- User `root` / password `1900Summer@`
+- Database `societyhub`
+
+**Login:** `superadmin@societyhub.local` / `Test@1234`  
+**OTP (dev):** phones `9999999999` / `8888888888` · code `123456`  
 OpenAPI: http://localhost:3000/docs
 
 | Path | Role |
@@ -28,6 +38,7 @@ OpenAPI: http://localhost:3000/docs
 
 | Doc | Purpose |
 |-----|---------|
+| [Local Development](docs/08-Local-Development.md) | **How to set up and run on your machine** |
 | [Vision](docs/00-Vision.md) | Product vision |
 | [BRD](docs/01-BRD.md) | Business requirements |
 | [PRD](docs/02-PRD.md) | Product requirements |
@@ -45,7 +56,7 @@ Agent guidance: [AGENTS.md](AGENTS.md) · DevOps: [`devops/`](devops/README.md)
 |-------|--------|
 | Monorepo | Turborepo + Bun workspaces |
 | API | Bun + Elysia + Zod · JWT Bearer (web + mobile) |
-| Data | Drizzle + MySQL 8 |
+| Data | Drizzle + MySQL 8 (local Workbench / native server) |
 | Web | React + Vite + Tailwind |
-| Auth | OTP (MSG91 later) + Google SSO + PIN |
+| Auth | Email/password + OTP + Google (dev) + PIN |
 | Hosting | Azure Container Apps + Static Web Apps (after Phase 1) |
