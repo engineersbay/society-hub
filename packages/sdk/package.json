@@ -9,7 +9,9 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test": "bun test",
+    "test:unit": "bun test --coverage"
   },
   "dependencies": {
     "@society-hub/types": "workspace:*"

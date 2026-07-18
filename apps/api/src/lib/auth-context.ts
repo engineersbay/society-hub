@@ -7,16 +7,19 @@ import {
   type AccessClaims,
 } from "@society-hub/auth";
 import type { Role, UserDto } from "@society-hub/types";
-import { createHash } from "node:crypto";
 import { Elysia } from "elysia";
 import { env } from "../config";
 import { db } from "../db/client";
 import { flats, refreshTokens, residents, userRoles, users } from "../db/schema";
 import { AppError } from "./errors";
+import { hashToken } from "./auth-helpers";
 
-export function hashToken(token: string) {
-  return createHash("sha256").update(token).digest("hex");
-}
+export {
+  hashToken,
+  isStaffRole,
+  requireAuth,
+  requireRole,
+} from "./auth-helpers";
 
 export async function buildUserDto(
   userId: string,
@@ -66,12 +69,12 @@ export async function buildUserDto(
   };
 }
 
-/** Society staff who can manage complaints/onboard (not residents). */
-export function isStaffRole(role: Role) {
-  return role === "admin" || role === "superadmin";
-}
-
-export async function issueTokens(userId: string, role: Role, tenantId: string, flatId?: string | null) {
+export async function issueTokens(
+  userId: string,
+  role: Role,
+  tenantId: string,
+  flatId?: string | null,
+) {
   const accessToken = await signAccessToken(
     { sub: userId, role, tenantId, flatId: flatId ?? null },
     env.jwtSecret,
@@ -103,10 +106,7 @@ export async function resolveMembership(userId: string) {
     .select()
     .from(userRoles)
     .where(
-      and(
-        eq(userRoles.userId, userId),
-        eq(userRoles.isDeleted, false),
-      ),
+      and(eq(userRoles.userId, userId), eq(userRoles.isDeleted, false)),
     )
     .limit(1);
   if (!roleRow) {
@@ -135,14 +135,3 @@ export const authPlugin = new Elysia({ name: "auth" }).derive(
     }
   },
 );
-
-export function requireAuth(auth: AccessClaims | null): AccessClaims {
-  if (!auth) throw new AppError(401, "unauthorized", "Authentication required");
-  return auth;
-}
-
-export function requireRole(auth: AccessClaims, roles: Role[]) {
-  if (!roles.includes(auth.role)) {
-    throw new AppError(403, "forbidden", "Insufficient permissions");
-  }
-}
