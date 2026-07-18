@@ -24,7 +24,7 @@ Build SocietyHub per the Spec. **Docs are source of truth.** Never invent busine
 - **MVP product:** start with **Complaints** (auth + onboard + raise/track). Show other **planned** features in nav as **Coming soon** (PRD §5.2)—do not implement their APIs until Phase 2. Do not invent extra modules.
 - **Multi-tenant:** every query and blob path scoped by `tenant_id`.
 - **RBAC:** enforce Admin vs Resident on the server (MVP).
-- **Deploy:** follow [`devops/`](devops/README.md). Cost-aware Azure (Container Apps + Static Web Apps); Dockerize API/web/manage. Provision staging/production **after** Phase 1 development is ready for UAT — not before.
+- **Deploy:** follow [`devops/`](devops/README.md). Cost-aware Azure (Container Apps + Static Web Apps); Dockerize API/client-app/manage. Provision staging/production **after** Phase 1 development is ready for UAT — not before.
 - Prefer updating Spec + GitHub issue over guessing product behavior.
 - Conventional commits; strict TypeScript; Zod at boundaries; repository pattern.
 
