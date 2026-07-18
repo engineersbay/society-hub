@@ -17,5 +17,5 @@ description: >-
 
 ## Spec
 
-- [Architecture](../../../SocietyHub-Spec-v0.1/docs/03-Architecture.md)
-- [Development Plan epics](../../../SocietyHub-Spec-v0.1/docs/05-Development-Plan.md)
+- [Architecture](../../../docs/03-Architecture.md)
+- [Development Plan epics](../../../docs/05-Development-Plan.md)

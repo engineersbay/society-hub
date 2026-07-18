@@ -8,18 +8,19 @@ Build SocietyHub per the Spec. **Docs are source of truth.** Never invent busine
 
 ## Read first
 
-1. [SocietyHub-Spec-v0.1/README.md](SocietyHub-Spec-v0.1/README.md)
-2. [docs/02-PRD.md](SocietyHub-Spec-v0.1/docs/02-PRD.md) — product behavior
-3. [docs/03-Architecture.md](SocietyHub-Spec-v0.1/docs/03-Architecture.md) — stack and design
-4. [docs/04-Database.md](SocietyHub-Spec-v0.1/docs/04-Database.md) — data model
-5. [docs/06-Coding-Standards.md](SocietyHub-Spec-v0.1/docs/06-Coding-Standards.md)
-6. [prompts/cursor-system.md](SocietyHub-Spec-v0.1/prompts/cursor-system.md)
-7. Skills index: [prompts/skills.md](SocietyHub-Spec-v0.1/prompts/skills.md)
+1. [docs/README.md](docs/README.md)
+2. [docs/02-PRD.md](docs/02-PRD.md) — product behavior
+3. [docs/07-Tech-Stack.md](docs/07-Tech-Stack.md) — tech stack (what & why)
+4. [docs/03-Architecture.md](docs/03-Architecture.md) — system design
+5. [docs/04-Database.md](docs/04-Database.md) — data model
+6. [docs/06-Coding-Standards.md](docs/06-Coding-Standards.md)
+7. [docs/prompts/cursor-system.md](docs/prompts/cursor-system.md)
+8. Skills index: [docs/prompts/skills.md](docs/prompts/skills.md)
 
 ## Hard rules
 
 - **MVP client = simple responsive React web app** (phone browser + desktop). Do not implement Flutter for MVP. Keep UI/UX simple: few screens, one primary action, no clutter.
-- **MVP product = complaint portal** (onboard admin/resident, login SSO/OTP/PIN, raise complaint with types/voice/media, status lists). Do not implement billing/payments/notices unless the user explicitly asks for Phase 2.
+- **MVP product:** start with **Complaints** (auth + onboard + raise/track). Show other **planned** features in nav as **Coming soon** (PRD §5.2)—do not implement their APIs until Phase 2. Do not invent extra modules.
 - **Multi-tenant:** every query and blob path scoped by `tenant_id`.
 - **RBAC:** enforce Admin vs Resident on the server (MVP).
 - **Deploy:** follow [`devops/`](devops/README.md). Cost-aware Azure (Container Apps + Static Web Apps); Dockerize API/web. Provision staging/production **after** Phase 1 development is ready for UAT — not before.
@@ -32,7 +33,7 @@ Build SocietyHub per the Spec. **Docs are source of truth.** Never invent busine
 |------|----------------|
 | Bun runtime / workspaces | `.cursor/skills/societyhub-bun-typescript` |
 | Elysia routes / API | `.cursor/skills/societyhub-elysia` |
-| Schema / migrations / repos | `.cursor/skills/societyhub-drizzle-postgres` |
+| Schema / migrations / repos | `.cursor/skills/societyhub-drizzle-mysql` |
 | Web UI | `.cursor/skills/societyhub-react-vite-tailwind` |
 | Monorepo layout / pipelines | `.cursor/skills/societyhub-turborepo` |
 | New domain module boundaries | `.cursor/skills/societyhub-modular-monolith` |
@@ -46,4 +47,4 @@ Build SocietyHub per the Spec. **Docs are source of truth.** Never invent busine
 
 ## Out of scope unless Spec updated
 
-WhatsApp notifications, Flutter MVP UI, microservices split, modules listed as future in the PRD.
+WhatsApp notifications, Flutter Phase 1 UI (placeholders only under `apps/mobile/`), microservices split, modules listed as future in the PRD.

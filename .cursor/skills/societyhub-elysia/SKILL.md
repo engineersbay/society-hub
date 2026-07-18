@@ -19,5 +19,5 @@ description: >-
 
 ## Spec
 
-- [PRD](../../../SocietyHub-Spec-v0.1/docs/02-PRD.md)
-- [Architecture](../../../SocietyHub-Spec-v0.1/docs/03-Architecture.md)
+- [PRD](../../../docs/02-PRD.md)
+- [Architecture](../../../docs/03-Architecture.md)

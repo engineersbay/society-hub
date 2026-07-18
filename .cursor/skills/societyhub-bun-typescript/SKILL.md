@@ -14,7 +14,7 @@ description: >-
 - **Strict TypeScript**; no implicit `any`.
 - Prefer Bun-native APIs; if using Node APIs, confirm Bun compatibility.
 - Shared types live in `packages/types` and `packages/validation` — do not duplicate.
-- Follow [Architecture](../../../SocietyHub-Spec-v0.1/docs/03-Architecture.md) and [Coding Standards](../../../SocietyHub-Spec-v0.1/docs/06-Coding-Standards.md).
+- Follow [Architecture](../../../docs/03-Architecture.md) and [Coding Standards](../../../docs/06-Coding-Standards.md).
 
 ## Do not
 
