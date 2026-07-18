@@ -1,5 +1,5 @@
 {
-  "name": "@society-hub/web",
+  "name": "@society-hub/client-app",
   "version": "0.0.1",
   "private": true,
   "type": "module",

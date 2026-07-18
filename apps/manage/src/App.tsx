@@ -6,7 +6,6 @@ import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { ComplaintsPage } from "./pages/ComplaintsPage";
 import { ComplaintDetailPage } from "./pages/ComplaintDetailPage";
-import { NewComplaintPage } from "./pages/NewComplaintPage";
 import { OnboardPage } from "./pages/OnboardPage";
 import { ComingSoonPage } from "./pages/ComingSoonPage";
 import { AccountPage } from "./pages/AccountPage";
@@ -34,7 +33,6 @@ export function App() {
       >
         <Route index element={<Navigate to="/complaints" replace />} />
         <Route path="complaints" element={<ComplaintsPage />} />
-        <Route path="complaints/new" element={<NewComplaintPage />} />
         <Route path="complaints/:id" element={<ComplaintDetailPage />} />
         <Route path="onboard" element={<OnboardPage />} />
         <Route path="account" element={<AccountPage />} />

@@ -3,6 +3,7 @@ import { useAuth } from "../auth";
 
 const links = [
   { to: "/complaints", label: "Complaints", live: true },
+  { to: "/onboard", label: "Onboard", live: true },
   { to: "/bills", label: "Bills", live: false },
   { to: "/payments", label: "Payments", live: false },
   { to: "/notices", label: "Notices", live: false },
@@ -17,19 +18,13 @@ export function Shell() {
       <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="font-display text-3xl tracking-tight text-[var(--leaf-dark)]">
-            SocietyHub
+            SocietyHub Manage
           </p>
           <p className="mt-1 text-sm text-black/60">
             {user?.name} · {user?.role}
-            {user?.flatNumber ? ` · Flat ${user.flatNumber}` : ""}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {user?.role === "admin" || user?.role === "superadmin" ? (
-            <NavLink to="/onboard" className="btn btn-ghost text-sm">
-              Onboard
-            </NavLink>
-          ) : null}
           <NavLink to="/account" className="btn btn-ghost text-sm">
             Account
           </NavLink>

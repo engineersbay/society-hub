@@ -9,7 +9,7 @@
 
 SocietyHub is implemented as a **modular monolith**: one deployable API with clear feature modules, shared packages, and strict tenant isolation. This optimizes MVP speed and operational simplicity while allowing future extraction of modules if needed.
 
-**MVP client:** single **simple, responsive React web app** (phone browser + desktop). Flutter is out of MVP. UI/UX stays minimal per PRD §5 — not a dense dashboard product in Phase 1.
+**MVP clients:** two **simple, responsive React web apps** — `apps/client-app` (residents) and `apps/manage` (Admin / Super Admin). Flutter is out of MVP. UI/UX stays minimal per PRD §5 — not a dense dashboard product in Phase 1.
 
 **MVP product slice:** complaint portal (auth + onboard + raise/track complaints). Billing/payments/notices are Phase 2 — still designed for, not required to implement for MVP.
 
@@ -37,13 +37,15 @@ Canonical explanation: **[07-Tech-Stack.md](07-Tech-Stack.md)**. Summary:
 ```mermaid
 flowchart TB
   subgraph clients [Clients]
-    Web["React Vite responsive web"]
+    Web["apps/client-app resident"]
+    Manage["apps/manage admin"]
   end
 
   subgraph mono [Turborepo modular monolith]
     API["apps/api Bun Elysia"]
     Worker["BullMQ workers"]
-    WEB["apps/web"]
+    WEB["apps/client-app"]
+    MANAGE["apps/manage"]
     Pkgs["packages: auth sdk validation types"]
   end
 
@@ -61,8 +63,11 @@ flowchart TB
   end
 
   Web --> WEB
+  Manage --> MANAGE
   WEB --> Pkgs
+  MANAGE --> Pkgs
   WEB --> API
+  MANAGE --> API
   API --> MySQL
   API --> Redis
   API --> Blob
@@ -80,7 +85,8 @@ flowchart TB
 society-hub/
   apps/
     api/                 # Bun + Elysia modular monolith (Phase 1)
-    web/                 # React + Vite responsive UI (Phase 1)
+    client-app/          # Resident React + Vite UI (Phase 1)
+    manage/              # Admin / Super Admin React + Vite UI (Phase 1)
     mobile/              # Future native — placeholders only
       android/           # Android target placeholder
       ios/               # iOS target placeholder
@@ -95,7 +101,7 @@ society-hub/
   .cursor/skills/
 ```
 
-Phase 1 implements **web + api** only. `apps/mobile/**` stays empty of app code until Flutter Future scope starts; see [apps/mobile/README.md](../../apps/mobile/README.md).
+Phase 1 implements **client-app + manage + api**. `apps/mobile/**` stays empty of app code until Flutter Future scope starts; see [apps/mobile/README.md](../../apps/mobile/README.md).
 
 Backend feature modules (illustrative):
 

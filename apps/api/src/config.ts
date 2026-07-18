@@ -5,7 +5,10 @@ export const env = {
     "mysql://root:1900Summer%40@127.0.0.1:3306/societyhub",
   jwtSecret:
     process.env.JWT_SECRET ?? "dev-change-me-society-hub-jwt-secret-32chars",
-  corsOrigin: (process.env.CORS_ORIGIN ?? "http://localhost:5173")
+  corsOrigin: (
+    process.env.CORS_ORIGIN ??
+    "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174"
+  )
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean),

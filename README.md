@@ -1,6 +1,6 @@
 # SocietyHub
 
-Multi-tenant SaaS for housing societies. **Phase 1** ships a responsive web app for **auth, onboard, and complaints**, backed by a mobile-ready `/v1` JSON API. Other modules show as **Coming soon**. **Pilot:** Keshav Heights.
+Multi-tenant SaaS for housing societies. **Phase 1** ships two responsive web apps — **`apps/client-app`** (residents) and **`apps/manage`** (admin) — for **auth, onboard, and complaints**, backed by a mobile-ready `/v1` JSON API. Other modules show as **Coming soon**. **Pilot:** Keshav Heights.
 
 ## Run locally (recommended)
 
@@ -13,7 +13,7 @@ export PATH="$HOME/.bun/bin:$PATH"
 # 2) One-time setup (install + .env + MySQL migrate/seed)
 bun run setup
 
-# 3) Start API (:3000) + web (:5173)
+# 3) Start API (:3000) + web (:5173) + manage (:5174)
 bun run dev
 ```
 
@@ -23,16 +23,17 @@ Requires a **local MySQL 8 server** (Workbench GUI is optional). Default:
 - User `root` / password `1900Summer@`
 - Database `societyhub`
 
-**Login:** `superadmin@societyhub.local` / `Test@1234`  
-**OTP (dev):** phones `9999999999` / `8888888888` · code `123456`  
+**Manage login:** `superadmin@societyhub.local` / `Test@1234` → http://localhost:5174  
+**Resident OTP (dev):** phone `8888888888` · code `123456` → http://localhost:5173  
 OpenAPI: http://localhost:3000/docs
 
 | Path | Role |
 |------|------|
 | `apps/api` | Bun + Elysia + Drizzle/MySQL |
-| `apps/web` | React + Vite + Tailwind |
+| `apps/client-app` | Resident React + Vite + Tailwind |
+| `apps/manage` | Admin React + Vite + Tailwind |
 | `apps/mobile` | Flutter placeholders (later) |
-| `packages/{sdk,validation,auth,types}` | Shared contract for web + future mobile |
+| `packages/{sdk,validation,auth,types}` | Shared contract for web + manage + future mobile |
 
 ## Spec pack
 

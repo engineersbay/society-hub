@@ -4,7 +4,7 @@ import type { ComplaintDto } from "@society-hub/types";
 import { useAuth } from "../auth";
 
 export function ComplaintsPage() {
-  const { client, user } = useAuth();
+  const { client } = useAuth();
   const [items, setItems] = useState<ComplaintDto[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -17,22 +17,9 @@ export function ComplaintsPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between gap-3">
-        <div>
-          <h1 className="font-display text-2xl">Complaints</h1>
-          <p className="text-sm text-black/55">
-            {user?.role === "admin"
-              ? "All society complaints"
-              : user?.role === "superadmin"
-                ? "All society complaints (superadmin)"
-                : "Your raised complaints"}
-          </p>
-        </div>
-        {(user?.role === "resident" || user?.flatId) && (
-          <Link to="/complaints/new" className="btn btn-primary">
-            Raise complaint
-          </Link>
-        )}
+      <div className="mb-6">
+        <h1 className="font-display text-2xl">Complaints</h1>
+        <p className="text-sm text-black/55">All society complaints — update status from detail</p>
       </div>
 
       {error && <p className="text-[var(--danger)]">{error}</p>}

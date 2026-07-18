@@ -3,7 +3,7 @@
 ## Goals
 
 - Reproducible builds for **staging** and **production**
-- One artifact per app: `societyhub-api`, `societyhub-web`
+- One artifact per app: `societyhub-api`, `societyhub-client-app`, `societyhub-manage`
 - Promote by **image digest / git SHA tag**, not rebuild-per-env
 
 ## Images
@@ -11,7 +11,8 @@
 | Image | Source | Runtime role |
 |-------|--------|----------------|
 | `societyhub-api` | `apps/api` | Bun + Elysia API |
-| `societyhub-web` | `apps/web` build → nginx (or Azure Static Web Apps) |
+| `societyhub-client-app` | `apps/client-app` build → nginx (or Azure Static Web Apps) |
+| `societyhub-manage` | `apps/manage` build → nginx (or Azure Static Web Apps) |
 
 ## Local development
 
@@ -19,7 +20,7 @@
 # MySQL only (host port 3307 → container 3306; avoids clashing with a local MySQL on 3306)
 docker compose -f devops/docker/docker-compose.yml up mysql -d
 
-# Full stack (API + web images)
+# Full stack (API + web + manage images)
 docker compose -f devops/docker/docker-compose.yml --profile app up --build
 ```
 
@@ -40,7 +41,7 @@ App `DATABASE_URL` (URL-encode `@` as `%40`):
 
 ```bash
 docker build -f devops/docker/api.Dockerfile -t societyhub-api:local .
-docker build -f devops/docker/web.Dockerfile -t societyhub-web:local .
+docker build -f devops/docker/client-app.Dockerfile -t societyhub-client-app:local .
 ```
 
 ## Healthchecks

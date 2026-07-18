@@ -30,7 +30,7 @@ This document is the **single explanation of what we use and why**. Detailed sys
 | Native mobile | Flutter (`apps/mobile/android`, `apps/mobile/ios`) | Future |
 | Tests | Vitest + Playwright | When implementing |
 
-**Client for Phase 1:** one **simple responsive web app** (phone browser + desktop). Not Flutter.
+**Client for Phase 1:** two **simple responsive web apps** — `apps/client-app` (residents) and `apps/manage` (Admin / Super Admin). Not Flutter.
 
 ---
 
@@ -54,13 +54,15 @@ This document is the **single explanation of what we use and why**. Detailed sys
 
 ```mermaid
 flowchart TB
-  subgraph client [Phase 1 client]
-    Web["React Vite Tailwind responsive web"]
+  subgraph client [Phase 1 clients]
+    Web["apps/client-app resident"]
+    Manage["apps/manage admin"]
   end
 
   subgraph mono [Monorepo]
     API["apps/api - Bun Elysia"]
-    WEBAPP["apps/web"]
+    WEBAPP["apps/client-app"]
+    MANAGEAPP["apps/manage"]
     Mobile["apps/mobile android ios - Future only"]
     Pkgs["packages: auth sdk validation types"]
   end
@@ -72,8 +74,11 @@ flowchart TB
   end
 
   Web --> WEBAPP
+  Manage --> MANAGEAPP
   WEBAPP --> Pkgs
+  MANAGEAPP --> Pkgs
   WEBAPP --> API
+  MANAGEAPP --> API
   API --> MySQL
   API --> Blob
   API --> Redis
@@ -82,7 +87,8 @@ flowchart TB
 | Path | Role |
 |------|------|
 | `apps/api` | Backend modular monolith |
-| `apps/web` | Responsive web UI |
+| `apps/client-app` | Resident responsive web UI |
+| `apps/manage` | Admin / Super Admin responsive web UI |
 | `apps/mobile/*` | Placeholders for future Flutter Android/iOS |
 | `packages/*` | Shared auth helpers, SDK, Zod schemas, types |
 | `devops/` | Docker + Azure staging/production (cost-aware) |
@@ -120,10 +126,11 @@ Avoid PostgreSQL-only types (arrays, JSONB). Use MySQL `JSON` or normalized tabl
 
 ## 6. Frontend (Phase 1)
 
-- **React + TypeScript + Vite + Tailwind**  
+- **React + TypeScript + Vite + Tailwind** in **two apps**  
+- **`apps/client-app`:** residents — login, raise/track complaints, account  
+- **`apps/manage`:** Admin / Super Admin — login, onboard, all complaints + status, account  
 - **UX:** simple — few screens, one primary action, large tap targets  
 - **Responsive:** ~375px phone browser + desktop  
-- **Live:** login, onboard, Complaints (raise/list/status, voice, media)  
 - **Coming soon in nav:** Bills, Payments, Notices, Dashboard, etc. (no fake APIs)  
 - Call API only through `packages/sdk`
 

@@ -20,9 +20,13 @@ type AuthState = {
 
 const AuthContext = createContext<AuthState | null>(null);
 
-const ACCESS_KEY = "sh_access";
-const REFRESH_KEY = "sh_refresh";
-const USER_KEY = "sh_user";
+const ACCESS_KEY = "sh_manage_access";
+const REFRESH_KEY = "sh_manage_refresh";
+const USER_KEY = "sh_manage_user";
+
+function isStaff(user: UserDto) {
+  return user.role === "admin" || user.role === "superadmin";
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserDto | null>(null);
@@ -43,10 +47,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const access = localStorage.getItem(ACCESS_KEY);
     if (raw && access) {
       try {
-        setUser(JSON.parse(raw) as UserDto);
+        const parsed = JSON.parse(raw) as UserDto;
+        if (!isStaff(parsed)) {
+          clearStorage();
+          setLoading(false);
+          return;
+        }
+        setUser(parsed);
         client
           .me()
           .then((me) => {
+            if (!isStaff(me)) {
+              clearStorage();
+              setUser(null);
+              return;
+            }
             setUser(me);
             localStorage.setItem(USER_KEY, JSON.stringify(me));
           })
@@ -70,6 +85,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   function setSession(next: UserDto, tokens: AuthTokens) {
+    if (!isStaff(next)) {
+      clearStorage();
+      setUser(null);
+      throw new Error("RESIDENT_USE_WEB");
+    }
     localStorage.setItem(ACCESS_KEY, tokens.accessToken);
     localStorage.setItem(REFRESH_KEY, tokens.refreshToken);
     localStorage.setItem(USER_KEY, JSON.stringify(next));

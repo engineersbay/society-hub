@@ -10,8 +10,9 @@ build
 .DS_Store
 coverage
 apps/api/uploads
-apps/web/playwright-report
-apps/web/test-results
+apps/client-app/playwright-report
+apps/client-app/test-results
 *.tsbuildinfo
 .tmp
 coverage
+*.code-workspace

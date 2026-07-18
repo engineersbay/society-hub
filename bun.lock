@@ -29,8 +29,30 @@
         "typescript": "^5.8.3",
       },
     },
-    "apps/web": {
-      "name": "@society-hub/web",
+    "apps/client-app": {
+      "name": "@society-hub/client-app",
+      "version": "0.0.1",
+      "dependencies": {
+        "@society-hub/sdk": "workspace:*",
+        "@society-hub/types": "workspace:*",
+        "react": "^19.1.0",
+        "react-dom": "^19.1.0",
+        "react-router-dom": "^7.6.2",
+      },
+      "devDependencies": {
+        "@playwright/test": "^1.53.0",
+        "@tailwindcss/vite": "^4.1.10",
+        "@types/react": "^19.1.8",
+        "@types/react-dom": "^19.1.6",
+        "@vitejs/plugin-react": "^4.5.2",
+        "tailwindcss": "^4.1.10",
+        "typescript": "^5.8.3",
+        "vite": "^6.3.5",
+        "vitest": "^3.2.4",
+      },
+    },
+    "apps/manage": {
+      "name": "@society-hub/manage",
       "version": "0.0.1",
       "dependencies": {
         "@society-hub/sdk": "workspace:*",
@@ -257,13 +279,15 @@
 
     "@society-hub/auth": ["@society-hub/auth@workspace:packages/auth"],
 
+    "@society-hub/client-app": ["@society-hub/client-app@workspace:apps/client-app"],
+
+    "@society-hub/manage": ["@society-hub/manage@workspace:apps/manage"],
+
     "@society-hub/sdk": ["@society-hub/sdk@workspace:packages/sdk"],
 
     "@society-hub/types": ["@society-hub/types@workspace:packages/types"],
 
     "@society-hub/validation": ["@society-hub/validation@workspace:packages/validation"],
-
-    "@society-hub/web": ["@society-hub/web@workspace:apps/web"],
 
     "@tailwindcss/node": ["@tailwindcss/node@4.3.3", "", { "dependencies": { "@jridgewell/remapping": "^2.3.5", "enhanced-resolve": "^5.24.1", "jiti": "^2.7.0", "lightningcss": "1.32.0", "magic-string": "^0.30.21", "source-map-js": "^1.2.1", "tailwindcss": "4.3.3" } }, "sha512-/T8IKEsf9VTU6tLjgC7+sv2mOPtQxzE2jMw7u4Tt40Tx+QSZxpzh95/H6cMKoja9XuW7iMdLJYBB0o9G1CaAgg=="],
 

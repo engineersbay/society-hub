@@ -5,6 +5,8 @@ import { useAuth } from "../auth";
 
 type Mode = "password" | "otp" | "pin" | "google";
 
+const WEB_URL = import.meta.env.VITE_WEB_URL ?? "http://localhost:5173";
+
 export function LoginPage() {
   const { user, client, setSession } = useAuth();
   const [mode, setMode] = useState<Mode>("password");
@@ -20,18 +22,30 @@ export function LoginPage() {
 
   if (user) return <Navigate to="/complaints" replace />;
 
-  async function loginPassword(e: FormEvent) {
-    e.preventDefault();
+  async function applySession(
+    login: () => Promise<{ user: Parameters<typeof setSession>[0]; tokens: Parameters<typeof setSession>[1] }>,
+  ) {
     setBusy(true);
     setError(null);
     try {
-      const res = await client.loginPassword(email, password);
-      setSession(res.user, res.tokens);
+      const res = await login();
+      try {
+        setSession(res.user, res.tokens);
+      } catch {
+        setError(
+          `Residents use the society app instead: ${WEB_URL}`,
+        );
+      }
     } catch (err) {
       setError(err instanceof ApiClientError ? err.body.message : "Failed");
     } finally {
       setBusy(false);
     }
+  }
+
+  async function loginPassword(e: FormEvent) {
+    e.preventDefault();
+    await applySession(() => client.loginPassword(email, password));
   }
 
   async function requestOtp(e: FormEvent) {
@@ -51,44 +65,17 @@ export function LoginPage() {
 
   async function verifyOtp(e: FormEvent) {
     e.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await client.verifyOtp(phone, code);
-      setSession(res.user, res.tokens);
-    } catch (err) {
-      setError(err instanceof ApiClientError ? err.body.message : "Failed");
-    } finally {
-      setBusy(false);
-    }
+    await applySession(() => client.verifyOtp(phone, code));
   }
 
   async function loginPin(e: FormEvent) {
     e.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await client.loginPin(phone, pin);
-      setSession(res.user, res.tokens);
-    } catch (err) {
-      setError(err instanceof ApiClientError ? err.body.message : "Failed");
-    } finally {
-      setBusy(false);
-    }
+    await applySession(() => client.loginPin(phone, pin));
   }
 
   async function loginGoogle(e: FormEvent) {
     e.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await client.loginGoogle(`dev:${phone}`);
-      setSession(res.user, res.tokens);
-    } catch (err) {
-      setError(err instanceof ApiClientError ? err.body.message : "Failed");
-    } finally {
-      setBusy(false);
-    }
+    await applySession(() => client.loginGoogle(`dev:${phone}`));
   }
 
   const modeLabel: Record<Mode, string> = {
@@ -100,9 +87,9 @@ export function LoginPage() {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 py-10">
-      <p className="font-display text-4xl text-[var(--leaf-dark)]">SocietyHub</p>
+      <p className="font-display text-4xl text-[var(--leaf-dark)]">SocietyHub Manage</p>
       <p className="mt-2 text-black/60">
-        Sign in for your society. Pilot: Keshav Heights.
+        Admin sign-in for your society. Pilot: Keshav Heights.
       </p>
 
       <div className="mt-6 flex flex-wrap gap-2">
@@ -253,6 +240,12 @@ export function LoginPage() {
 
       {devHint && <p className="mt-3 text-sm text-[var(--alert)]">{devHint}</p>}
       {error && <p className="mt-3 text-sm text-[var(--danger)]">{error}</p>}
+      <p className="mt-6 text-sm text-black/50">
+        Resident?{" "}
+        <a className="text-[var(--leaf)]" href={WEB_URL}>
+          Open society app
+        </a>
+      </p>
     </div>
   );
 }

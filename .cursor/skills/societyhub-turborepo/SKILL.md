@@ -9,8 +9,8 @@ description: >-
 
 ## Rules
 
-- Apps: `apps/api`, `apps/web` for Phase 1; `apps/mobile/android` + `apps/mobile/ios` are **placeholders only** (Future Flutter).
+- Apps: `apps/api`, `apps/client-app` (resident), `apps/manage` (admin) for Phase 1; `apps/mobile/android` + `apps/mobile/ios` are **placeholders only** (Future Flutter).
 - Packages: `auth`, `sdk`, `validation`, `types` (and shared config as needed).
-- Prefer dependency direction: web → sdk/validation/types; api → auth/validation/types.
+- Prefer dependency direction: web/manage → sdk/validation/types; api → auth/validation/types.
 - Do not put business logic in packages that belong in a feature module.
 - Follow [Architecture §4](../../../docs/03-Architecture.md).
