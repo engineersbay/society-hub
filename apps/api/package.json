@@ -1,0 +1,34 @@
+{
+  "name": "@society-hub/api",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --hot src/index.ts",
+    "build": "bun build src/index.ts --outdir dist --target bun",
+    "start": "bun run dist/index.js",
+    "lint": "tsc --noEmit",
+    "test": "bun test src/lib/errors.test.ts src/lib/auth-helpers.test.ts src/config.test.ts",
+    "test:unit": "bun test --coverage src/lib/errors.test.ts src/lib/auth-helpers.test.ts src/config.test.ts",
+    "test:integration": "bun test src/api.integration.test.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "bun run src/db/migrate.ts",
+    "db:seed": "bun run src/db/seed.ts"
+  },
+  "dependencies": {
+    "@elysiajs/cors": "^1.3.3",
+    "@elysiajs/swagger": "^1.3.0",
+    "@society-hub/auth": "workspace:*",
+    "@society-hub/types": "workspace:*",
+    "@society-hub/validation": "workspace:*",
+    "drizzle-orm": "^0.44.2",
+    "elysia": "^1.3.5",
+    "mysql2": "^3.14.1",
+    "zod": "^3.25.67"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.17",
+    "drizzle-kit": "^0.31.4",
+    "typescript": "^5.8.3"
+  }
+}

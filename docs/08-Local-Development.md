@@ -1,0 +1,301 @@
+# Local development setup
+
+**Document:** 08-Local-Development  
+**Product:** SocietyHub  
+**Audience:** Developers running Phase 1 on a Mac (or Linux) machine  
+**Related:** [Tech Stack](07-Tech-Stack.md), [Database](04-Database.md), [DevOps Docker](../devops/docker/README.md)
+
+This guide is the **source of truth for local run**. Prefer a **native MySQL** (Workbench / MySQL Installer) for day-to-day work. Docker MySQL is optional.
+
+---
+
+## 1. What you will run
+
+| Service | URL | Notes |
+|---------|-----|--------|
+| Web app | http://localhost:5173 | React + Vite |
+| API | http://localhost:3000 | Elysia `/v1` |
+| OpenAPI | http://localhost:3000/docs | Swagger UI |
+| MySQL | `127.0.0.1:3306` | Local server (Workbench) |
+
+---
+
+## 2. Prerequisites
+
+Install once:
+
+| Tool | Why | Check |
+|------|-----|--------|
+| **[Bun](https://bun.sh)** (≥ 1.2) | Package manager + API runtime | `bun --version` |
+| **MySQL 8** server | Database | Workbench connects to `127.0.0.1:3306` |
+| **MySQL Workbench** (optional) | Browse tables / run SQL | App installs separately from the server |
+| **Git** | Clone / branches | `git --version` |
+| **Docker** (optional) | Only if you do **not** have a local MySQL server | `docker --version` |
+
+### Install Bun (macOS)
+
+```bash
+curl -fsSL https://bun.sh/install | bash
+```
+
+Then reload your shell so `bun` is on `PATH`:
+
+```bash
+source ~/.zshrc
+# or open a new Terminal window
+bun --version
+```
+
+If `bun` is still not found:
+
+```bash
+export PATH="$HOME/.bun/bin:$PATH"
+```
+
+### MySQL server (native — recommended)
+
+You already need a **MySQL server** process (Workbench alone is only a GUI).
+
+- macOS installer often puts the client at `/usr/local/mysql/bin/mysql`
+- Default local port: **3306**
+- Dev password used in this project: **`1900Summer@`** (root)
+
+Add the client to PATH (optional):
+
+```bash
+export PATH="/usr/local/mysql/bin:$PATH"
+mysql --version
+```
+
+---
+
+## 3. One-time project setup
+
+From the repo root:
+
+```bash
+cd /path/to/society-hub
+export PATH="$HOME/.bun/bin:$PATH"
+
+# Install workspace dependencies
+bun install
+
+# Create env files from examples (safe if already present)
+bun run setup:env
+
+# Create DB + tables + seed data
+bun run setup:db
+```
+
+Or step by step (same result):
+
+```bash
+bun install
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env
+
+# Create empty database (Workbench SQL tab OR CLI)
+# See section 4
+
+bun run db:migrate
+bun run db:seed
+```
+
+---
+
+## 4. Create the local database
+
+### Option A — MySQL Workbench (GUI)
+
+1. Open **MySQL Workbench**
+2. Connect to `Local instance` → `127.0.0.1:3306` as `root`
+3. Open a new **SQL** query tab (do **not** paste SQL into Terminal/`zsh`)
+4. Run:
+
+```sql
+CREATE DATABASE IF NOT EXISTS societyhub
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;
+```
+
+5. Refresh Schemas — you should see `societyhub`
+
+### Option B — Terminal (mysql client)
+
+```bash
+/usr/local/mysql/bin/mysql -uroot -p'1900Summer@' -h127.0.0.1 -P3306 -e \
+  "CREATE DATABASE IF NOT EXISTS societyhub CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+```
+
+> `CREATE DATABASE ...` is **SQL**. Running it directly in `zsh` fails with `command not found: CREATE`.
+
+### Apply schema + seed
+
+```bash
+bun run db:migrate   # creates tables via Drizzle migrations
+bun run db:seed      # Keshav Heights + superadmin
+```
+
+In Workbench: open `societyhub` → Tables (should list `users`, `complaints`, etc.).
+
+---
+
+## 5. Environment files
+
+### API — `apps/api/.env`
+
+```env
+SUPERADMIN_PASSWORD=Test@1234
+DEV_AUTH=true
+DEV_OTP_CODE=123456
+JWT_SECRET=dev-change-me-society-hub-jwt-secret-32chars
+DATABASE_URL=mysql://root:1900Summer%40@127.0.0.1:3306/societyhub
+CORS_ORIGIN=http://localhost:5173,http://127.0.0.1:5173
+PUBLIC_API_URL=http://localhost:3000
+PORT=3000
+UPLOAD_DIR=./uploads
+```
+
+Notes:
+
+- `@` in the DB password **must** be URL-encoded as `%40` inside `DATABASE_URL`
+- `DEV_AUTH=true` returns OTP / password-reset codes in API responses (local only)
+- Superadmin login password defaults to `Test@1234` (override with `SUPERADMIN_PASSWORD`)
+
+### Web — `apps/web/.env`
+
+```env
+VITE_API_URL=http://localhost:3000
+```
+
+---
+
+## 6. Run every day
+
+```bash
+cd /path/to/society-hub
+export PATH="$HOME/.bun/bin:$PATH"
+
+# Ensure MySQL server is running (System Settings / mysql.server / Workbench can connect)
+
+bun run dev
+```
+
+This starts:
+
+- API → http://localhost:3000  
+- Web → http://localhost:5173  
+
+Run separately if needed:
+
+```bash
+bun run dev:api
+bun run dev:web
+```
+
+Health check:
+
+```bash
+curl http://127.0.0.1:3000/health
+```
+
+---
+
+## 7. Seed logins (local only)
+
+| Method | Credentials |
+|--------|-------------|
+| Email / password | `superadmin@societyhub.local` / `Test@1234` |
+| OTP (mobile) | Admin `9999999999` · Resident `8888888888` · code `123456` |
+
+Login page default tab is **Email**. Forgot password uses the same DEV code `123456` when `DEV_AUTH=true`.
+
+---
+
+## 8. Useful scripts
+
+| Script | Purpose |
+|--------|---------|
+| `bun run setup` | `install` + env files + migrate + seed |
+| `bun run setup:env` | Copy `.env.example` → `.env` if missing |
+| `bun run setup:db` | migrate + seed (expects DB exists) |
+| `bun run db:migrate` | Apply Drizzle migrations |
+| `bun run db:seed` | Seed / refresh superadmin |
+| `bun run db:generate` | Generate a new migration after schema edits |
+| `bun run test:unit` | Unit tests with **≥90%** coverage gate |
+| `bun run test:integration` | API integration smoke (API must be running) |
+| `bun run test:ci` | Unit + integration |
+| `bun run db:up` | **Optional** Docker MySQL on host `:3307` |
+| `bun run lint` | Typecheck packages/apps |
+| `bun run test` | Unit / API smoke tests (API must be up for API tests) |
+
+---
+
+## 9. Optional: Docker MySQL instead of native
+
+Only if you do **not** want a native MySQL server:
+
+```bash
+bun run db:up
+```
+
+Then set in `apps/api/.env`:
+
+```env
+DATABASE_URL=mysql://root:1900Summer%40@127.0.0.1:3307/societyhub
+```
+
+Docker maps container `3306` → host **`3307`** so it does not clash with Workbench on `3306`.
+
+---
+
+## 10. Troubleshooting
+
+| Symptom | Fix |
+|---------|-----|
+| `zsh: command not found: bun` | `export PATH="$HOME/.bun/bin:$PATH"` then `source ~/.zshrc` |
+| `command not found: CREATE` | Run SQL in Workbench or `mysql -e "..."`, not in zsh |
+| `ER_ACCESS_DENIED` | Check root password; update `DATABASE_URL` (`%40` for `@`) |
+| `ECONNREFUSED 3306` | Start MySQL server (not just Workbench) |
+| API CORS errors | Ensure `CORS_ORIGIN` includes both `localhost` and `127.0.0.1` web origins |
+| Old auth routes after pull | Restart API process (`bun run dev` / kill port 3000) |
+| Port 3306 already in use | That is your native MySQL — use it; do not also need Docker |
+
+Reset DB data (destructive):
+
+```sql
+DROP DATABASE societyhub;
+CREATE DATABASE societyhub CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
+
+Then:
+
+```bash
+bun run db:migrate
+bun run db:seed
+```
+
+---
+
+## 11. Project layout (local focus)
+
+```text
+society-hub/
+  apps/api/          # Bun + Elysia API
+  apps/web/          # React web
+  packages/          # shared types, validation, sdk, auth
+  docs/08-Local-Development.md   # this file
+  devops/docker/     # optional Docker MySQL / images
+```
+
+---
+
+## 12. Checklist before first login
+
+- [ ] `bun --version` works  
+- [ ] Workbench connects to MySQL on `3306`  
+- [ ] Database `societyhub` exists  
+- [ ] `bun run db:migrate` and `bun run db:seed` succeeded  
+- [ ] `apps/api/.env` and `apps/web/.env` exist  
+- [ ] `bun run dev` → web + API up  
+- [ ] Sign in with `superadmin@societyhub.local` / `Test@1234`  

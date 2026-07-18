@@ -1,0 +1,63 @@
+# Local stack for SocietyHub
+# Usage:
+#   docker compose -f devops/docker/docker-compose.yml up mysql -d
+#   docker compose -f devops/docker/docker-compose.yml --profile app up --build
+# Redis: add --profile phase2
+
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: "1900Summer@"
+      MYSQL_DATABASE: societyhub
+    ports:
+      # Host 3307 avoids clashing with a local MySQL already on 3306
+      - "3307:3306"
+    volumes:
+      - sh_mysql:/var/lib/mysql
+    command: ["mysqld", "--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p1900Summer@"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  redis:
+    profiles: ["phase2"]
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  api:
+    profiles: ["app"]
+    build:
+      context: ../..
+      dockerfile: devops/docker/api.Dockerfile
+    environment:
+      # @ in password must be URL-encoded as %40
+      DATABASE_URL: mysql://root:1900Summer%40@mysql:3306/societyhub
+      PORT: "3000"
+      JWT_SECRET: docker-dev-jwt-secret-change-me-32c
+      DEV_AUTH: "true"
+      DEV_OTP_CODE: "123456"
+      CORS_ORIGIN: http://localhost:8080
+      PUBLIC_API_URL: http://localhost:3000
+      UPLOAD_DIR: /app/apps/api/uploads
+    ports:
+      - "3000:3000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  web:
+    profiles: ["app"]
+    build:
+      context: ../..
+      dockerfile: devops/docker/web.Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+
+volumes:
+  sh_mysql:
