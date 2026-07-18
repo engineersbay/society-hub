@@ -34,12 +34,16 @@
 - Soft delete; set `updated_at` / `updated_by` on writes
 - Write `audit_logs` for bill, payment, complaint status/delete, and role mutations
 
-## 5. Web (React + Vite + Tailwind)
+## 5. Web UI/UX (React + Vite + Tailwind)
 
-- Responsive layouts: usable at ~375px; bottom nav on small screens, sidebar on desktop where appropriate
+**Product constraint:** SocietyHub MVP is a **simple, responsive web app** — not a native app, not a dense admin console.
+
+- **Simple UX:** one job per screen; primary CTA obvious; short copy; large tap targets on mobile
+- **Responsive:** usable at ~375px (phone browser) and desktop; bottom nav or compact header on small screens; avoid heavy sidebars on mobile
 - Role-aware UI; never rely on UI alone for security
 - Call API only through `packages/sdk`
-- Prefer accessible headless components; avoid gratuitous card chrome and generic purple gradients
+- Prefer accessible headless/Radix + Tailwind; **no** gratuitous cards, gradients, badge piles, or generic “AI purple” themes
+- MVP screens focus on: login, onboard (admin), raise complaint, complaint lists/detail — nothing extra without PRD
 
 ## 6. Testing
 

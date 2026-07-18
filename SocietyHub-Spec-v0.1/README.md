@@ -5,7 +5,9 @@ Functional and technical specification for SocietyHub, a multi-tenant SaaS platf
 **How to read:** follow docs in order `00` → `06`. Product behavior is defined in the PRD; technical shape in Architecture and Database. Agents must treat this Spec as source of truth ([prompts/cursor-system.md](prompts/cursor-system.md), root [AGENTS.md](../AGENTS.md)).
 
 **Pilot:** Keshav Heights Society  
-**MVP client:** responsive React web (desktop + mobile browser). Flutter is future scope.
+**MVP:** simple responsive React **web** complaint portal (auth + onboard + raise/track with media & voice-to-text). Keep UI/UX minimal for non-technical users.  
+**Phase 2:** billing, payments, notices, notifications, full roles, SLA, dashboards, audit — fully specified in [PRD](docs/02-PRD.md).  
+**Future:** Flutter, WhatsApp, visitor, parking, etc.
 
 ## Document index
 
@@ -35,12 +37,13 @@ Functional and technical specification for SocietyHub, a multi-tenant SaaS platf
 | Jobs / cache | Redis 7 + BullMQ |
 | Object storage | Azure Blob |
 | Web | React + TypeScript + Vite + Tailwind (+ headless/Radix) |
-| Auth | OTP via MSG91 + Google OAuth + session/JWT |
-| Email | Resend |
-| Push | Firebase Cloud Messaging (web push) |
-| Payments | Razorpay (UPI/cards/netbanking) + manual cash/cheque/NEFT |
+| Auth | OTP via MSG91 + Google SSO + PIN |
+| Object storage | Azure Blob (images + videos) |
+| Speech (MVP) | Browser Web Speech API (client-side) |
 | Hosting | Azure Container Apps or App Service, Azure Database for PostgreSQL, Azure Cache for Redis, Blob |
 | Tests (when implementing) | Vitest + Playwright |
+
+**Phase 2 stack (not required for MVP):** Resend, Firebase web push, Razorpay, BullMQ-heavy SLA jobs.
 
 ### Future (not MVP)
 
@@ -48,10 +51,12 @@ Functional and technical specification for SocietyHub, a multi-tenant SaaS platf
 - WhatsApp Business API notifications
 - Microservices / Kubernetes
 - Visitor, parking, clubhouse, vendor marketplace, AI assistant, builder edition
+- Full billing/payments/notices suite (Phase 2 product)
 
 ## Related repo artifacts
 
 - Root [README.md](../README.md)
 - Root [AGENTS.md](../AGENTS.md)
 - Project skills: [`.cursor/skills/`](../.cursor/skills/)
+- DevOps / Azure deploy: [`devops/`](../devops/README.md) (after Phase 1 development)
 - Implementation backlog: GitHub Issues on this repository

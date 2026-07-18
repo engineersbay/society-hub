@@ -9,7 +9,9 @@
 
 SocietyHub is implemented as a **modular monolith**: one deployable API with clear feature modules, shared packages, and strict tenant isolation. This optimizes MVP speed and operational simplicity while allowing future extraction of modules if needed.
 
-**MVP client:** single responsive React web app (desktop + mobile browser). Flutter is out of MVP.
+**MVP client:** single **simple, responsive React web app** (phone browser + desktop). Flutter is out of MVP. UI/UX stays minimal per PRD §5 — not a dense dashboard product in Phase 1.
+
+**MVP product slice:** complaint portal (auth + onboard + raise/track complaints). Billing/payments/notices are Phase 2 — still designed for, not required to implement for MVP.
 
 ## 2. Locked technical stack
 
@@ -120,9 +122,23 @@ Cross-cutting: notifications, audit, tenancy middleware.
 ## 7. Authentication and authorization
 
 - **OTP:** MSG91 send/verify; store challenges in `otp_challenges`; rate limit.
-- **Google OAuth:** standard OAuth code flow; link to invited user/resident.
-- **Session:** HTTP-only secure cookie and/or JWT via `packages/auth` (`jose`).
-- **RBAC:** enforce PRD permissions matrix on every mutating route; UI mirrors but does not replace server checks.
+- **Google SSO:** OAuth code flow; link to onboarded admin/resident.
+- **PIN:** After OTP or SSO success, user may set a numeric PIN. Store only a **one-way hash** (e.g. Argon2/bcrypt) on `users` (or `user_credentials`). PIN unlock establishes a session equivalent to login for that user on that client; require re-OTP/SSO if PIN reset or lockout after N failures.
+- **Session:** HTTP-only secure cookie and/or JWT via `packages/auth`.
+- **RBAC (MVP):** Admin vs Resident per PRD; expand roles in Phase 2.
+
+## 7.1 Voice-to-text (complaint description)
+
+- Client-side **Web Speech API** (`SpeechRecognition` / `webkitSpeechRecognition`) behind a mic control (ChatGPT-style).
+- Appends/replaces description text locally before submit; **no mandatory server STT** in MVP.
+- If unsupported, hide/disable mic with a short message; keyboard input remains.
+
+## 7.2 Media uploads (photos and videos)
+
+- Upload to **Azure Blob** via authorized API (SAS or proxy upload).
+- Allow image types (e.g. JPEG/PNG/WebP) and common video types (e.g. MP4/MOV).
+- Enforce max file size and max video duration/size in API + UI (document concrete limits in env/config; suggest ≤10MB image, ≤50MB / ~60s video for pilot unless revised).
+- `complaint_attachments` stores content type (`image` | `video`), blob path, size, optional duration.
 
 ## 8. API conventions
 
@@ -183,13 +199,20 @@ See [04-Database.md](04-Database.md). Soft delete via `is_deleted`; audit column
 
 ## 15. Deployment view (logical)
 
-| Component | Azure target |
-|-----------|--------------|
-| API + static web (or separate static host) | Container Apps / App Service |
-| Worker | Same plan or separate container |
-| PostgreSQL | Azure Database for PostgreSQL |
-| Redis | Azure Cache for Redis |
-| Blob | Azure Storage |
+| Component | Azure target (cost-aware) |
+|-----------|---------------------------|
+| Web | **Azure Static Web Apps** preferred; or nginx container |
+| API | **Azure Container Apps** (staging min replicas 0; prod min 1) |
+| Worker | Same ACA env; **Phase 2** only when Redis/queues needed |
+| PostgreSQL | Flexible Server **Burstable** |
+| Redis | **Omit in Phase 1**; Basic when Phase 2 jobs land |
+| Blob | Azure Storage LRS |
+| Registry | ACR Basic (shared staging+prod) |
+| Secrets | Key Vault per env |
+
+**Do not use AKS** for Phase 1/early Phase 2. Full runbooks, Dockerfiles, staging/production topology, and CI examples live under [`devops/`](../../devops/README.md).  
+
+**Timing:** implement app Phase 1 first; **provision and deploy** staging/production in the DevOps phase after Phase 1 development is ready for UAT.
 
 ## 16. Extensibility
 

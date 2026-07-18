@@ -2,76 +2,99 @@
 
 **Document:** 05-Development-Plan  
 **Product:** SocietyHub  
-**Version:** 1.0  
+**Version:** 1.2  
 **Related:** [PRD](02-PRD.md), [Architecture](03-Architecture.md)
 
 ## 1. Approach
 
-This Spec does **not** use a sprint calendar. Delivery order:
+No sprint calendar. Delivery:
 
-1. Complete Spec docs (this pack) — done as Spec v0.1
-2. Publish **GitHub Issues** (epics + user stories with acceptance criteria) from the PRD
-3. Implement stories in priority order (`priority:p0` then `p1`)
-4. Pilot UAT at Keshav Heights
-5. Production harden and measure BRD success metrics
+1. Spec defines **MVP (complaint portal)** and **Phase 2 (full ops)** — see PRD
+2. GitHub: `scope:mvp` for MVP; Phase 2 stories use `scope:future` until Phase 2 starts
+3. **Develop Phase 1** (complaint portal) locally / in CI
+4. **DevOps phase (after Phase 1 code):** Docker finalize → Azure staging → UAT → production ([devops/](../../devops/README.md))
+5. Then execute product **Phase 2** epics
+6. Future modules remain after Phase 2
 
-Agents and engineers follow [AGENTS.md](../../AGENTS.md) and [Coding Standards](06-Coding-Standards.md). Never invent requirements outside docs/Issues.
+Docker templates and Azure staging/production guides are maintained under `devops/` now so deployment is ready when Phase 1 development completes — **do not** burn production Azure spend before the app is ready.
 
-## 2. Epic backlog (maps to GitHub)
+## 2. MVP epic backlog
+
+| Epic | Focus |
+|------|--------|
+| E1 Platform & tenancy | Shell, tenant isolation, Admin vs Resident RBAC |
+| E2 Authentication | SSO (Google), mobile OTP, set/use PIN, login/logout |
+| E3 Onboarding | Onboard Admin, flats, onboard Residents |
+| E5 Complaints (MVP) | Raise (title, type, auto flat, description, voice-to-text, photo/video), lists, status |
+
+## 3. Phase 2 epic backlog (retained — do not drop)
 
 | Epic | Module | PRD focus |
 |------|--------|-----------|
-| E1 Platform & multi-tenancy | platform | Tenancy, RBAC shell, responsive shell |
-| E2 Authentication | auth | OTP, Google, invites, session |
-| E3 Society management | society | Hierarchy, settings, roles |
-| E4 Resident management | resident | Owners, tenants, profile, docs |
-| E5 Complaint management | complaints | Lifecycle, SLA, attachments |
-| E6 Maintenance billing | billing | Generate, dues, corrections |
-| E7 Payments | payments | Razorpay, manual, receipts |
-| E8 Notices | notices | Publish, read tracking |
-| E9 Notifications | notifications | In-app, email, web push |
-| E10 Dashboards & reports | dashboards | Role dashboards |
-| E11 Audit trail | audit | audit_logs |
-| E12 Future scope | future | Flutter, WhatsApp, visitor, etc. |
+| E3+ Society (extended) | society | Full hierarchy, settings, role assignment (FR-SOC-*) |
+| E4 Resident (extended) | resident | Owners/tenants, profile, verification docs (FR-RES-*) |
+| E5 Complaints (advanced) | complaints | Assigned, comments, SLA (FR-CMP-P2-*) |
+| E6 Maintenance billing | billing | Generate, dues, corrections (FR-BIL-*) |
+| E7 Payments | payments | Razorpay, manual, receipts (FR-PAY-*) |
+| E8 Notices | notices | Publish, read tracking (FR-NOT-*) |
+| E9 Notifications | notifications | In-app, email, web push (FR-NTF-*) |
+| E10 Dashboards & reports | dashboards | Ops + finance + resident home (FR-DSH-*) |
+| E11 Audit trail | audit | audit_logs UI (FR-AUD-*) |
+| E12 Future scope | future | Flutter, WhatsApp, visitor, parking, etc. |
 
-## 3. Suggested implementation order
+## 4. MVP implementation order
 
-1. Platform foundation + Auth + Society + Resident (unblock pilot data)
-2. Complaints + Notifications
-3. Billing + Payments
-4. Notices + Dashboards + Audit
-5. Hardening, UAT, production
+1. Platform + Auth (OTP, Google SSO, PIN) + logout  
+2. Onboard Admin + onboard Resident (flat binding)  
+3. Raise complaint form (title, type, auto flat, description, mic, media)  
+4. Resident complaint list + status; Admin all-complaints list + status update  
+5. Finalize Dockerfiles against real apps; local compose smoke  
+6. **DevOps:** provision Azure staging (cost-aware) → deploy → pilot UAT  
+7. **DevOps:** production promote (same image tags)  
 
-Stories within an epic can be parallelized once dependencies (auth, tenant context) exist.
+## 5. Phase 2 suggested order (after MVP + prod pilot)
 
-## 4. Definition of done (user story)
+1. Expand roles + society settings + resident/tenant model  
+2. Advanced complaints (assign, comments, SLA) + notifications  
+3. Billing + payments  
+4. Notices + dashboards + audit UI  
+5. Phase 2 UAT  
 
-- Meets acceptance criteria on the GitHub issue
-- Matches PRD FR-* behavior
-- Tenant-scoped and RBAC-enforced
-- Validated with Zod at API boundary
-- Unit/integration tests for money, auth, and complaint transitions when those areas change
-- No Spec contradiction; if behavior changes, update Spec first
+## 6. Definition of done (user story)
 
-## 5. Pilot UAT criteria (Keshav Heights)
+- Meets GitHub acceptance criteria and matching PRD FR-*
+- Tenant-scoped; RBAC enforced for the release’s roles
+- Zod at API boundary
+- Tests for auth, complaints, and (in Phase 2) money paths when touched
 
-- Society structure and residents loaded
-- Residents can log in on mobile browser
-- Complaint raised → assigned → resolved with notifications
-- Bills generated; online payment succeeds in test/live mode as configured
+## 7. Pilot UAT criteria
+
+### MVP (Keshav Heights)
+
+- Admin and at least one resident onboarded
+- Resident logs in with OTP or Google; can set PIN and use it
+- Resident raises complaint with title, type, auto flat, description (typed and/or voice), photo and/or video
+- Resident sees complaint status; Admin sees all and can change status
+- Logout works
+
+### Phase 2 (later)
+
+- Bills generated; online payment succeeds; receipts available
 - Notice published with read counts
-- Secretary/Treasurer dashboards usable
-- Audit entries visible for a bill change and role change
+- SLA reminders fire; dashboards usable; audit entries for bill/role changes
 
-## 6. Dependencies and risks
+## 8. Dependencies and risks
 
 | Risk | Mitigation |
 |------|------------|
-| SMS OTP delivery / DLT | MSG91; email OTP fallback for UAT if needed |
-| Payment webhook edge cases | Idempotent handlers + Treasurer manual match |
-| Committee non-technical users | Simple wizards; mobile-first forms |
-| Scope creep | Future epic only; do not build Flutter/WhatsApp in MVP |
+| SMS OTP | MSG91; rate limits |
+| Speech API gaps | Graceful disable mic; typing always works |
+| Large video uploads | Size limits + Blob |
+| Scope creep | Phase 2 stays labeled until MVP ships |
+| Payment webhooks (Phase 2) | Idempotent handlers + Treasurer manual match |
 
-## 7. Tracking
+## 9. Tracking
 
-All implementation work is tracked as GitHub Issues on the SocietyHub repository, labeled by type, module, priority, and `scope:mvp` or `scope:future`.
+- MVP: `label:scope:mvp`
+- Phase 2 backlog: `label:scope:future` + module labels (promote when Phase 2 starts)
+- Future: Epic #12 and related placeholders

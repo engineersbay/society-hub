@@ -107,9 +107,27 @@ erDiagram
 ### complaints
 
 - `ticket_number` unique per tenant
-- `status`: Open | Assigned | InProgress | Resolved | Closed
-- `assignee_user_id` required when status ≥ Assigned
-- `sla_due_at` computed from society settings at create/assign
+- `title` required
+- `type` enum/string: `electric` | `plumbing` | …predefined… | `other`
+- `type_other_text` nullable when type = other
+- `description` text (may originate from typing and/or client speech-to-text)
+- `flat_id` required; set from logged-in resident — not arbitrary client override without authz check
+- `status` (MVP): Open | InProgress | Resolved | Closed  
+  (Phase 2 may add Assigned and SLA fields)
+- `assignee_user_id` optional in MVP
+- `sla_due_at` optional in MVP
+
+### complaint_attachments
+
+- `content_kind`: `image` | `video`
+- `content_type` MIME
+- `blob_path`, `byte_size`, `duration_seconds` (nullable for images)
+
+### users (auth extras)
+
+- `pin_hash` nullable (set after OTP/SSO)
+- `pin_updated_at` nullable
+- Google subject / phone as today
 
 ### bills
 

@@ -13,22 +13,36 @@ SocietyHub is a multi-tenant SaaS platform that gives housing societies a single
 
 Drawn from the Problem Statement Document (PSD):
 
-1. **Simple** — usable by non-technical committee members.
-2. **Mobile-browser first** — residents and staff use a responsive web app on phones; native Flutter apps are future.
+1. **Simple UI/UX** — usable by non-technical committee members and residents; minimal screens and choices.
+2. **Responsive web first** — one web app for phones and desktops in the browser; native Flutter apps are future.
 3. **Secure by design** — authentication, RBAC, tenant isolation, audit trail.
-4. **Configurable** — society-level settings (SLA, billing defaults) without code changes.
+4. **Configurable** — society-level settings (SLA, billing defaults) without code changes (Phase 2+).
 5. **Scalable** — onboard many societies on one platform.
-6. **Reliable** — suitable for payments, notices, and complaint SLAs.
+6. **Reliable** — suitable for complaints now; payments and notices in Phase 2.
 7. **Extensible** — modular monolith that can grow into visitor, parking, and other modules later.
 
 ## Goals
 
-- Digitize society operations end to end for MVP modules.
-- Make complaint lifecycle visible (ticket, owner, status, SLA).
-- Enable online maintenance payments with clear history and receipts.
-- Centralize notices with read acknowledgment.
-- Reduce manual administrative work through automation and dashboards.
-- Provide a foundation for a subscription multi-tenant SaaS business.
+### MVP (complaint portal)
+
+- Make raising a complaint as easy as logging in (SSO, mobile OTP, or PIN) and submitting a short form.
+- Auto-fill flat from the logged-in resident; support typed description, voice-to-text, and photo/video evidence.
+- Let residents track complaint status; let admins see and update all raised complaints.
+- Onboard admin and residents as the foundation for that flow.
+
+### Phase 2 (full society operations)
+
+- Full role matrix (Secretary, Treasurer, Committee, Tenant, …)
+- Advanced complaint workflow: assignment, comments, SLA automation
+- Maintenance billing and online/manual payments (Razorpay)
+- Notices with read tracking; in-app / email / web push notifications
+- Ops and finance dashboards; audit trail UI
+- Richer resident/owner/tenant management and verification documents
+- Provide a foundation for a subscription multi-tenant SaaS business
+
+### Future (after Phase 2)
+
+- Visitor, parking, clubhouse, Flutter, WhatsApp, marketplace, AI, builder edition, etc.
 
 ## Pilot
 

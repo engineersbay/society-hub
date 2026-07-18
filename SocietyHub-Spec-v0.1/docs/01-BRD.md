@@ -21,12 +21,19 @@ Disconnected tools cause poor visibility, delayed issue resolution, weak account
 
 ## 2. Business objectives
 
-1. Digitize core society operations.
-2. Improve complaint visibility and resolution accountability.
-3. Enable online maintenance payments and clearer reconciliation.
-4. Centralize notices with confirmation of view.
-5. Reduce manual administrative work for Secretary and Treasurer.
-6. Deliver a multi-tenant SaaS that can onboard societies without code changes.
+### MVP (now)
+
+1. Digitize **complaint registration and tracking** (replace notebook/WhatsApp for issues).
+2. Make complaint raise easy for residents (login + simple form + media + voice-to-text).
+3. Give **Admin** visibility of all raised complaints and statuses.
+4. Onboard Admin and Residents with login/logout (SSO, OTP, or PIN).
+
+### Phase 2+
+
+5. Enable online maintenance payments and clearer reconciliation.
+6. Centralize notices with confirmation of view.
+7. Reduce broader administrative work for Secretary and Treasurer.
+8. Deliver a multi-tenant SaaS that can onboard societies without code changes.
 
 ## 3. Stakeholders
 
@@ -74,27 +81,52 @@ A centralized SaaS platform can reduce manual effort, improve transparency, stan
 
 ## 7. Success metrics
 
+### MVP (complaint portal)
+
+| Metric | Target |
+|--------|--------|
+| Residents raise complaints via portal instead of only WhatsApp/notebook | Majority of pilot issues logged in-app |
+| Admin can see and act on all open complaints in one list | Yes |
+| Login works via SSO or OTP; PIN available after setup | Yes |
+
+### Phase 2+ (platform)
+
 | Metric | Target |
 |--------|--------|
 | Resident active usage | ≥ 80% of residents |
 | Maintenance payments online | > 70% |
 | Complaints resolved within SLA | > 90% |
 | Manual admin work reduction | ≥ 50% |
-| Single operational/financial dashboard | Committee can answer dues, complaints, collections from one place |
 | Multi-society readiness | Onboard new societies without code changes |
 
 ## 8. Business scope
 
 ### In scope (MVP)
 
-Authentication, society & resident management, complaints, maintenance billing, payments, notices, notifications, dashboards, audit logs, multi-tenant SaaS isolation—delivered via **responsive web**.
+Responsive web **complaint portal**: onboard Admin, onboard Resident, login/logout (SSO / mobile OTP / PIN), raise complaint (title, auto flat, type, description, voice-to-text, photos/videos), resident + admin complaint lists with status.
 
-### Out of scope (future business modules)
+### Phase 2 (full society operations)
+
+Explicitly retained from the original broad MVP (detailed FR-* in [PRD](02-PRD.md) §§6.2, 7.4–7.12):
+
+- Full roles: Super Admin, Society Admin, Secretary, Treasurer, Committee, Resident, Tenant
+- Society hierarchy + settings (SLA, billing defaults) + role assignment
+- Owners/tenants, profiles, tenant verification documents
+- Advanced complaints: assignment, comments, SLA reminders/escalation
+- Maintenance billing (generate, dues, defaulters, corrections)
+- Payments (Razorpay + cash/cheque/NEFT, receipts, history)
+- Notices with read acknowledgment
+- Notifications (in-app, email, web push)
+- Ops + finance dashboards; audit log UI
+
+### Out of scope (future — after Phase 2)
 
 Visitor management, parking, clubhouse booking, staff attendance, CCTV requests, asset management, full vendor management, events, marketplace, AI assistant, builder edition, municipal extensions, native Flutter apps, WhatsApp notification channel.
 
 ## 9. Constraints and assumptions
 
-- India-first payments (UPI via Razorpay) and SMS OTP (MSG91).
+- SMS OTP (MSG91) and Google SSO for India pilot; PIN is device/app unlock after verified identity.
+- Voice-to-text relies on browser speech APIs where available.
+- Deliver as a **simple responsive web app** (not a native app for MVP); UX must stay simple for non-technical users.
 - Committees have limited technical expertise; UX must stay simple.
 - Pilot validates product-market fit at Keshav Heights before broad sales motion.
