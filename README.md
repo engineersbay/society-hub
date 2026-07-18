@@ -7,13 +7,14 @@ Multi-tenant SaaS for housing societies. **Phase 1** ships a responsive web app 
 ```bash
 # Requires Bun + Docker
 bun install
-bun run db:up          # MySQL 8 on host :3307
+bun run db:up          # MySQL 8 on host :3307 (root / 1900Summer@)
 bun run db:migrate
 bun run db:seed
 bun run dev            # API :3000 + web :5173
 ```
 
 **Seed (DEV_AUTH):** admin `9999999999` · resident `8888888888` · OTP `123456`  
+**Superadmin (email/password):** `superadmin@societyhub.local` / `1900Summer@` (override with `SUPERADMIN_PASSWORD`)  
 OpenAPI: http://localhost:3000/docs
 
 | Path | Role |

@@ -4,7 +4,7 @@ import * as schema from "./schema";
 
 const url =
   process.env.DATABASE_URL ??
-  "mysql://societyhub:societyhub@127.0.0.1:3307/societyhub";
+  "mysql://root:1900Summer%40@127.0.0.1:3307/societyhub";
 
 const pool = mysql.createPool(url);
 

@@ -1,6 +1,6 @@
-# Local stack for SocietyHub — activate when apps exist.
+# Local stack for SocietyHub
 # Usage:
-#   docker compose -f devops/docker/docker-compose.yml up mysql
+#   docker compose -f devops/docker/docker-compose.yml up mysql -d
 #   docker compose -f devops/docker/docker-compose.yml --profile app up --build
 # Redis: add --profile phase2
 
@@ -8,10 +8,8 @@ services:
   mysql:
     image: mysql:8.4
     environment:
-      MYSQL_ROOT_PASSWORD: root
+      MYSQL_ROOT_PASSWORD: "1900Summer@"
       MYSQL_DATABASE: societyhub
-      MYSQL_USER: societyhub
-      MYSQL_PASSWORD: societyhub
     ports:
       # Host 3307 avoids clashing with a local MySQL already on 3306
       - "3307:3306"
@@ -19,10 +17,10 @@ services:
       - sh_mysql:/var/lib/mysql
     command: ["mysqld", "--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p1900Summer@"]
       interval: 5s
       timeout: 5s
-      retries: 20
+      retries: 30
 
   redis:
     profiles: ["phase2"]
@@ -36,7 +34,8 @@ services:
       context: ../..
       dockerfile: devops/docker/api.Dockerfile
     environment:
-      DATABASE_URL: mysql://societyhub:societyhub@mysql:3306/societyhub
+      # @ in password must be URL-encoded as %40
+      DATABASE_URL: mysql://root:1900Summer%40@mysql:3306/societyhub
       PORT: "3000"
       JWT_SECRET: docker-dev-jwt-secret-change-me-32c
       DEV_AUTH: "true"

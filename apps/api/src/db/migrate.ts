@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const url =
   process.env.DATABASE_URL ??
-  "mysql://societyhub:societyhub@127.0.0.1:3307/societyhub";
+  "mysql://root:1900Summer%40@127.0.0.1:3307/societyhub";
 
 async function main() {
   const conn = await mysql.createConnection(url);

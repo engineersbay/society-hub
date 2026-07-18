@@ -23,7 +23,18 @@ docker compose -f devops/docker/docker-compose.yml up mysql -d
 docker compose -f devops/docker/docker-compose.yml --profile app up --build
 ```
 
-Default app DATABASE_URL for local Bun: `mysql://societyhub:societyhub@127.0.0.1:3307/societyhub`
+Local MySQL credentials:
+- **User:** `root`
+- **Password:** `1900Summer@`
+- **Database:** `societyhub`
+- **Host port:** `3307`
+
+App `DATABASE_URL` (URL-encode `@` as `%40`):
+
+`mysql://root:1900Summer%40@127.0.0.1:3307/societyhub`
+
+> Root password is applied only on first volume init. To recreate from scratch:  
+> `docker compose -f devops/docker/docker-compose.yml down -v && docker compose -f devops/docker/docker-compose.yml up mysql -d`
 
 ## Build examples
 
