@@ -19,7 +19,7 @@ SocietyHub is a pilot-first product. Optimize for **low monthly burn** until Pha
 |----------|---------|---------------------|
 | Compute | Container Apps, **min replicas 0** (API), CPU 0.25–0.5 | Container Apps, min replicas **1** for API, 0.5–1 CPU |
 | Web | **Azure Static Web Apps** Free/Standard (preferred) or nginx in ACA | Same |
-| PostgreSQL | Flexible Server **Burstable B1ms**, 32GB storage | Burstable **B2s** or General Purpose small; enable backups |
+| MySQL | Flexible Server **Burstable B1ms**, 32GB storage | Burstable **B2s** or General Purpose small; enable backups |
 | Redis | **Omit** in Phase 1; Basic C0 when Phase 2 needs queues | Basic C0 → C1 if needed |
 | Storage | Standard LRS | Standard LRS (ZRS later if required) |
 | Container Registry | **Basic** ACR | Basic (or Standard if geo needed) |
@@ -31,12 +31,12 @@ SocietyHub is a pilot-first product. Optimize for **low monthly burn** until Pha
 - Skip dedicated worker container; run sync or in-process jobs only if unavoidable; prefer no Redis yet.
 - Static Web Apps for React reduces one always-on container.
 - Use **free tier / trial / Azure credits** for staging only if policy allows; never put production secrets in free shared plans carelessly.
-- Turn **staging** off nights/weekends during quiet periods (Container Apps scale 0 + stop Flexible Server if supported in your tier).
+- Turn **staging** off nights/weekends during quiet periods (Container Apps scale 0 + stop Flexible MySQL if supported in your tier).
 
 ## What we explicitly avoid early
 
 - AKS, Service Fabric, multiple App Service Premium plans
-- Premium Redis, Hyperscale Postgres
+- Premium Redis, large MySQL tiers before metrics demand them
 - Front Door + multi-region until traffic justifies it
 - Separate VNet/private endpoints complexity (add when compliance requires)
 

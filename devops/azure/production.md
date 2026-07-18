@@ -9,7 +9,7 @@
 | Web | Azure Static Web Apps Standard (or Free if sufficient) | Custom domain + HTTPS |
 | API | Container Apps, **min replicas = 1**, 0.5–1 vCPU | No cold start for first user |
 | Worker | Phase 2 only | Scale 0–1 |
-| PostgreSQL | Flexible Burstable **B2s** (or GP small) | **Automated backups** on; retain ≥7 days |
+| MySQL | Flexible Burstable **B2s** (or GP small) | **Automated backups** on; retain ≥7 days |
 | Redis | Basic C0 when Phase 2 queues needed | Not before |
 | Blob | LRS; lifecycle to cool for old media | Separate `media-prod` |
 | ACR | Shared with staging | Immutable tags by SHA |
@@ -21,7 +21,7 @@
 - Separate Key Vault and DB from staging  
 - Production secrets never copied from staging casually  
 - Razorpay **live** keys only in production (Phase 2)  
-- Point-in-time restore understanding documented for Postgres  
+- Point-in-time restore understanding documented for MySQL  
 - Container Apps ingress HTTPS only  
 
 ## Deploy flow

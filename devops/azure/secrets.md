@@ -6,7 +6,7 @@
 
 | Name | Used by | Notes |
 |------|---------|--------|
-| `DATABASE_URL` | api | Postgres connection string |
+| `DATABASE_URL` | api | MySQL connection string |
 | `SESSION_SECRET` / JWT keys | api | Rotate per env |
 | `MSG91_AUTH_KEY` | api | OTP |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | api | SSO |
@@ -31,4 +31,4 @@
 
 ## Local
 
-Developers use private `.env` files (gitignored); `docker-compose` uses non-production passwords for local Postgres only.
+Developers use private `.env` files (gitignored); `docker-compose` uses non-production passwords for local MySQL only.

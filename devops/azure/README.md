@@ -12,7 +12,7 @@ All environments run on **Microsoft Azure** (aligned with Azure Blob already in 
 | Container Apps env | `cae-societyhub-{env}` | `cae-societyhub-staging` |
 | API app | `ca-societyhub-api-{env}` | `ca-societyhub-api-staging` |
 | ACR | `acr societyhub` globally unique | `societyhubacr` |
-| Postgres | `psql-societyhub-{env}` | `psql-societyhub-staging` |
+| MySQL | `mysql-societyhub-{env}` | `mysql-societyhub-staging` |
 | Storage | `stsocietyhub{env}` | `stsocietyhubstaging` |
 | Key Vault | `kv-societyhub-{env}` | `kv-societyhub-staging` |
 

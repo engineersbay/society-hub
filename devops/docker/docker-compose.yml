@@ -1,23 +1,28 @@
 # Local stack for SocietyHub — activate when apps exist.
-# Usage: docker compose -f devops/docker/docker-compose.yml up --build
-# Redis: docker compose -f devops/docker/docker-compose.yml --profile phase2 up
+# Usage:
+#   docker compose -f devops/docker/docker-compose.yml up mysql
+#   docker compose -f devops/docker/docker-compose.yml --profile app up --build
+# Redis: add --profile phase2
 
 services:
-  postgres:
-    image: postgres:16-alpine
+  mysql:
+    image: mysql:8.4
     environment:
-      POSTGRES_USER: societyhub
-      POSTGRES_PASSWORD: societyhub
-      POSTGRES_DB: societyhub
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: societyhub
+      MYSQL_USER: societyhub
+      MYSQL_PASSWORD: societyhub
     ports:
-      - "5432:5432"
+      # Host 3307 avoids clashing with a local MySQL already on 3306
+      - "3307:3306"
     volumes:
-      - sh_pg:/var/lib/postgresql/data
+      - sh_mysql:/var/lib/mysql
+    command: ["mysqld", "--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U societyhub"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
       interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 20
 
   redis:
     profiles: ["phase2"]
@@ -31,12 +36,18 @@ services:
       context: ../..
       dockerfile: devops/docker/api.Dockerfile
     environment:
-      DATABASE_URL: postgres://societyhub:societyhub@postgres:5432/societyhub
+      DATABASE_URL: mysql://societyhub:societyhub@mysql:3306/societyhub
       PORT: "3000"
+      JWT_SECRET: docker-dev-jwt-secret-change-me-32c
+      DEV_AUTH: "true"
+      DEV_OTP_CODE: "123456"
+      CORS_ORIGIN: http://localhost:8080
+      PUBLIC_API_URL: http://localhost:3000
+      UPLOAD_DIR: /app/apps/api/uploads
     ports:
       - "3000:3000"
     depends_on:
-      postgres:
+      mysql:
         condition: service_healthy
 
   web:
@@ -50,4 +61,4 @@ services:
       - api
 
 volumes:
-  sh_pg:
+  sh_mysql:

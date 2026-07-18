@@ -10,7 +10,7 @@
 **/coverage
 **/*.md
 !README.md
-SocietyHub-Spec-v0.1
+docs
 .cursor
 **/.DS_Store
 society-hub.code-workspace

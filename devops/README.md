@@ -10,7 +10,7 @@ Infrastructure and deployment assets for **staging** and **production** on **Azu
 | **After Phase 1 development** | Provision staging → deploy containers → pilot UAT → then production. |
 | **Phase 2 product** | Scale workers, Redis, payments webhooks; still prefer Container Apps over AKS. |
 
-Product Phase 1 = complaint-portal MVP ([PRD](../SocietyHub-Spec-v0.1/docs/02-PRD.md)).  
+Product Phase 1 = complaint-portal MVP ([PRD](../docs/02-PRD.md)).  
 Deployment of Phase 1 is a **follow-on DevOps phase**, not part of coding the first features.
 
 ## Folder layout
@@ -23,7 +23,7 @@ devops/
     README.md               ← container strategy
     api.Dockerfile          ← template for apps/api (finalize during build)
     web.Dockerfile          ← template for apps/web static/nginx
-    docker-compose.yml      ← local/dev compose (Postgres, Redis, api, web)
+    docker-compose.yml      ← local/dev compose (MySQL, Redis, api, web)
     .dockerignore
   azure/
     README.md               ← subscription, resource groups, naming
@@ -53,7 +53,7 @@ flowchart TB
   end
 
   subgraph data [Data]
-    PG[(PostgreSQL Flexible Burstable)]
+    MySQL[(MySQL Flexible Burstable)]
     Redis[(Redis Basic or deferred)]
     Blob[Storage Blob]
   end
@@ -61,7 +61,7 @@ flowchart TB
   Browser --> Web
   Browser --> API
   Web --> API
-  API --> PG
+  API --> MySQL
   API --> Blob
   API --> Redis
   Worker --> Redis
@@ -80,7 +80,7 @@ Details: [azure/staging.md](azure/staging.md), [azure/production.md](azure/produ
 
 - Build **API** and **web** as separate images from monorepo context.
 - Same images promoted **staging → production** (tag by git SHA).
-- Local: `docker compose` with Postgres (+ Redis when needed).
+- Local: `docker compose` with **MySQL 8** (+ Redis when needed) — lightweight laptop testing.
 - See [docker/README.md](docker/README.md).
 
 ## Out of scope in this folder (for now)
