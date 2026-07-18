@@ -100,3 +100,89 @@ body {
   font-weight: 600;
   margin-bottom: 0.35rem;
 }
+
+.btn-sm {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
+}
+
+.card {
+  border-radius: 1rem;
+  border: 1px solid var(--sand);
+  background: #fffdfb;
+  box-shadow: 0 1px 2px rgba(139, 30, 63, 0.05);
+}
+
+.kpi-card {
+  border-radius: 1rem;
+  border: 1px solid var(--sand);
+  background: linear-gradient(180deg, #fffdfb 0%, var(--mist) 130%);
+  padding: 1.1rem 1.25rem;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--mist);
+  color: var(--leaf-dark);
+}
+
+.badge-danger {
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  color: var(--danger);
+}
+
+.badge-success {
+  background: color-mix(in srgb, var(--gold) 20%, transparent);
+  color: #6b5300;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  border-radius: 1rem;
+  border: 1px solid var(--sand);
+  background: #fffdfb;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.data-table th {
+  text-align: left;
+  padding: 0.75rem 1rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: color-mix(in srgb, var(--ink) 55%, transparent);
+  border-bottom: 1px solid var(--sand);
+  white-space: nowrap;
+}
+
+.data-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--sand) 60%, transparent);
+  vertical-align: middle;
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.data-table tbody tr:hover {
+  background: color-mix(in srgb, var(--mist) 70%, transparent);
+}
+
+.empty-state {
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  color: color-mix(in srgb, var(--ink) 55%, transparent);
+}

@@ -24,8 +24,11 @@ const ACCESS_KEY = "sh_web_access";
 const REFRESH_KEY = "sh_web_refresh";
 const USER_KEY = "sh_web_user";
 
+// Society admins manage exclusively from the Manage app; superadmins may
+// still sign in to the resident web app (e.g. to preview it) and get a
+// cross-link back to Manage from the shell.
 function isStaff(user: UserDto) {
-  return user.role === "admin" || user.role === "superadmin";
+  return user.role === "admin";
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {

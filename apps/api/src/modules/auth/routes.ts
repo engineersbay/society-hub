@@ -16,7 +16,9 @@ import {
   refreshSchema,
   requestOtpSchema,
   resetPasswordSchema,
+  selectTenantSchema,
   setPinSchema,
+  updateResidentProfileSchema,
   verifyOtpSchema,
 } from "@society-hub/validation";
 import { env } from "../../config";
@@ -25,6 +27,8 @@ import {
   otpChallenges,
   passwordResetChallenges,
   refreshTokens,
+  societies,
+  userRoles,
   users,
 } from "../../db/schema";
 import { AppError } from "../../lib/errors";
@@ -33,9 +37,11 @@ import {
   buildUserDto,
   hashToken,
   issueTokens,
+  listMemberships,
   requireAuth,
   resolveMembership,
 } from "../../lib/auth-context";
+import { getProfileDto, upsertProfile } from "../profile/routes";
 
 function nowMysql() {
   return new Date().toISOString().replace("T", " ").replace("Z", "");
@@ -117,13 +123,18 @@ export const authRoutes = new Elysia({ prefix: "/v1/auth" })
       membership.tenantId,
       dto.flatId,
     );
-    return { user: dto, tokens };
+    const memberships = await listMemberships(user.id);
+    return { user: dto, tokens, memberships };
   })
   .post("/google", async ({ body }) => {
     const parsed = googleAuthSchema.parse(body);
     // Production: verify Google ID token via tokeninfo / jose JWKS.
-    // DEV_AUTH: accept idToken shaped as `dev:<phone>` for local web/mobile.
-    if (!env.devAuth) {
+    // Dev bypass: accept idToken shaped as `dev:<phone>` for local web/mobile
+    // when DEV_AUTH=true, OR when GOOGLE_CLIENT_ID is not configured for this
+    // environment yet (so the Google button still works before OAuth is set
+    // up). Once GOOGLE_CLIENT_ID is set, only DEV_AUTH unlocks the bypass.
+    const allowDevGoogle = env.devAuth || !env.googleClientId;
+    if (!allowDevGoogle) {
       throw new AppError(
         501,
         "google_not_configured",
@@ -154,7 +165,8 @@ export const authRoutes = new Elysia({ prefix: "/v1/auth" })
       membership.tenantId,
       dto.flatId,
     );
-    return { user: dto, tokens };
+    const memberships = await listMemberships(user.id);
+    return { user: dto, tokens, memberships };
   })
   .post("/pin/login", async ({ body }) => {
     const parsed = loginPinSchema.parse(body);
@@ -177,7 +189,8 @@ export const authRoutes = new Elysia({ prefix: "/v1/auth" })
       membership.tenantId,
       dto.flatId,
     );
-    return { user: dto, tokens };
+    const memberships = await listMemberships(user.id);
+    return { user: dto, tokens, memberships };
   })
   .post("/password/login", async ({ body }) => {
     const parsed = loginPasswordSchema.parse(body);
@@ -203,7 +216,8 @@ export const authRoutes = new Elysia({ prefix: "/v1/auth" })
       membership.tenantId,
       dto.flatId,
     );
-    return { user: dto, tokens };
+    const memberships = await listMemberships(user.id);
+    return { user: dto, tokens, memberships };
   })
   .post("/password/forgot", async ({ body }) => {
     const parsed = forgotPasswordSchema.parse(body);
@@ -379,4 +393,61 @@ export const authRoutes = new Elysia({ prefix: "/v1/auth" })
   .get("/me", async ({ auth }) => {
     const claims = requireAuth(auth);
     return buildUserDto(claims.sub, claims.tenantId, claims.role);
+  })
+  .get("/memberships", async ({ auth }) => {
+    const claims = requireAuth(auth);
+    return listMemberships(claims.sub);
+  })
+  .post("/select-tenant", async ({ auth, body }) => {
+    const claims = requireAuth(auth);
+    const parsed = selectTenantSchema.parse(body);
+
+    const [society] = await db
+      .select()
+      .from(societies)
+      .where(
+        and(eq(societies.id, parsed.tenantId), eq(societies.isDeleted, false)),
+      )
+      .limit(1);
+    if (!society) {
+      throw new AppError(404, "society_not_found", "Society not found");
+    }
+
+    let role = claims.role;
+    if (claims.role !== "superadmin") {
+      const [membership] = await db
+        .select()
+        .from(userRoles)
+        .where(
+          and(
+            eq(userRoles.userId, claims.sub),
+            eq(userRoles.tenantId, parsed.tenantId),
+            eq(userRoles.isDeleted, false),
+          ),
+        )
+        .limit(1);
+      if (!membership) {
+        throw new AppError(
+          403,
+          "not_a_member",
+          "You do not have a role in that society",
+        );
+      }
+      role = membership.role;
+    }
+
+    const dto = await buildUserDto(claims.sub, parsed.tenantId, role);
+    const tokens = await issueTokens(
+      claims.sub,
+      role,
+      parsed.tenantId,
+      dto.flatId,
+    );
+    return { user: dto, tokens };
+  })
+  .patch("/profile", async ({ auth, body }) => {
+    const claims = requireAuth(auth);
+    const parsed = updateResidentProfileSchema.parse(body);
+    await upsertProfile(claims.tenantId, claims.sub, parsed);
+    return getProfileDto(claims.tenantId, claims.sub);
   });

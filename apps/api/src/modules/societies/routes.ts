@@ -1,0 +1,347 @@
+import { Elysia } from "elysia";
+import { and, count, eq } from "drizzle-orm";
+import {
+  createBuildingSchema,
+  createFlatSchema,
+  createSocietySchema,
+  createWingSchema,
+} from "@society-hub/validation";
+import type { SocietyDto } from "@society-hub/types";
+import { hashPassword } from "@society-hub/auth";
+import { db } from "../../db/client";
+import {
+  buildings,
+  flats,
+  societies,
+  userRoles,
+  users,
+  wings,
+} from "../../db/schema";
+import { AppError } from "../../lib/errors";
+import { softDelete } from "../../lib/soft-delete";
+import { assertTenantAccess } from "../../lib/tenant-scope";
+import { authPlugin, requireAuth, requireRole } from "../../lib/auth-context";
+
+const DEFAULT_CHAIR_PASSWORD = "Test@1234";
+
+async function buildSocietyDto(societyId: string): Promise<SocietyDto> {
+  const [society] = await db
+    .select()
+    .from(societies)
+    .where(and(eq(societies.id, societyId), eq(societies.isDeleted, false)))
+    .limit(1);
+  if (!society) throw new AppError(404, "not_found", "Society not found");
+
+  const [chair] = await db
+    .select({ name: users.name, email: users.email, phone: users.phone })
+    .from(userRoles)
+    .innerJoin(users, eq(users.id, userRoles.userId))
+    .where(
+      and(
+        eq(userRoles.tenantId, societyId),
+        eq(userRoles.role, "admin"),
+        eq(userRoles.isDeleted, false),
+        eq(users.isDeleted, false),
+      ),
+    )
+    .limit(1);
+
+  return {
+    id: society.id,
+    name: society.name,
+    address: society.address,
+    city: society.city,
+    pincode: society.pincode,
+    chairpersonName: chair?.name ?? null,
+    chairpersonEmail: chair?.email ?? null,
+    chairpersonPhone: chair?.phone ?? null,
+    timezone: society.timezone,
+    createdAt: society.createdAt,
+  };
+}
+
+export const societyRoutes = new Elysia({ prefix: "/v1/societies" })
+  .use(authPlugin)
+  .get("/", async ({ auth }) => {
+    const claims = requireAuth(auth);
+    requireRole(claims, ["superadmin"]);
+    const rows = await db
+      .select()
+      .from(societies)
+      .where(eq(societies.isDeleted, false));
+    return Promise.all(rows.map((r) => buildSocietyDto(r.id)));
+  })
+  .get("/:id", async ({ auth, params }) => {
+    const claims = requireAuth(auth);
+    requireRole(claims, ["admin", "superadmin"]);
+    assertTenantAccess(claims, params.id);
+    return buildSocietyDto(params.id);
+  })
+  .post("/", async ({ auth, body }) => {
+    const claims = requireAuth(auth);
+    requireRole(claims, ["superadmin"]);
+    const parsed = createSocietySchema.parse(body);
+
+    const societyId = crypto.randomUUID();
+    await db.insert(societies).values({
+      id: societyId,
+      name: parsed.name,
+      address: parsed.address ?? null,
+      city: parsed.city ?? null,
+      pincode: parsed.pincode ?? null,
+      createdBy: claims.sub,
+      updatedBy: claims.sub,
+    });
+
+    const buildingId = crypto.randomUUID();
+    const wingId = crypto.randomUUID();
+    const flatId = crypto.randomUUID();
+    await db.insert(buildings).values({
+      id: buildingId,
+      tenantId: societyId,
+      name: "Tower A",
+      createdBy: claims.sub,
+      updatedBy: claims.sub,
+    });
+    await db.insert(wings).values({
+      id: wingId,
+      tenantId: societyId,
+      buildingId,
+      name: "A",
+      createdBy: claims.sub,
+      updatedBy: claims.sub,
+    });
+    await db.insert(flats).values({
+      id: flatId,
+      tenantId: societyId,
+      wingId,
+      number: "101",
+      createdBy: claims.sub,
+      updatedBy: claims.sub,
+    });
+
+    if (parsed.chairpersonEmail || parsed.chairpersonPhone) {
+      const [existing] = parsed.chairpersonEmail
+        ? await db
+            .select()
+            .from(users)
+            .where(eq(users.email, parsed.chairpersonEmail))
+            .limit(1)
+        : await db
+            .select()
+            .from(users)
+            .where(eq(users.phone, parsed.chairpersonPhone ?? ""))
+            .limit(1);
+
+      let chairUserId = existing?.id;
+      if (!chairUserId) {
+        chairUserId = crypto.randomUUID();
+        const passwordHash = parsed.chairpersonEmail
+          ? await hashPassword(DEFAULT_CHAIR_PASSWORD)
+          : null;
+        await db.insert(users).values({
+          id: chairUserId,
+          name: parsed.chairpersonName ?? null,
+          email: parsed.chairpersonEmail ?? null,
+          phone: parsed.chairpersonPhone ?? null,
+          passwordHash,
+        });
+      }
+
+      await db.insert(userRoles).values({
+        id: crypto.randomUUID(),
+        tenantId: societyId,
+        userId: chairUserId,
+        role: "admin",
+        createdBy: claims.sub,
+        updatedBy: claims.sub,
+      });
+    }
+
+    return buildSocietyDto(societyId);
+  })
+  .delete("/:id", async ({ auth, params }) => {
+    const claims = requireAuth(auth);
+    requireRole(claims, ["superadmin"]);
+    await softDelete(societies, params.id, claims.sub);
+    return { ok: true as const };
+  })
+  .get("/:id/buildings", async ({ auth, params }) => {
+    const claims = requireAuth(auth);
+    requireRole(claims, ["admin", "superadmin"]);
+    assertTenantAccess(claims, params.id);
+    const rows = await db
+      .select()
+      .from(buildings)
+      .where(and(eq(buildings.tenantId, params.id), eq(buildings.isDeleted, false)));
+    return Promise.all(
+      rows.map(async (b) => {
+        const [wingCount] = await db
+          .select({ total: count() })
+          .from(wings)
+          .where(and(eq(wings.buildingId, b.id), eq(wings.isDeleted, false)));
+        return { id: b.id, name: b.name, wingCount: Number(wingCount?.total ?? 0) };
+      }),
+    );
+  })
+  .post("/:id/buildings", async ({ auth, params, body }) => {
+    const claims = requireAuth(auth);
+    requireRole(claims, ["admin", "superadmin"]);
+    assertTenantAccess(claims, params.id);
+    const parsed = createBuildingSchema.parse(body);
+    const id = crypto.randomUUID();
+    await db.insert(buildings).values({
+      id,
+      tenantId: params.id,
+      name: parsed.name,
+      createdBy: claims.sub,
+      updatedBy: claims.sub,
+    });
+    return { id, name: parsed.name };
+  });
+
+export const buildingRoutes = new Elysia({ prefix: "/v1/buildings" })
+  .use(authPlugin)
+  .get("/:id/wings", async ({ auth, params }) => {
+    const claims = requireAuth(auth);
+    requireRole(claims, ["admin", "superadmin"]);
+    const [building] = await db
+      .select()
+      .from(buildings)
+      .where(and(eq(buildings.id, params.id), eq(buildings.isDeleted, false)))
+      .limit(1);
+    if (!building) throw new AppError(404, "not_found", "Building not found");
+    assertTenantAccess(claims, building.tenantId);
+
+    const rows = await db
+      .select()
+      .from(wings)
+      .where(and(eq(wings.buildingId, params.id), eq(wings.isDeleted, false)));
+    return Promise.all(
+      rows.map(async (w) => {
+        const [flatCount] = await db
+          .select({ total: count() })
+          .from(flats)
+          .where(and(eq(flats.wingId, w.id), eq(flats.isDeleted, false)));
+        return {
+          id: w.id,
+          name: w.name,
+          buildingId: w.buildingId,
+          flatCount: Number(flatCount?.total ?? 0),
+        };
+      }),
+    );
+  })
+  .post("/:id/wings", async ({ auth, params, body }) => {
+    const claims = requireAuth(auth);
+    requireRole(claims, ["admin", "superadmin"]);
+    const [building] = await db
+      .select()
+      .from(buildings)
+      .where(and(eq(buildings.id, params.id), eq(buildings.isDeleted, false)))
+      .limit(1);
+    if (!building) throw new AppError(404, "not_found", "Building not found");
+    assertTenantAccess(claims, building.tenantId);
+
+    const parsed = createWingSchema.parse(body);
+    const id = crypto.randomUUID();
+    await db.insert(wings).values({
+      id,
+      tenantId: building.tenantId,
+      buildingId: params.id,
+      name: parsed.name,
+      createdBy: claims.sub,
+      updatedBy: claims.sub,
+    });
+    return { id, name: parsed.name, buildingId: params.id };
+  })
+  .delete("/:id", async ({ auth, params }) => {
+    const claims = requireAuth(auth);
+    requireRole(claims, ["admin", "superadmin"]);
+    const [building] = await db
+      .select()
+      .from(buildings)
+      .where(eq(buildings.id, params.id))
+      .limit(1);
+    if (!building) throw new AppError(404, "not_found", "Building not found");
+    assertTenantAccess(claims, building.tenantId);
+    await softDelete(buildings, params.id, claims.sub);
+    return { ok: true as const };
+  });
+
+export const wingRoutes = new Elysia({ prefix: "/v1/wings" })
+  .use(authPlugin)
+  .get("/:id/flats", async ({ auth, params }) => {
+    const claims = requireAuth(auth);
+    requireRole(claims, ["admin", "superadmin"]);
+    const [wing] = await db
+      .select()
+      .from(wings)
+      .where(and(eq(wings.id, params.id), eq(wings.isDeleted, false)))
+      .limit(1);
+    if (!wing) throw new AppError(404, "not_found", "Wing not found");
+    assertTenantAccess(claims, wing.tenantId);
+
+    const rows = await db
+      .select()
+      .from(flats)
+      .where(and(eq(flats.wingId, params.id), eq(flats.isDeleted, false)));
+    return rows.map((f) => ({
+      id: f.id,
+      number: f.number,
+      wingId: f.wingId,
+      wingName: wing.name,
+    }));
+  })
+  .post("/:id/flats", async ({ auth, params, body }) => {
+    const claims = requireAuth(auth);
+    requireRole(claims, ["admin", "superadmin"]);
+    const [wing] = await db
+      .select()
+      .from(wings)
+      .where(and(eq(wings.id, params.id), eq(wings.isDeleted, false)))
+      .limit(1);
+    if (!wing) throw new AppError(404, "not_found", "Wing not found");
+    assertTenantAccess(claims, wing.tenantId);
+
+    const parsed = createFlatSchema.parse(body);
+    const id = crypto.randomUUID();
+    await db.insert(flats).values({
+      id,
+      tenantId: wing.tenantId,
+      wingId: params.id,
+      number: parsed.number,
+      createdBy: claims.sub,
+      updatedBy: claims.sub,
+    });
+    return { id, number: parsed.number, wingId: params.id, wingName: wing.name };
+  })
+  .delete("/:id", async ({ auth, params }) => {
+    const claims = requireAuth(auth);
+    requireRole(claims, ["admin", "superadmin"]);
+    const [wing] = await db
+      .select()
+      .from(wings)
+      .where(eq(wings.id, params.id))
+      .limit(1);
+    if (!wing) throw new AppError(404, "not_found", "Wing not found");
+    assertTenantAccess(claims, wing.tenantId);
+    await softDelete(wings, params.id, claims.sub);
+    return { ok: true as const };
+  });
+
+export const flatRoutes = new Elysia({ prefix: "/v1/flats" })
+  .use(authPlugin)
+  .delete("/:id", async ({ auth, params }) => {
+    const claims = requireAuth(auth);
+    requireRole(claims, ["admin", "superadmin"]);
+    const [flat] = await db
+      .select()
+      .from(flats)
+      .where(eq(flats.id, params.id))
+      .limit(1);
+    if (!flat) throw new AppError(404, "not_found", "Flat not found");
+    assertTenantAccess(claims, flat.tenantId);
+    await softDelete(flats, params.id, claims.sub);
+    return { ok: true as const };
+  });

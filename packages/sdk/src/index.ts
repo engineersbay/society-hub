@@ -5,6 +5,25 @@ import type {
   Paginated,
   UserDto,
   ApiErrorBody,
+  MembershipDto,
+  SocietyDto,
+  BuildingDto,
+  WingDto,
+  InvitationDto,
+  BillDto,
+  PaymentDto,
+  NoticeDto,
+  NotificationDto,
+  AuditLogDto,
+  TeamMemberDto,
+  VisitorDto,
+  ParkingSlotDto,
+  BookingDto,
+  AssetDto,
+  VendorDto,
+  EventDto,
+  DashboardStatsDto,
+  ResidentProfileDto,
 } from "@society-hub/types";
 
 export class ApiClientError extends Error {
@@ -92,19 +111,19 @@ export function createSocietyHubClient(opts: SocietyHubClientOptions) {
         false,
       ),
     verifyOtp: (phone: string, code: string) =>
-      request<{ user: UserDto; tokens: AuthTokens }>(
+      request<{ user: UserDto; tokens: AuthTokens; memberships?: MembershipDto[] }>(
         "/v1/auth/otp/verify",
         { method: "POST", body: JSON.stringify({ phone, code }) },
         false,
       ),
     loginPin: (phone: string, pin: string) =>
-      request<{ user: UserDto; tokens: AuthTokens }>(
+      request<{ user: UserDto; tokens: AuthTokens; memberships?: MembershipDto[] }>(
         "/v1/auth/pin/login",
         { method: "POST", body: JSON.stringify({ phone, pin }) },
         false,
       ),
     loginPassword: (email: string, password: string) =>
-      request<{ user: UserDto; tokens: AuthTokens }>(
+      request<{ user: UserDto; tokens: AuthTokens; memberships?: MembershipDto[] }>(
         "/v1/auth/password/login",
         { method: "POST", body: JSON.stringify({ email, password }) },
         false,
@@ -130,7 +149,7 @@ export function createSocietyHubClient(opts: SocietyHubClientOptions) {
         body: JSON.stringify({ currentPassword, newPassword }),
       }),
     loginGoogle: (idToken: string) =>
-      request<{ user: UserDto; tokens: AuthTokens }>(
+      request<{ user: UserDto; tokens: AuthTokens; memberships?: MembershipDto[] }>(
         "/v1/auth/google",
         { method: "POST", body: JSON.stringify({ idToken }) },
         false,
@@ -151,6 +170,21 @@ export function createSocietyHubClient(opts: SocietyHubClientOptions) {
       request<{ ok: true }>("/v1/auth/logout", {
         method: "POST",
         body: JSON.stringify({ refreshToken }),
+      }),
+    listMemberships: () => request<MembershipDto[]>("/v1/auth/memberships"),
+    getProfile: () => request<ResidentProfileDto>("/v1/profile"),
+    selectTenant: (tenantId: string) =>
+      request<{ user: UserDto; tokens: AuthTokens }>("/v1/auth/select-tenant", {
+        method: "POST",
+        body: JSON.stringify({ tenantId }),
+      }),
+    updateProfile: (body: {
+      emergencyContact?: string | null;
+      vehicleNumber?: string | null;
+    }) =>
+      request<ResidentProfileDto>("/v1/auth/profile", {
+        method: "PATCH",
+        body: JSON.stringify(body),
       }),
     listFlats: () => request<FlatDto[]>("/v1/admin/flats"),
     onboardResident: (body: {
@@ -192,6 +226,202 @@ export function createSocietyHubClient(opts: SocietyHubClientOptions) {
         { method: "POST", body: form },
       );
     },
+
+    listSocieties: () => request<SocietyDto[]>("/v1/societies"),
+    createSociety: (body: {
+      name: string;
+      address?: string | null;
+      city?: string | null;
+      pincode?: string | null;
+      chairpersonName?: string | null;
+      chairpersonEmail?: string | null;
+      chairpersonPhone?: string | null;
+    }) =>
+      request<SocietyDto>("/v1/societies", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    getSociety: (id: string) => request<SocietyDto>(`/v1/societies/${id}`),
+
+    listBuildings: (societyId: string) =>
+      request<BuildingDto[]>(`/v1/societies/${societyId}/buildings`),
+    createBuilding: (societyId: string, name: string) =>
+      request<BuildingDto>(`/v1/societies/${societyId}/buildings`, {
+        method: "POST",
+        body: JSON.stringify({ name }),
+      }),
+    listWings: (buildingId: string) =>
+      request<WingDto[]>(`/v1/buildings/${buildingId}/wings`),
+    createWing: (buildingId: string, name: string) =>
+      request<WingDto>(`/v1/buildings/${buildingId}/wings`, {
+        method: "POST",
+        body: JSON.stringify({ name }),
+      }),
+    listFlatsForWing: (wingId: string) =>
+      request<FlatDto[]>(`/v1/wings/${wingId}/flats`),
+    createFlat: (wingId: string, number: string) =>
+      request<FlatDto>(`/v1/wings/${wingId}/flats`, {
+        method: "POST",
+        body: JSON.stringify({ number }),
+      }),
+
+    listInvitations: () => request<InvitationDto[]>("/v1/invitations"),
+    createInvitation: (body: {
+      email?: string | null;
+      phone?: string | null;
+      role: string;
+    }) =>
+      request<InvitationDto>("/v1/invitations", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    revokeInvitation: (id: string) =>
+      request<{ ok: true }>(`/v1/invitations/${id}/revoke`, {
+        method: "POST",
+      }),
+
+    listBills: (page = 1, limit = 20) =>
+      request<Paginated<BillDto>>(`/v1/bills?page=${page}&limit=${limit}`),
+    myBills: () => request<BillDto[]>("/v1/bills/mine"),
+    generateBills: (body: { periodYm: string; amountPaise: number; notes?: string | null }) =>
+      request<{ created: number }>("/v1/bills/generate", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    getBill: (id: string) => request<BillDto>(`/v1/bills/${id}`),
+
+    listPayments: (page = 1, limit = 20) =>
+      request<Paginated<PaymentDto>>(`/v1/payments?page=${page}&limit=${limit}`),
+    myPayments: () => request<PaymentDto[]>("/v1/payments/mine"),
+    recordPayment: (body: {
+      billId?: string | null;
+      flatId: string;
+      amountPaise: number;
+      method: string;
+      receiptNumber?: string | null;
+    }) =>
+      request<PaymentDto>("/v1/payments", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    payBillMock: (billId: string) =>
+      request<PaymentDto>(`/v1/payments/mock`, {
+        method: "POST",
+        body: JSON.stringify({ billId }),
+      }),
+
+    listNotices: () => request<NoticeDto[]>("/v1/notices"),
+    createNotice: (body: {
+      title: string;
+      body: string;
+      audience: string;
+      wingId?: string | null;
+      flatId?: string | null;
+    }) =>
+      request<NoticeDto>("/v1/notices", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    updateNotice: (
+      id: string,
+      body: { title?: string; body?: string },
+    ) =>
+      request<NoticeDto>(`/v1/notices/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
+    publishNotice: (id: string) =>
+      request<NoticeDto>(`/v1/notices/${id}/publish`, { method: "POST" }),
+    unpublishNotice: (id: string) =>
+      request<NoticeDto>(`/v1/notices/${id}/unpublish`, { method: "POST" }),
+
+    listNotifications: () => request<NotificationDto[]>("/v1/notifications"),
+    markNotificationRead: (id: string) =>
+      request<NotificationDto>(`/v1/notifications/${id}/read`, {
+        method: "POST",
+      }),
+
+    getDashboardStats: () => request<DashboardStatsDto>("/v1/dashboard/stats"),
+
+    listAuditLogs: (search?: string) => {
+      const query = search ? `?q=${encodeURIComponent(search)}` : "";
+      return request<AuditLogDto[]>(`/v1/audit-logs${query}`);
+    },
+
+    listTeam: () => request<TeamMemberDto[]>("/v1/team"),
+
+    listVisitors: () => request<VisitorDto[]>("/v1/visitors"),
+    createVisitor: (body: {
+      visitorName: string;
+      phone?: string | null;
+      purpose?: string | null;
+      expectedAt?: string | null;
+    }) =>
+      request<VisitorDto>("/v1/visitors", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+
+    listParkingSlots: () => request<ParkingSlotDto[]>("/v1/parking"),
+    createParkingSlot: (body: {
+      slotNumber: string;
+      type?: string;
+      vehicleNumber?: string | null;
+    }) =>
+      request<ParkingSlotDto>("/v1/parking", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+
+    listBookings: () => request<BookingDto[]>("/v1/bookings"),
+    createBooking: (body: {
+      facilityName: string;
+      startAt: string;
+      endAt: string;
+    }) =>
+      request<BookingDto>("/v1/bookings", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+
+    listAssets: () => request<AssetDto[]>("/v1/assets"),
+    createAsset: (body: {
+      name: string;
+      category?: string | null;
+      location?: string | null;
+      value?: number | null;
+      notes?: string | null;
+    }) =>
+      request<AssetDto>("/v1/assets", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+
+    listVendors: () => request<VendorDto[]>("/v1/vendors"),
+    createVendor: (body: {
+      name: string;
+      category?: string | null;
+      phone?: string | null;
+      email?: string | null;
+      notes?: string | null;
+    }) =>
+      request<VendorDto>("/v1/vendors", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+
+    listEvents: () => request<EventDto[]>("/v1/events"),
+    createEvent: (body: {
+      title: string;
+      description?: string | null;
+      startAt?: string | null;
+      endAt?: string | null;
+      location?: string | null;
+    }) =>
+      request<EventDto>("/v1/events", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
   };
 }
 

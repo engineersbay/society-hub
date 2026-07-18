@@ -20,7 +20,7 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  if (user) return <Navigate to="/complaints" replace />;
+  if (user) return <Navigate to="/dashboard" replace />;
 
   async function applySession(
     login: () => Promise<{ user: Parameters<typeof setSession>[0]; tokens: Parameters<typeof setSession>[1] }>,
@@ -32,9 +32,7 @@ export function LoginPage() {
       try {
         setSession(res.user, res.tokens);
       } catch {
-        setError(
-          `Residents use the society app instead: ${WEB_URL}`,
-        );
+        setError(`Residents use the society app instead: ${WEB_URL}`);
       }
     } catch (err) {
       setError(err instanceof ApiClientError ? err.body.message : "Failed");
@@ -86,166 +84,192 @@ export function LoginPage() {
   };
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 py-10">
-      <p className="font-display text-4xl text-[var(--leaf-dark)]">SocietyHub Manage</p>
-      <p className="mt-2 text-black/60">
-        Admin sign-in for your society. Pilot: Keshav Heights.
-      </p>
+    <div className="flex min-h-screen items-center justify-center px-4 py-10">
+      <div className="card w-full max-w-md p-8">
+        <div className="flex items-center justify-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--saffron)] to-[var(--leaf-dark)] text-lg font-bold text-white">
+            SH
+          </div>
+          <div className="text-left">
+            <p className="font-display text-2xl leading-tight text-[var(--leaf-dark)]">
+              SocietyHub
+            </p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--gold)]">
+              Manage
+            </p>
+          </div>
+        </div>
+        <p className="mt-4 text-center text-sm text-black/60">
+          Sign in to manage your society&rsquo;s operations.
+        </p>
 
-      <div className="mt-6 flex flex-wrap gap-2">
-        {(["password", "otp", "pin", "google"] as Mode[]).map((m) => (
-          <button
-            key={m}
-            type="button"
-            className={`btn text-sm ${mode === m ? "btn-primary" : "btn-ghost"}`}
-            onClick={() => setMode(m)}
-          >
-            {modeLabel[m]}
-          </button>
-        ))}
-      </div>
+        <div className="mt-6 flex flex-wrap justify-center gap-2">
+          {(["password", "otp", "pin", "google"] as Mode[]).map((m) => (
+            <button
+              key={m}
+              type="button"
+              data-testid={`login-mode-${m}`}
+              className={`btn btn-sm ${mode === m ? "btn-primary" : "btn-ghost"}`}
+              onClick={() => setMode(m)}
+            >
+              {modeLabel[m]}
+            </button>
+          ))}
+        </div>
 
-      {mode === "password" && (
-        <form className="mt-6 space-y-4" onSubmit={loginPassword}>
-          <div>
-            <label className="label" htmlFor="email">
-              Email
-            </label>
-            <input
-              id="email"
-              className="input"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
-          <div>
-            <label className="label" htmlFor="password">
-              Password
-            </label>
-            <input
-              id="password"
-              className="input"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
-          <div className="flex justify-end">
-            <Link to="/forgot-password" className="text-sm text-[var(--leaf)]">
-              Forgot password?
-            </Link>
-          </div>
-          <button className="btn btn-primary w-full" disabled={busy} type="submit">
-            Sign in
-          </button>
-        </form>
-      )}
-
-      {mode === "otp" && (
-        <form className="mt-6 space-y-4" onSubmit={otpSent ? verifyOtp : requestOtp}>
-          <div>
-            <label className="label" htmlFor="phone">
-              Mobile
-            </label>
-            <input
-              id="phone"
-              className="input"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              required
-            />
-          </div>
-          {otpSent && (
+        {mode === "password" && (
+          <form className="mt-6 space-y-4" onSubmit={loginPassword}>
             <div>
-              <label className="label" htmlFor="code">
-                OTP
+              <label className="label" htmlFor="email">
+                Email
               </label>
               <input
-                id="code"
+                id="email"
+                data-testid="login-email"
                 className="input"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
               />
             </div>
-          )}
-          <button className="btn btn-primary w-full" disabled={busy} type="submit">
-            {otpSent ? "Verify & continue" : "Send OTP"}
-          </button>
-        </form>
-      )}
+            <div>
+              <label className="label" htmlFor="password">
+                Password
+              </label>
+              <input
+                id="password"
+                data-testid="login-password"
+                className="input"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+            <div className="flex justify-end">
+              <Link to="/forgot-password" className="text-sm text-[var(--leaf)]">
+                Forgot password?
+              </Link>
+            </div>
+            <button
+              className="btn btn-primary w-full"
+              data-testid="login-submit"
+              disabled={busy}
+              type="submit"
+            >
+              Sign in
+            </button>
+          </form>
+        )}
 
-      {mode === "pin" && (
-        <form className="mt-6 space-y-4" onSubmit={loginPin}>
-          <div>
-            <label className="label" htmlFor="phone-pin">
-              Mobile
-            </label>
-            <input
-              id="phone-pin"
-              className="input"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              required
-            />
-          </div>
-          <div>
-            <label className="label" htmlFor="pin">
-              PIN
-            </label>
-            <input
-              id="pin"
-              className="input"
-              type="password"
-              inputMode="numeric"
-              value={pin}
-              onChange={(e) => setPin(e.target.value)}
-              required
-            />
-          </div>
-          <button className="btn btn-primary w-full" disabled={busy} type="submit">
-            Sign in with PIN
-          </button>
-        </form>
-      )}
+        {mode === "otp" && (
+          <form className="mt-6 space-y-4" onSubmit={otpSent ? verifyOtp : requestOtp}>
+            <div>
+              <label className="label" htmlFor="phone">
+                Mobile
+              </label>
+              <input
+                id="phone"
+                className="input"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                required
+              />
+            </div>
+            {otpSent && (
+              <div>
+                <label className="label" htmlFor="code">
+                  OTP
+                </label>
+                <input
+                  id="code"
+                  className="input"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  required
+                />
+              </div>
+            )}
+            <button className="btn btn-primary w-full" disabled={busy} type="submit">
+              {otpSent ? "Verify & continue" : "Send OTP"}
+            </button>
+          </form>
+        )}
 
-      {mode === "google" && (
-        <form className="mt-6 space-y-4" onSubmit={loginGoogle}>
-          <p className="text-sm text-black/60">
-            Dev Google SSO uses your onboarded phone as{" "}
-            <code>dev:&lt;phone&gt;</code>.
+        {mode === "pin" && (
+          <form className="mt-6 space-y-4" onSubmit={loginPin}>
+            <div>
+              <label className="label" htmlFor="phone-pin">
+                Mobile
+              </label>
+              <input
+                id="phone-pin"
+                className="input"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <label className="label" htmlFor="pin">
+                PIN
+              </label>
+              <input
+                id="pin"
+                className="input"
+                type="password"
+                inputMode="numeric"
+                value={pin}
+                onChange={(e) => setPin(e.target.value)}
+                required
+              />
+            </div>
+            <button className="btn btn-primary w-full" disabled={busy} type="submit">
+              Sign in with PIN
+            </button>
+          </form>
+        )}
+
+        {mode === "google" && (
+          <form className="mt-6 space-y-4" onSubmit={loginGoogle}>
+            <p className="text-sm text-black/60">
+              Dev Google SSO uses your onboarded phone as{" "}
+              <code>dev:&lt;phone&gt;</code>.
+            </p>
+            <div>
+              <label className="label" htmlFor="phone-g">
+                Mobile (dev)
+              </label>
+              <input
+                id="phone-g"
+                className="input"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                required
+              />
+            </div>
+            <button className="btn btn-primary w-full" disabled={busy} type="submit">
+              Continue with Google (dev)
+            </button>
+          </form>
+        )}
+
+        {devHint && <p className="mt-3 text-center text-sm text-[var(--alert)]">{devHint}</p>}
+        {error && (
+          <p className="mt-3 text-center text-sm text-[var(--danger)]" data-testid="login-error">
+            {error}
           </p>
-          <div>
-            <label className="label" htmlFor="phone-g">
-              Mobile (dev)
-            </label>
-            <input
-              id="phone-g"
-              className="input"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              required
-            />
-          </div>
-          <button className="btn btn-primary w-full" disabled={busy} type="submit">
-            Continue with Google (dev)
-          </button>
-        </form>
-      )}
-
-      {devHint && <p className="mt-3 text-sm text-[var(--alert)]">{devHint}</p>}
-      {error && <p className="mt-3 text-sm text-[var(--danger)]">{error}</p>}
-      <p className="mt-6 text-sm text-black/50">
-        Resident?{" "}
-        <a className="text-[var(--leaf)]" href={WEB_URL}>
-          Open society app
-        </a>
-      </p>
+        )}
+        <p className="mt-6 text-center text-sm text-black/50">
+          Resident?{" "}
+          <a className="text-[var(--leaf)]" href={WEB_URL}>
+            Open society app
+          </a>
+        </p>
+      </div>
     </div>
   );
 }

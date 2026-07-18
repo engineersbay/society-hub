@@ -62,7 +62,7 @@ export function AccountPage() {
         </p>
       </div>
 
-      <section>
+      <section className="card p-6">
         <h2 className="font-semibold">Reset password</h2>
         <p className="mt-1 text-sm text-black/55">
           Change your password while signed in.
@@ -115,7 +115,7 @@ export function AccountPage() {
         </form>
       </section>
 
-      <section>
+      <section className="card p-6">
         <h2 className="font-semibold">PIN</h2>
         <p className="mt-1 text-sm text-black/55">4–6 digits for quick mobile login.</p>
         <form className="mt-4 space-y-3" onSubmit={savePin}>

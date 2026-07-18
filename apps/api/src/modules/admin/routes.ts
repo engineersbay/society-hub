@@ -1,15 +1,53 @@
 import { Elysia } from "elysia";
-import { and, eq } from "drizzle-orm";
-import { onboardResidentSchema } from "@society-hub/validation";
+import { and, eq, inArray, or } from "drizzle-orm";
+import { createInvitationSchema, onboardResidentSchema } from "@society-hub/validation";
+import type { TeamMemberDto } from "@society-hub/types";
 import { db } from "../../db/client";
-import { flats, residents, userRoles, users, wings } from "../../db/schema";
+import {
+  buildings,
+  flats,
+  residents,
+  userRoles,
+  users,
+  wings,
+} from "../../db/schema";
 import { AppError } from "../../lib/errors";
+import { createInvitationForTenant } from "../invitations/routes";
 import {
   authPlugin,
   buildUserDto,
   requireAuth,
   requireRole,
 } from "../../lib/auth-context";
+
+async function listTeamForTenant(tenantId: string): Promise<TeamMemberDto[]> {
+  return db
+    .select({
+      userId: userRoles.userId,
+      role: userRoles.role,
+      name: users.name,
+      email: users.email,
+      phone: users.phone,
+    })
+    .from(userRoles)
+    .innerJoin(users, eq(users.id, userRoles.userId))
+    .where(
+      and(
+        eq(userRoles.tenantId, tenantId),
+        inArray(userRoles.role, ["admin", "superadmin"]),
+        eq(userRoles.isDeleted, false),
+        eq(users.isDeleted, false),
+      ),
+    );
+}
+
+export const teamRoutes = new Elysia({ prefix: "/v1/team" })
+  .use(authPlugin)
+  .get("/", async ({ auth }) => {
+    const claims = requireAuth(auth);
+    requireRole(claims, ["admin", "superadmin"]);
+    return listTeamForTenant(claims.tenantId);
+  });
 
 export const adminRoutes = new Elysia({ prefix: "/v1/admin" })
   .use(authPlugin)
@@ -20,6 +58,7 @@ export const adminRoutes = new Elysia({ prefix: "/v1/admin" })
       .select({
         id: flats.id,
         number: flats.number,
+        wingId: flats.wingId,
         wingName: wings.name,
       })
       .from(flats)
@@ -30,8 +69,58 @@ export const adminRoutes = new Elysia({ prefix: "/v1/admin" })
     return rows.map((r) => ({
       id: r.id,
       number: r.number,
+      wingId: r.wingId,
       wingName: r.wingName,
     }));
+  })
+  .get("/structure", async ({ auth }) => {
+    const claims = requireAuth(auth);
+    requireRole(claims, ["admin", "superadmin"]);
+
+    const [buildingRows, wingRows, flatRows] = await Promise.all([
+      db
+        .select()
+        .from(buildings)
+        .where(
+          and(eq(buildings.tenantId, claims.tenantId), eq(buildings.isDeleted, false)),
+        ),
+      db
+        .select()
+        .from(wings)
+        .where(and(eq(wings.tenantId, claims.tenantId), eq(wings.isDeleted, false))),
+      db
+        .select()
+        .from(flats)
+        .where(and(eq(flats.tenantId, claims.tenantId), eq(flats.isDeleted, false))),
+    ]);
+
+    return {
+      buildings: buildingRows.map((b) => ({
+        id: b.id,
+        name: b.name,
+        wings: wingRows
+          .filter((w) => w.buildingId === b.id)
+          .map((w) => ({
+            id: w.id,
+            name: w.name,
+            buildingId: w.buildingId,
+            flats: flatRows
+              .filter((f) => f.wingId === w.id)
+              .map((f) => ({ id: f.id, number: f.number, wingId: f.wingId, wingName: w.name })),
+          })),
+      })),
+    };
+  })
+  .get("/team", async ({ auth }) => {
+    const claims = requireAuth(auth);
+    requireRole(claims, ["admin", "superadmin"]);
+    return listTeamForTenant(claims.tenantId);
+  })
+  .post("/invites", async ({ auth, body }) => {
+    const claims = requireAuth(auth);
+    requireRole(claims, ["admin", "superadmin"]);
+    const parsed = createInvitationSchema.parse(body);
+    return createInvitationForTenant(claims.tenantId, claims.sub, parsed);
   })
   .post("/residents", async ({ auth, body }) => {
     const claims = requireAuth(auth);
@@ -51,10 +140,12 @@ export const adminRoutes = new Elysia({ prefix: "/v1/admin" })
       .limit(1);
     if (!flat) throw new AppError(404, "flat_not_found", "Flat not found");
 
+    // Look up by phone OR email so a resident already onboarded elsewhere
+    // (multi-society) reuses their single user record.
     const [existing] = await db
       .select()
       .from(users)
-      .where(eq(users.phone, parsed.phone))
+      .where(or(eq(users.phone, parsed.phone), eq(users.email, parsed.email)))
       .limit(1);
 
     let userId = existing?.id;
@@ -64,12 +155,19 @@ export const adminRoutes = new Elysia({ prefix: "/v1/admin" })
         id: userId,
         phone: parsed.phone,
         name: parsed.name,
-        email: parsed.email ?? null,
+        email: parsed.email,
+        createdBy: claims.sub,
+        updatedBy: claims.sub,
       });
-    } else {
+    } else if (existing) {
       await db
         .update(users)
-        .set({ name: parsed.name, email: parsed.email ?? existing?.email })
+        .set({
+          name: parsed.name,
+          email: parsed.email,
+          phone: existing.phone ?? parsed.phone,
+          updatedBy: claims.sub,
+        })
         .where(eq(users.id, userId));
     }
 
@@ -90,6 +188,8 @@ export const adminRoutes = new Elysia({ prefix: "/v1/admin" })
         tenantId: claims.tenantId,
         userId,
         role: "resident",
+        createdBy: claims.sub,
+        updatedBy: claims.sub,
       });
     }
 
@@ -110,11 +210,13 @@ export const adminRoutes = new Elysia({ prefix: "/v1/admin" })
         userId,
         flatId: parsed.flatId,
         isOwner: true,
+        createdBy: claims.sub,
+        updatedBy: claims.sub,
       });
     } else {
       await db
         .update(residents)
-        .set({ flatId: parsed.flatId, isDeleted: false })
+        .set({ flatId: parsed.flatId, isDeleted: false, updatedBy: claims.sub })
         .where(eq(residents.id, res.id));
     }
 

@@ -10,7 +10,14 @@ import type { Role, UserDto } from "@society-hub/types";
 import { Elysia } from "elysia";
 import { env } from "../config";
 import { db } from "../db/client";
-import { flats, refreshTokens, residents, userRoles, users } from "../db/schema";
+import {
+  flats,
+  refreshTokens,
+  residents,
+  societies,
+  userRoles,
+  users,
+} from "../db/schema";
 import { AppError } from "./errors";
 import { hashToken } from "./auth-helpers";
 
@@ -99,6 +106,25 @@ export async function issueTokens(
     refreshToken,
     expiresIn: accessExpiresInSeconds(),
   };
+}
+
+export async function listMemberships(userId: string) {
+  const rows = await db
+    .select({
+      tenantId: userRoles.tenantId,
+      role: userRoles.role,
+      societyName: societies.name,
+    })
+    .from(userRoles)
+    .innerJoin(societies, eq(societies.id, userRoles.tenantId))
+    .where(
+      and(
+        eq(userRoles.userId, userId),
+        eq(userRoles.isDeleted, false),
+        eq(societies.isDeleted, false),
+      ),
+    );
+  return rows;
 }
 
 export async function resolveMembership(userId: string) {

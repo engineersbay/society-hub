@@ -42,56 +42,61 @@ export function ComplaintDetailPage() {
       <Link to="/complaints" className="text-sm text-[var(--leaf)]">
         ← Back
       </Link>
-      <h1 className="font-display mt-3 text-2xl">{complaint.title}</h1>
-      <p className="mt-1 text-sm text-black/55">
-        {complaint.ticketNumber} · Flat {complaint.flatNumber} · {complaint.type}
-        {complaint.residentName ? ` · ${complaint.residentName}` : ""}
-      </p>
-      <p className="mt-4 whitespace-pre-wrap">{complaint.description}</p>
+      <div className="card mt-3 p-6">
+        <h1 className="font-display text-2xl">{complaint.title}</h1>
+        <p className="mt-1 text-sm text-black/55">
+          {complaint.ticketNumber} · Flat {complaint.flatNumber} · {complaint.type}
+          {complaint.residentName ? ` · ${complaint.residentName}` : ""}
+        </p>
+        <p className="mt-4 whitespace-pre-wrap">{complaint.description}</p>
 
-      <p className="mt-4 text-sm">
-        Status:{" "}
-        <strong className="uppercase tracking-wide">
-          {complaint.status.replace("_", " ")}
-        </strong>
-      </p>
+        <p className="mt-4 text-sm">
+          Status:{" "}
+          <span
+            className={`badge ${complaint.status === "open" ? "badge-danger" : ""}`}
+            data-testid="complaint-status"
+          >
+            {complaint.status.replace("_", " ")}
+          </span>
+        </p>
 
-      {user?.role === "admin" || user?.role === "superadmin" ? (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {STATUSES.map((s) => (
-            <button
-              key={s}
-              type="button"
-              className={`btn text-sm ${
-                complaint.status === s ? "btn-primary" : "btn-ghost"
-              }`}
-              onClick={() => updateStatus(s)}
-            >
-              {s.replace("_", " ")}
-            </button>
-          ))}
-        </div>
-      ) : null}
-
-      {complaint.attachments.length > 0 && (
-        <div className="mt-6">
-          <h2 className="font-semibold">Attachments</h2>
-          <ul className="mt-2 space-y-2">
-            {complaint.attachments.map((a) => (
-              <li key={a.id}>
-                <a
-                  className="text-[var(--leaf)] underline"
-                  href={`${a.url}?access_token=${localStorage.getItem("sh_access") ?? ""}`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  {a.contentKind} ({Math.round(a.byteSize / 1024)} KB)
-                </a>
-              </li>
+        {user?.role === "admin" || user?.role === "superadmin" ? (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {STATUSES.map((s) => (
+              <button
+                key={s}
+                type="button"
+                className={`btn btn-sm ${
+                  complaint.status === s ? "btn-primary" : "btn-ghost"
+                }`}
+                onClick={() => updateStatus(s)}
+              >
+                {s.replace("_", " ")}
+              </button>
             ))}
-          </ul>
-        </div>
-      )}
+          </div>
+        ) : null}
+
+        {complaint.attachments.length > 0 && (
+          <div className="mt-6">
+            <h2 className="font-semibold">Attachments</h2>
+            <ul className="mt-2 space-y-2">
+              {complaint.attachments.map((a) => (
+                <li key={a.id}>
+                  <a
+                    className="text-[var(--leaf)] underline"
+                    href={`${a.url}?access_token=${localStorage.getItem("sh_access") ?? ""}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {a.contentKind} ({Math.round(a.byteSize / 1024)} KB)
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

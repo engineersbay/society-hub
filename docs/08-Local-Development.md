@@ -239,6 +239,26 @@ Use **Manage** (`:5174`) for Admin / Super Admin. Use **Web** (`:5173`) for resi
 | `bun run db:up` | **Optional** Docker MySQL on host `:3307` |
 | `bun run lint` | Typecheck packages/apps |
 | `bun run test` | Unit / API smoke tests (API must be up for API tests) |
+| `bun run test:e2e:cypress` | Cypress E2E for both web apps (boots each dev server automatically) |
+
+---
+
+## 8b. Cypress E2E
+
+Each web app (`apps/manage`, `apps/client-app`) has a Cypress suite under `cypress/e2e/*.cy.ts`. Specs use `cy.intercept` to mock the API, so they run **without** the API or a database — only the app's own Vite dev server needs to be up.
+
+```bash
+# Run both apps' Cypress suites (starts/stops each dev server for you)
+bun run test:e2e:cypress
+
+# Or one app at a time, with the dev server already running:
+cd apps/manage && bun run dev            # in one terminal
+cd apps/manage && bun run test:cypress   # headless run, in another
+cd apps/manage && bun run test:cypress:open  # interactive runner
+
+cd apps/client-app && bun run test:cypress
+cd apps/client-app && bun run test:cypress:open
+```
 
 ---
 

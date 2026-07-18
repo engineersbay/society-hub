@@ -12,6 +12,9 @@ coverage
 apps/api/uploads
 apps/client-app/playwright-report
 apps/client-app/test-results
+apps/*/cypress/screenshots
+apps/*/cypress/videos
+apps/*/cypress/downloads
 *.tsbuildinfo
 .tmp
 coverage

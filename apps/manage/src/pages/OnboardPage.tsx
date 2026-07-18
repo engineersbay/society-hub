@@ -7,8 +7,10 @@ import { useAuth } from "../auth";
 export function OnboardPage() {
   const { user, client } = useAuth();
   const [flats, setFlats] = useState<FlatDto[]>([]);
+  const [societyName, setSocietyName] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [flatId, setFlatId] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -19,10 +21,17 @@ export function OnboardPage() {
       setFlats(rows);
       if (rows[0]) setFlatId(rows[0].id);
     });
+    client
+      .listMemberships()
+      .then((rows) => {
+        const mine = rows.find((r) => r.tenantId === user?.tenantId);
+        if (mine) setSocietyName(mine.societyName);
+      })
+      .catch(() => undefined);
   }, [client, user]);
 
   if (user?.role !== "admin" && user?.role !== "superadmin") {
-    return <Navigate to="/complaints" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   async function onSubmit(e: FormEvent) {
@@ -30,10 +39,11 @@ export function OnboardPage() {
     setError(null);
     setMessage(null);
     try {
-      const res = await client.onboardResident({ name, phone, flatId });
+      const res = await client.onboardResident({ name, phone, flatId, email });
       setMessage(`Onboarded ${res.user.name} (${res.user.phone})`);
       setName("");
       setPhone("");
+      setEmail("");
     } catch (err) {
       setError(err instanceof ApiClientError ? err.body.message : "Failed");
     }
@@ -45,10 +55,23 @@ export function OnboardPage() {
       <p className="mt-1 text-sm text-black/55">
         Link a phone and flat so they can log in and raise complaints.
       </p>
-      <form className="mt-6 space-y-4" onSubmit={onSubmit}>
+      <form className="card mt-6 space-y-4 p-6" onSubmit={onSubmit}>
+        <div>
+          <label className="label" htmlFor="onboard-society-name">
+            Society (as Chairperson, you manage this society)
+          </label>
+          <input
+            id="onboard-society-name"
+            data-testid="onboard-society-name"
+            className="input bg-[var(--mist)]/50"
+            value={societyName ?? "—"}
+            readOnly
+            disabled
+          />
+        </div>
         <div>
           <label className="label" htmlFor="name">
-            Name
+            Resident name
           </label>
           <input
             id="name"
@@ -71,6 +94,19 @@ export function OnboardPage() {
           />
         </div>
         <div>
+          <label className="label" htmlFor="onboard-email">
+            Email
+          </label>
+          <input
+            id="onboard-email"
+            className="input"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+        </div>
+        <div>
           <label className="label" htmlFor="flat">
             Flat
           </label>
@@ -89,7 +125,7 @@ export function OnboardPage() {
             ))}
           </select>
         </div>
-        <button className="btn btn-primary" type="submit">
+        <button className="btn btn-primary" data-testid="onboard-submit" type="submit">
           Onboard
         </button>
       </form>
