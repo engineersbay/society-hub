@@ -1,1 +1,0 @@
-{"root":["./src/app.tsx","./src/auth.tsx","./src/main.tsx","./src/smoke.test.ts","./src/vite-env.d.ts","./src/components/shell.tsx","./src/pages/comingsoonpage.tsx","./src/pages/complaintdetailpage.tsx","./src/pages/complaintspage.tsx","./src/pages/loginpage.tsx","./src/pages/newcomplaintpage.tsx","./src/pages/onboardpage.tsx","./src/pages/setpinpage.tsx"],"version":"5.9.3"}
