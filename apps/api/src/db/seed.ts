@@ -1,4 +1,5 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
+import { hashPassword } from "@society-hub/auth";
 import { db } from "./client";
 import {
   buildings,
@@ -14,60 +15,61 @@ function id() {
   return crypto.randomUUID();
 }
 
-async function main() {
-  const tenantId = "11111111-1111-1111-1111-111111111111";
-  const adminUserId = "22222222-2222-2222-2222-222222222222";
-  const residentUserId = "33333333-3333-3333-3333-333333333333";
-  const buildingId = "44444444-4444-4444-4444-444444444444";
-  const wingId = "55555555-5555-5555-5555-555555555555";
-  const flatId = "66666666-6666-6666-6666-666666666666";
+const TENANT_ID = "11111111-1111-1111-1111-111111111111";
+const ADMIN_USER_ID = "22222222-2222-2222-2222-222222222222";
+const RESIDENT_USER_ID = "33333333-3333-3333-3333-333333333333";
+const SUPERADMIN_USER_ID = "77777777-7777-7777-7777-777777777777";
+const BUILDING_ID = "44444444-4444-4444-4444-444444444444";
+const WING_ID = "55555555-5555-5555-5555-555555555555";
+const FLAT_ID = "66666666-6666-6666-6666-666666666666";
 
+const SUPERADMIN_USERNAME = "superadmin";
+const SUPERADMIN_PASSWORD = process.env.SUPERADMIN_PASSWORD ?? "1900Summer@";
+
+async function ensureSociety() {
   const existing = await db
     .select()
     .from(societies)
-    .where(eq(societies.id, tenantId))
+    .where(eq(societies.id, TENANT_ID))
     .limit(1);
-  if (existing.length) {
-    console.log("Seed already applied");
-    return;
-  }
+  if (existing.length) return false;
 
   await db.insert(societies).values({
-    id: tenantId,
+    id: TENANT_ID,
     name: "Keshav Heights",
     address: "Pilot Society",
     timezone: "Asia/Kolkata",
   });
 
   await db.insert(buildings).values({
-    id: buildingId,
-    tenantId,
+    id: BUILDING_ID,
+    tenantId: TENANT_ID,
     name: "Tower A",
   });
 
   await db.insert(wings).values({
-    id: wingId,
-    tenantId,
-    buildingId,
+    id: WING_ID,
+    tenantId: TENANT_ID,
+    buildingId: BUILDING_ID,
     name: "A",
   });
 
   await db.insert(flats).values({
-    id: flatId,
-    tenantId,
-    wingId,
+    id: FLAT_ID,
+    tenantId: TENANT_ID,
+    wingId: WING_ID,
     number: "101",
   });
 
   await db.insert(users).values([
     {
-      id: adminUserId,
+      id: ADMIN_USER_ID,
       phone: "9999999999",
       name: "Society Admin",
       email: "admin@keshav.local",
     },
     {
-      id: residentUserId,
+      id: RESIDENT_USER_ID,
       phone: "8888888888",
       name: "Demo Resident",
       email: "resident@keshav.local",
@@ -77,30 +79,100 @@ async function main() {
   await db.insert(userRoles).values([
     {
       id: id(),
-      tenantId,
-      userId: adminUserId,
+      tenantId: TENANT_ID,
+      userId: ADMIN_USER_ID,
       role: "admin",
     },
     {
       id: id(),
-      tenantId,
-      userId: residentUserId,
+      tenantId: TENANT_ID,
+      userId: RESIDENT_USER_ID,
       role: "resident",
     },
   ]);
 
   await db.insert(residents).values({
     id: id(),
-    tenantId,
-    userId: residentUserId,
-    flatId,
+    tenantId: TENANT_ID,
+    userId: RESIDENT_USER_ID,
+    flatId: FLAT_ID,
     isOwner: true,
   });
 
-  console.log("Seeded Keshav Heights");
-  console.log("Admin phone: 9999999999");
-  console.log("Resident phone: 8888888888");
-  console.log("Dev OTP code: 123456 (when DEV_AUTH=true)");
+  return true;
+}
+
+async function ensureSuperadmin() {
+  const passwordHash = await hashPassword(SUPERADMIN_PASSWORD);
+  const [existing] = await db
+    .select()
+    .from(users)
+    .where(eq(users.username, SUPERADMIN_USERNAME))
+    .limit(1);
+
+  if (existing) {
+    await db
+      .update(users)
+      .set({
+        passwordHash,
+        name: "Platform Superadmin",
+        email: "superadmin@societyhub.local",
+        isDeleted: false,
+      })
+      .where(eq(users.id, existing.id));
+
+    const [role] = await db
+      .select()
+      .from(userRoles)
+      .where(
+        and(
+          eq(userRoles.userId, existing.id),
+          eq(userRoles.role, "superadmin"),
+          eq(userRoles.tenantId, TENANT_ID),
+        ),
+      )
+      .limit(1);
+    if (!role) {
+      await db.insert(userRoles).values({
+        id: id(),
+        tenantId: TENANT_ID,
+        userId: existing.id,
+        role: "superadmin",
+      });
+    }
+    return;
+  }
+
+  await db.insert(users).values({
+    id: SUPERADMIN_USER_ID,
+    username: SUPERADMIN_USERNAME,
+    passwordHash,
+    name: "Platform Superadmin",
+    email: "superadmin@societyhub.local",
+  });
+
+  await db.insert(userRoles).values({
+    id: id(),
+    tenantId: TENANT_ID,
+    userId: SUPERADMIN_USER_ID,
+    role: "superadmin",
+  });
+}
+
+async function main() {
+  const created = await ensureSociety();
+  await ensureSuperadmin();
+
+  if (created) {
+    console.log("Seeded Keshav Heights");
+    console.log("Admin phone: 9999999999");
+    console.log("Resident phone: 8888888888");
+    console.log("Dev OTP code: 123456 (when DEV_AUTH=true)");
+  } else {
+    console.log("Keshav Heights already present");
+  }
+  console.log(`Superadmin email: superadmin@societyhub.local`);
+  console.log("Superadmin password: (from SUPERADMIN_PASSWORD or default seed)");
 }
 
 main().catch((err) => {

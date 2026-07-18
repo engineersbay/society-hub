@@ -57,12 +57,18 @@ export async function buildUserDto(
     phone: user.phone,
     email: user.email,
     name: user.name,
+    username: user.username,
     role,
     tenantId,
     flatId,
     flatNumber,
     hasPin: Boolean(user.pinHash),
   };
+}
+
+/** Society staff who can manage complaints/onboard (not residents). */
+export function isStaffRole(role: Role) {
+  return role === "admin" || role === "superadmin";
 }
 
 export async function issueTokens(userId: string, role: Role, tenantId: string, flatId?: string | null) {

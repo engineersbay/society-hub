@@ -1,21 +1,32 @@
 import { Elysia } from "elysia";
 import { and, desc, eq, gt, isNull } from "drizzle-orm";
 import {
+  hashPassword,
   hashPin,
+  verifyPassword,
   verifyPin,
   verifyRefreshToken,
 } from "@society-hub/auth";
 import {
+  changePasswordSchema,
+  forgotPasswordSchema,
   googleAuthSchema,
+  loginPasswordSchema,
   loginPinSchema,
   refreshSchema,
   requestOtpSchema,
+  resetPasswordSchema,
   setPinSchema,
   verifyOtpSchema,
 } from "@society-hub/validation";
 import { env } from "../../config";
 import { db } from "../../db/client";
-import { otpChallenges, refreshTokens, users } from "../../db/schema";
+import {
+  otpChallenges,
+  passwordResetChallenges,
+  refreshTokens,
+  users,
+} from "../../db/schema";
 import { AppError } from "../../lib/errors";
 import {
   authPlugin,
@@ -167,6 +178,140 @@ export const authRoutes = new Elysia({ prefix: "/v1/auth" })
       dto.flatId,
     );
     return { user: dto, tokens };
+  })
+  .post("/password/login", async ({ body }) => {
+    const parsed = loginPasswordSchema.parse(body);
+    const email = parsed.email.toLowerCase();
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(and(eq(users.email, email), eq(users.isDeleted, false)))
+      .limit(1);
+    if (!user?.passwordHash) {
+      throw new AppError(401, "invalid_credentials", "Invalid email or password");
+    }
+    const ok = await verifyPassword(parsed.password, user.passwordHash);
+    if (!ok) {
+      throw new AppError(401, "invalid_credentials", "Invalid email or password");
+    }
+
+    const membership = await resolveMembership(user.id);
+    const dto = await buildUserDto(user.id, membership.tenantId, membership.role);
+    const tokens = await issueTokens(
+      user.id,
+      membership.role,
+      membership.tenantId,
+      dto.flatId,
+    );
+    return { user: dto, tokens };
+  })
+  .post("/password/forgot", async ({ body }) => {
+    const parsed = forgotPasswordSchema.parse(body);
+    const email = parsed.email.toLowerCase();
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(and(eq(users.email, email), eq(users.isDeleted, false)))
+      .limit(1);
+
+    // Always OK to avoid email enumeration; only issue code when account exists
+    if (!user) {
+      return { ok: true as const };
+    }
+
+    const code = env.devAuth
+      ? env.devOtpCode
+      : String(Math.floor(100000 + Math.random() * 900000));
+    const codeHash = await Bun.password.hash(code);
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000)
+      .toISOString()
+      .replace("T", " ")
+      .replace("Z", "");
+
+    await db.insert(passwordResetChallenges).values({
+      id: crypto.randomUUID(),
+      email,
+      codeHash,
+      expiresAt,
+    });
+
+    // Email provider later (Resend); DEV returns code for local web/mobile
+    return {
+      ok: true as const,
+      ...(env.devAuth ? { devCode: code } : {}),
+    };
+  })
+  .post("/password/reset", async ({ body }) => {
+    const parsed = resetPasswordSchema.parse(body);
+    const email = parsed.email.toLowerCase();
+    const [challenge] = await db
+      .select()
+      .from(passwordResetChallenges)
+      .where(
+        and(
+          eq(passwordResetChallenges.email, email),
+          isNull(passwordResetChallenges.consumedAt),
+          gt(passwordResetChallenges.expiresAt, nowMysql()),
+        ),
+      )
+      .orderBy(desc(passwordResetChallenges.createdAt))
+      .limit(1);
+
+    if (!challenge) {
+      throw new AppError(400, "reset_invalid", "Reset code expired or not found");
+    }
+
+    const ok =
+      (env.devAuth && parsed.code === env.devOtpCode) ||
+      (await Bun.password.verify(parsed.code, challenge.codeHash));
+    if (!ok) {
+      await db
+        .update(passwordResetChallenges)
+        .set({ attempts: challenge.attempts + 1 })
+        .where(eq(passwordResetChallenges.id, challenge.id));
+      throw new AppError(400, "reset_invalid", "Invalid reset code");
+    }
+
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(and(eq(users.email, email), eq(users.isDeleted, false)))
+      .limit(1);
+    if (!user) {
+      throw new AppError(400, "reset_invalid", "Reset code expired or not found");
+    }
+
+    const passwordHash = await hashPassword(parsed.newPassword);
+    await db.update(users).set({ passwordHash }).where(eq(users.id, user.id));
+    await db
+      .update(passwordResetChallenges)
+      .set({ consumedAt: nowMysql() })
+      .where(eq(passwordResetChallenges.id, challenge.id));
+
+    return { ok: true as const };
+  })
+  .post("/password/change", async ({ body, auth }) => {
+    const claims = requireAuth(auth);
+    const parsed = changePasswordSchema.parse(body);
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(and(eq(users.id, claims.sub), eq(users.isDeleted, false)))
+      .limit(1);
+    if (!user?.passwordHash) {
+      throw new AppError(
+        400,
+        "password_not_set",
+        "No password set for this account; use forgot password first",
+      );
+    }
+    const ok = await verifyPassword(parsed.currentPassword, user.passwordHash);
+    if (!ok) {
+      throw new AppError(401, "invalid_credentials", "Current password is incorrect");
+    }
+    const passwordHash = await hashPassword(parsed.newPassword);
+    await db.update(users).set({ passwordHash }).where(eq(users.id, user.id));
+    return { ok: true as const };
   })
   .post("/pin", async ({ body, auth }) => {
     const claims = requireAuth(auth);

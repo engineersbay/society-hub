@@ -15,7 +15,7 @@ export const adminRoutes = new Elysia({ prefix: "/v1/admin" })
   .use(authPlugin)
   .get("/flats", async ({ auth }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin"]);
+    requireRole(claims, ["admin", "superadmin"]);
     const rows = await db
       .select({
         id: flats.id,
@@ -35,7 +35,7 @@ export const adminRoutes = new Elysia({ prefix: "/v1/admin" })
   })
   .post("/residents", async ({ auth, body }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin"]);
+    requireRole(claims, ["admin", "superadmin"]);
     const parsed = onboardResidentSchema.parse(body);
 
     const [flat] = await db

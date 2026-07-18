@@ -85,4 +85,45 @@ describe("api smoke", () => {
     const updated = (await patch.json()) as { status: string };
     expect(updated.status).toBe("in_progress");
   });
+
+  test("superadmin can login with email and password", async () => {
+    const res = await fetch(`${base}/v1/auth/password/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: "superadmin@societyhub.local",
+        password: "1900Summer@",
+      }),
+    });
+    expect(res.ok).toBe(true);
+    const body = (await res.json()) as {
+      user: { role: string; email: string | null };
+      tokens: { accessToken: string };
+    };
+    expect(body.user.role).toBe("superadmin");
+    expect(body.user.email).toBe("superadmin@societyhub.local");
+    expect(body.tokens.accessToken.length).toBeGreaterThan(20);
+  });
+
+  test("forgot and reset password flow", async () => {
+    const forgot = await fetch(`${base}/v1/auth/password/forgot`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: "superadmin@societyhub.local" }),
+    });
+    expect(forgot.ok).toBe(true);
+    const forgotBody = (await forgot.json()) as { ok: true; devCode?: string };
+    expect(forgotBody.devCode).toBe("123456");
+
+    const reset = await fetch(`${base}/v1/auth/password/reset`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: "superadmin@societyhub.local",
+        code: "123456",
+        newPassword: "1900Summer@",
+      }),
+    });
+    expect(reset.ok).toBe(true);
+  });
 });

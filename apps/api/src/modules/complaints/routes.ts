@@ -19,6 +19,7 @@ import {
 import { AppError } from "../../lib/errors";
 import {
   authPlugin,
+  isStaffRole,
   requireAuth,
   requireRole,
 } from "../../lib/auth-context";
@@ -85,7 +86,7 @@ export const complaintRoutes = new Elysia({ prefix: "/v1/complaints" })
     const offset = (q.page - 1) * q.limit;
 
     const where =
-      claims.role === "admin"
+      isStaffRole(claims.role)
         ? and(
             eq(complaints.tenantId, claims.tenantId),
             eq(complaints.isDeleted, false),
@@ -119,12 +120,7 @@ export const complaintRoutes = new Elysia({ prefix: "/v1/complaints" })
   .get("/:id", async ({ auth, params }) => {
     const claims = requireAuth(auth);
     const dto = await toComplaintDto(params.id, claims.tenantId);
-    if (
-      claims.role === "resident" &&
-      dto.flatId !== claims.flatId &&
-      // residents only see own: check raised by via refetch
-      true
-    ) {
+    if (claims.role === "resident") {
       const [c] = await db
         .select()
         .from(complaints)
@@ -138,7 +134,7 @@ export const complaintRoutes = new Elysia({ prefix: "/v1/complaints" })
   })
   .post("/", async ({ auth, body }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["resident", "admin"]);
+    requireRole(claims, ["resident", "admin", "superadmin"]);
     const parsed = createComplaintSchema.parse(body);
 
     let flatId = claims.flatId;
@@ -171,7 +167,7 @@ export const complaintRoutes = new Elysia({ prefix: "/v1/complaints" })
   })
   .patch("/:id/status", async ({ auth, params, body }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin"]);
+    requireRole(claims, ["admin", "superadmin"]);
     const parsed = updateComplaintStatusSchema.parse(body);
     const [existing] = await db
       .select()
