@@ -67,19 +67,19 @@ function BuildingBlock({ building }: { building: BuildingDto }) {
   }
 
   return (
-    <div className="card p-5">
+    <div className="card p-3">
       <button
         type="button"
         className="flex w-full items-center justify-between text-left"
         onClick={() => setOpen((o) => !o)}
         data-testid="structure-building-toggle"
       >
-        <span className="font-semibold">{building.name}</span>
+        <span className="text-sm font-semibold">{building.name}</span>
         <Icon name="chevronDown" className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
 
       {open && (
-        <div className="mt-4 space-y-4">
+        <div className="mt-3 space-y-3">
           {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
           {wings.map((w) => {
             const d = draft[w.id] ?? { number: "", floor: "", parkingSlot: "" };
@@ -219,16 +219,15 @@ export function StructurePage() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="font-display text-2xl">{society?.name ?? "Society structure"}</h1>
-        <p className="mt-1 text-sm text-black/55">
-          Buildings → wings → floors → flats (with parking slots). Needed so residents can
-          raise complaints against the right flat.
+      <div className="mb-4">
+        <h1 className="font-display text-xl sm:text-2xl">{society?.name ?? "Society structure"}</h1>
+        <p className="mt-0.5 text-sm text-black/55">
+          Buildings → wings → floors → flats. Needed so residents raise tickets on the right flat.
         </p>
       </div>
 
-      <h2 className="mb-3 font-semibold">Buildings</h2>
-      <div className="space-y-4">
+      <h2 className="mb-2 text-sm font-semibold">Buildings</h2>
+      <div className="space-y-2">
         {buildings.map((b) => (
           <BuildingBlock key={b.id} building={b} />
         ))}

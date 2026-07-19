@@ -279,7 +279,7 @@ export function Shell() {
           </NavLink>
         </header>
 
-        <header className="hidden items-center justify-between border-b border-[var(--sand)] px-8 py-4 lg:flex">
+        <header className="hidden items-center justify-between border-b border-[var(--sand)] px-6 py-2.5 lg:flex">
           <div />
           <div className="flex items-center gap-3">
             <span className="text-sm text-black/55">
@@ -300,7 +300,7 @@ export function Shell() {
           </div>
         </header>
 
-        <main className="flex-1 px-4 py-6 lg:px-8 lg:py-8">
+        <main className="flex-1 px-4 py-4 lg:px-6 lg:py-5">
           <Outlet />
         </main>
       </div>

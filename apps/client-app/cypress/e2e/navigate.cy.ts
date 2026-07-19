@@ -9,7 +9,7 @@ describe("Resident sidebar navigation", () => {
       statusCode: 200,
       body: { items: [], page: 1, limit: 4, total: 0 },
     });
-    cy.intercept("GET", "**/v1/dashboard/stats", {
+    cy.intercept("GET", "**/v1/dashboard/stats*", {
       statusCode: 200,
       body: {
         openComplaints: 1,

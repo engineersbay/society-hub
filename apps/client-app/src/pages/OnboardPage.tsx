@@ -2,6 +2,14 @@ import { FormEvent, useEffect, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import type { FlatDto, ResidentImportResultDto } from "@society-hub/types";
 import { ApiClientError } from "@society-hub/sdk";
+import {
+  ShField,
+  ShFormGrid,
+  ShPage,
+  ShPageHeader,
+  ShSection,
+  ShSplit,
+} from "@society-hub/ui";
 import { useAuth } from "../auth";
 import { canUseAdminMode } from "../app-mode";
 import { mapResidentCsvRows, parseCsv } from "../lib/resident-csv";
@@ -97,166 +105,161 @@ export function OnboardPage() {
   }
 
   return (
-    <div className="max-w-2xl space-y-8">
-      <div>
-        <h1 className="font-display text-2xl">Onboard residents</h1>
-        <p className="mt-1 text-sm text-black/55">
-          Add one resident or bulk-import via CSV. Flats must exist under{" "}
-          <Link to="/structure" className="text-[var(--leaf)]">
-            Structure
-          </Link>{" "}
-          first.
-        </p>
-      </div>
+    <ShPage wide>
+      <ShPageHeader
+        title="Onboard residents"
+        description={
+          <>
+            Add one resident or bulk-import via CSV. Flats must exist under{" "}
+            <Link to="/structure" className="text-[var(--leaf)]">
+              Structure
+            </Link>{" "}
+            first.
+          </>
+        }
+      />
 
-      <form className="card space-y-4 p-6" onSubmit={onSubmit} data-testid="onboard-form">
-        <h2 className="font-semibold">Single resident</h2>
-        <div>
-          <label className="label" htmlFor="onboard-society-name">
-            Society
-          </label>
-          <input
-            id="onboard-society-name"
-            data-testid="onboard-society-name"
-            className="input bg-[var(--mist)]/50"
-            value={societyName ?? "—"}
-            readOnly
-            disabled
-          />
-        </div>
-        <div>
-          <label className="label" htmlFor="name">
-            Resident name
-          </label>
-          <input
-            id="name"
-            className="input"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-          />
-        </div>
-        <div>
-          <label className="label" htmlFor="phone">
-            Phone
-          </label>
-          <input
-            id="phone"
-            className="input"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            required
-          />
-        </div>
-        <div>
-          <label className="label" htmlFor="onboard-email">
-            Email
-          </label>
-          <input
-            id="onboard-email"
-            className="input"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </div>
-        <div>
-          <label className="label" htmlFor="flat">
-            Flat
-          </label>
-          <select
-            id="flat"
-            className="input"
-            value={flatId}
-            onChange={(e) => setFlatId(e.target.value)}
-            required
-          >
-            {flats.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.wingName ? `${f.wingName}-` : ""}
-                {f.number}
-                {f.floor != null ? ` · Fl ${f.floor}` : ""}
-                {f.parkingSlot ? ` · ${f.parkingSlot}` : ""}
-              </option>
-            ))}
-          </select>
-        </div>
-        <button className="btn btn-primary" data-testid="onboard-submit" type="submit">
-          Onboard
-        </button>
-      </form>
+      <ShSplit>
+        <form
+          className="card sh-section space-y-3"
+          onSubmit={onSubmit}
+          data-testid="onboard-form"
+        >
+          <h2 className="text-sm font-semibold">Single resident</h2>
+          <ShFormGrid>
+            <ShField label="Society" htmlFor="onboard-society-name" className="sh-span-2">
+              <input
+                id="onboard-society-name"
+                data-testid="onboard-society-name"
+                className="input bg-[var(--mist)]/50"
+                value={societyName ?? "—"}
+                readOnly
+                disabled
+              />
+            </ShField>
+            <ShField label="Resident name" htmlFor="name">
+              <input
+                id="name"
+                className="input"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+            </ShField>
+            <ShField label="Phone" htmlFor="phone">
+              <input
+                id="phone"
+                className="input"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                required
+              />
+            </ShField>
+            <ShField label="Email" htmlFor="onboard-email">
+              <input
+                id="onboard-email"
+                className="input"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </ShField>
+            <ShField label="Flat" htmlFor="flat">
+              <select
+                id="flat"
+                className="input"
+                value={flatId}
+                onChange={(e) => setFlatId(e.target.value)}
+                required
+              >
+                {flats.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.wingName ? `${f.wingName}-` : ""}
+                    {f.number}
+                    {f.floor != null ? ` · Fl ${f.floor}` : ""}
+                    {f.parkingSlot ? ` · ${f.parkingSlot}` : ""}
+                  </option>
+                ))}
+              </select>
+            </ShField>
+          </ShFormGrid>
+          <button className="btn btn-primary" data-testid="onboard-submit" type="submit">
+            Onboard
+          </button>
+        </form>
 
-      <div className="card space-y-4 p-6" data-testid="onboard-csv">
-        <h2 className="font-semibold">Bulk import (CSV)</h2>
-        <p className="text-sm text-black/55">
-          Headers:{" "}
-          <code className="text-xs">
-            name, phone, email, flatNumber, wingName, floor, parkingSlot, isOwner,
+        <ShSection
+          title="Bulk import (CSV)"
+          description="Re-upload updates existing residents matched by phone."
+          testId="onboard-csv"
+        >
+          <p className="mb-2 text-[11px] leading-snug text-black/50">
+            Headers: name, phone, email, flatNumber, wingName, floor, parkingSlot, isOwner,
             emergencyContact, vehicleNumber
-          </code>
-          . Re-upload the same file to update existing residents (matched by phone).
-        </p>
-        <div className="flex flex-wrap items-center gap-3">
-          <a
-            className="btn btn-ghost btn-sm"
-            href={`data:text/csv;charset=utf-8,${encodeURIComponent(CSV_TEMPLATE)}`}
-            download="residents-template.csv"
-          >
-            Download template
-          </a>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={sendInvites}
-              onChange={(e) => setSendInvites(e.target.checked)}
-            />
-            Invite new residents
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={forceInvite}
-              onChange={(e) => setForceInvite(e.target.checked)}
-            />
-            Re-invite existing
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={createMissingFlats}
-              onChange={(e) => setCreateMissingFlats(e.target.checked)}
-            />
-            Create missing flats (needs wingName)
-          </label>
-        </div>
-        <input
-          type="file"
-          accept=".csv,text/csv"
-          data-testid="onboard-csv-input"
-          disabled={busyImport}
-          onChange={(e) => void onCsvSelected(e.target.files?.[0] ?? null)}
-        />
-        {importResult && (
-          <p className="text-sm text-[var(--leaf)]" data-testid="onboard-csv-result">
-            Created {importResult.created} · Updated {importResult.updated} · Unchanged{" "}
-            {importResult.unchanged} · Invited {importResult.invited} · Skipped{" "}
-            {importResult.skipped}
           </p>
-        )}
-        {importErrors.length > 0 && (
-          <ul className="max-h-40 overflow-y-auto rounded-lg bg-[var(--mist)]/40 p-3 text-xs text-[var(--danger)]">
-            {importErrors.slice(0, 30).map((err) => (
-              <li key={`${err.row}-${err.message}`}>
-                Row {err.row}: {err.message}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+          <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <a
+              className="btn btn-ghost btn-sm"
+              href={`data:text/csv;charset=utf-8,${encodeURIComponent(CSV_TEMPLATE)}`}
+              download="residents-template.csv"
+            >
+              Download template
+            </a>
+            <label className="flex items-center gap-1.5 text-xs">
+              <input
+                type="checkbox"
+                checked={sendInvites}
+                onChange={(e) => setSendInvites(e.target.checked)}
+              />
+              Invite new
+            </label>
+            <label className="flex items-center gap-1.5 text-xs">
+              <input
+                type="checkbox"
+                checked={forceInvite}
+                onChange={(e) => setForceInvite(e.target.checked)}
+              />
+              Re-invite
+            </label>
+            <label className="flex items-center gap-1.5 text-xs">
+              <input
+                type="checkbox"
+                checked={createMissingFlats}
+                onChange={(e) => setCreateMissingFlats(e.target.checked)}
+              />
+              Create missing flats
+            </label>
+          </div>
+          <input
+            type="file"
+            accept=".csv,text/csv"
+            className="text-xs"
+            data-testid="onboard-csv-input"
+            disabled={busyImport}
+            onChange={(e) => void onCsvSelected(e.target.files?.[0] ?? null)}
+          />
+          {importResult && (
+            <p className="mt-2 text-xs text-[var(--leaf)]" data-testid="onboard-csv-result">
+              Created {importResult.created} · Updated {importResult.updated} · Unchanged{" "}
+              {importResult.unchanged} · Invited {importResult.invited} · Skipped{" "}
+              {importResult.skipped}
+            </p>
+          )}
+          {importErrors.length > 0 && (
+            <ul className="mt-2 max-h-24 overflow-y-auto rounded-lg bg-[var(--mist)]/40 p-2 text-[11px] text-[var(--danger)]">
+              {importErrors.slice(0, 30).map((err) => (
+                <li key={`${err.row}-${err.message}`}>
+                  Row {err.row}: {err.message}
+                </li>
+              ))}
+            </ul>
+          )}
+        </ShSection>
+      </ShSplit>
 
-      {message && <p className="text-sm text-[var(--leaf)]">{message}</p>}
-      {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
-    </div>
+      {message && <p className="mt-3 text-sm text-[var(--leaf)]">{message}</p>}
+      {error && <p className="mt-3 text-sm text-[var(--danger)]">{error}</p>}
+    </ShPage>
   );
 }

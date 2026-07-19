@@ -1,10 +1,22 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import type { ComplaintDto, ComplaintStatus } from "@society-hub/types";
 import { ApiClientError } from "@society-hub/sdk";
 import { useAuth } from "../auth";
 import { canUseAdminMode, useAppMode } from "../app-mode";
-import { STATUS_LABELS, TYPE_LABELS, statusBadgeClass } from "../lib/complaint-labels";
+import { Icon } from "../components/icons";
+import { STATUS_LABELS, TYPE_LABELS, statusBadgeClass } from "@society-hub/ui";
+
+type SpeechRecognitionLike = {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  start: () => void;
+  stop: () => void;
+  onresult: ((ev: { results: ArrayLike<{ 0: { transcript: string } }> }) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+};
 
 function accessToken() {
   return localStorage.getItem("sh_web_access") ?? "";
@@ -24,6 +36,8 @@ export function ComplaintDetailPage() {
   const [note, setNote] = useState("");
   const [evidence, setEvidence] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
+  const [listening, setListening] = useState(false);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -32,6 +46,46 @@ export function ComplaintDetailPage() {
       .then(setComplaint)
       .catch((err) => setError(err.message));
   }, [client, id]);
+
+  useEffect(() => {
+    return () => {
+      recognitionRef.current?.stop();
+    };
+  }, []);
+
+  function toggleMic() {
+    const SR =
+      (window as unknown as { SpeechRecognition?: new () => SpeechRecognitionLike })
+        .SpeechRecognition ||
+      (window as unknown as { webkitSpeechRecognition?: new () => SpeechRecognitionLike })
+        .webkitSpeechRecognition;
+    if (!SR) {
+      setError("Speech recognition is not supported in this browser");
+      return;
+    }
+    if (listening) {
+      recognitionRef.current?.stop();
+      setListening(false);
+      return;
+    }
+    const rec = new SR();
+    recognitionRef.current = rec;
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.lang = "en-IN";
+    rec.onresult = (ev) => {
+      let text = "";
+      for (let i = 0; i < ev.results.length; i++) {
+        text += ev.results[i]![0]!.transcript;
+      }
+      setNote(text);
+    };
+    rec.onerror = () => setListening(false);
+    rec.onend = () => setListening(false);
+    rec.start();
+    setListening(true);
+    setError(null);
+  }
 
   async function applyStatus(status: ComplaintStatus) {
     if (!id || !complaint) return;
@@ -51,6 +105,8 @@ export function ComplaintDetailPage() {
       setComplaint(updated);
       setNote("");
       setEvidence([]);
+      recognitionRef.current?.stop();
+      setListening(false);
     } catch (err) {
       setError(err instanceof ApiClientError ? err.body.message : "Failed");
     } finally {
@@ -181,24 +237,42 @@ export function ComplaintDetailPage() {
 
       {showStaffControls && (
         <section
-          className="rounded-xl border border-[var(--sand)] bg-[#fffdfb] p-4"
+          className="card sh-section"
           data-testid="complaint-staff-actions"
         >
-          <h2 className="font-semibold">Office actions</h2>
-          <p className="mt-1 text-sm text-black/55">
-            Leave it in queue if you are busy. Acknowledge when you have seen it. Start when work
-            begins. Resolve/close with a short note and optional evidence photos.
+          <h2 className="text-sm font-semibold">Office actions</h2>
+          <p className="mt-0.5 text-xs text-black/55">
+            Leave in queue if busy. Acknowledge when seen. Start when work begins. Resolve/close
+            with a short note.
           </p>
 
           <div className="mt-3">
-            <label className="label" htmlFor="staff-note">
-              Note / closing comment
-            </label>
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <label className="label mb-0" htmlFor="staff-note">
+                Note / closing comment
+              </label>
+              <button
+                type="button"
+                className={[
+                  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                  listening
+                    ? "border-[var(--danger)] bg-[var(--danger)]/10 text-[var(--danger)]"
+                    : "border-[var(--sand)] bg-white text-[var(--leaf-dark)] hover:border-[var(--leaf)]",
+                ].join(" ")}
+                data-testid="complaint-staff-note-mic"
+                aria-pressed={listening}
+                aria-label={listening ? "Stop recording" : "Record note with microphone"}
+                onClick={toggleMic}
+              >
+                <Icon name="mic" className="h-4 w-4" />
+                {listening ? "Stop" : "Record"}
+              </button>
+            </div>
             <textarea
               id="staff-note"
               data-testid="complaint-staff-note"
               className="input min-h-20"
-              placeholder="Required when resolving or closing"
+              placeholder="Required when resolving or closing — or tap Record"
               value={note}
               onChange={(e) => setNote(e.target.value)}
             />

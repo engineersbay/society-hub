@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import type { ComplaintType, FlatDto } from "@society-hub/types";
 import { ApiClientError } from "@society-hub/sdk";
 import { useAuth } from "../auth";
-import { TYPE_LABELS } from "../lib/complaint-labels";
+import { Icon } from "../components/icons";
+import { TYPE_LABELS } from "@society-hub/ui";
 
 const TYPES: ComplaintType[] = [
   "electric",
@@ -140,18 +141,22 @@ export function NewComplaintPage() {
   }
 
   return (
-    <div className="mx-auto max-w-xl">
-      <h1 className="font-display text-2xl">Raise a complaint</h1>
-      <p className="mt-1 text-sm text-black/55">
-        Tell us what is wrong — add photos if you can. You will get a ticket number right away.
-      </p>
+    <div className="sh-page">
+      <div className="sh-page-header">
+        <div>
+          <h1 className="font-display text-xl sm:text-2xl">Raise a complaint</h1>
+          <p className="mt-0.5 text-sm text-black/55">
+            Add photos if you can — you get a ticket number right away.
+          </p>
+        </div>
+      </div>
       {user?.flatNumber && (
-        <p className="mt-2 rounded-lg bg-[var(--mist)]/50 px-3 py-2 text-sm text-[var(--leaf-dark)]">
+        <p className="mb-3 rounded-lg bg-[var(--mist)]/50 px-3 py-1.5 text-sm text-[var(--leaf-dark)]">
           Filing for flat <strong>{user.flatNumber}</strong>
         </p>
       )}
 
-      <form className="mt-6 space-y-5" onSubmit={onSubmit} data-testid="new-complaint-form">
+      <form className="card sh-section space-y-3" onSubmit={onSubmit} data-testid="new-complaint-form">
         {needsFlatPicker && (
           <div>
             <label className="label" htmlFor="flat">
@@ -196,14 +201,14 @@ export function NewComplaintPage() {
 
         <div>
           <p className="label">Type</p>
-          <div className="mt-1 flex flex-wrap gap-2" data-testid="complaint-type-chips">
+          <div className="mt-1 flex flex-wrap gap-1.5" data-testid="complaint-type-chips">
             {TYPES.map((t) => (
               <button
                 key={t}
                 type="button"
                 data-testid={`complaint-type-${t}`}
                 className={[
-                  "rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
+                  "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
                   type === t
                     ? "border-[var(--leaf)] bg-[var(--leaf)] text-white"
                     : "border-[var(--sand)] bg-white text-[var(--ink)]/80 hover:border-[var(--leaf)]",
@@ -236,13 +241,26 @@ export function NewComplaintPage() {
             <label className="label mb-0" htmlFor="desc">
               What happened?
             </label>
-            <button type="button" className="btn btn-ghost text-xs" onClick={toggleMic}>
-              {listening ? "Stop mic" : "Speak instead"}
+            <button
+              type="button"
+              className={[
+                "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                listening
+                  ? "border-[var(--danger)] bg-[var(--danger)]/10 text-[var(--danger)]"
+                  : "border-[var(--sand)] bg-white text-[var(--leaf-dark)] hover:border-[var(--leaf)]",
+              ].join(" ")}
+              data-testid="complaint-description-mic"
+              aria-pressed={listening}
+              aria-label={listening ? "Stop recording" : "Record description with microphone"}
+              onClick={toggleMic}
+            >
+              <Icon name="mic" className="h-4 w-4" />
+              {listening ? "Stop" : "Record"}
             </button>
           </div>
           <textarea
             id="desc"
-            className="input min-h-32"
+            className="input min-h-24"
             data-testid="complaint-description"
             placeholder="A few sentences help the office understand and fix it faster."
             value={description}
@@ -265,14 +283,14 @@ export function NewComplaintPage() {
             onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
           />
           {previews.length > 0 && (
-            <ul className="mt-3 grid grid-cols-3 gap-2">
+            <ul className="mt-2 grid grid-cols-3 gap-2">
               {previews.map((p) => (
                 <li
                   key={p.name}
                   className="overflow-hidden rounded-lg border border-[var(--sand)] bg-[var(--mist)]/30"
                 >
                   {p.isImage ? (
-                    <img src={p.url} alt="" className="h-20 w-full object-cover" />
+                    <img src={p.url} alt="" className="h-16 w-full object-cover" />
                   ) : (
                     <p className="p-2 text-xs text-black/55">{p.name}</p>
                   )}

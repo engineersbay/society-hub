@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "@society-hub/ui/styles.css";
 
 :root {
   /*
@@ -46,9 +47,10 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  border-radius: 0.5rem;
-  padding: 0.65rem 1.1rem;
+  gap: 0.4rem;
+  border-radius: 0.45rem;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.875rem;
   font-weight: 600;
   border: none;
   cursor: pointer;
@@ -84,9 +86,11 @@ body {
   width: 100%;
   border: 1px solid var(--sand);
   background: #fffdfb;
-  border-radius: 0.5rem;
-  padding: 0.65rem 0.85rem;
+  border-radius: 0.45rem;
+  padding: 0.4rem 0.7rem;
   font: inherit;
+  font-size: 0.875rem;
+  line-height: 1.35;
 }
 
 .input:focus {
@@ -96,36 +100,36 @@ body {
 
 .label {
   display: block;
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   font-weight: 600;
-  margin-bottom: 0.35rem;
+  margin-bottom: 0.2rem;
 }
 
 .btn-sm {
-  padding: 0.4rem 0.75rem;
-  font-size: 0.8rem;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.75rem;
 }
 
 .card {
-  border-radius: 1rem;
+  border-radius: 0.75rem;
   border: 1px solid var(--sand);
   background: #fffdfb;
   box-shadow: 0 1px 2px rgba(139, 30, 63, 0.05);
 }
 
 .kpi-card {
-  border-radius: 1rem;
+  border-radius: 0.75rem;
   border: 1px solid var(--sand);
   background: linear-gradient(180deg, #fffdfb 0%, var(--mist) 130%);
-  padding: 1.1rem 1.25rem;
+  padding: 0.75rem 1rem;
 }
 
 .badge {
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
-  padding: 0.2rem 0.65rem;
-  font-size: 0.7rem;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.65rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -145,7 +149,7 @@ body {
 
 .table-wrap {
   overflow-x: auto;
-  border-radius: 1rem;
+  border-radius: 0.75rem;
   border: 1px solid var(--sand);
   background: #fffdfb;
 }
@@ -153,13 +157,13 @@ body {
 .data-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
 
 .data-table th {
   text-align: left;
-  padding: 0.75rem 1rem;
-  font-size: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: color-mix(in srgb, var(--ink) 55%, transparent);
@@ -168,7 +172,7 @@ body {
 }
 
 .data-table td {
-  padding: 0.75rem 1rem;
+  padding: 0.5rem 0.75rem;
   border-bottom: 1px solid color-mix(in srgb, var(--sand) 60%, transparent);
   vertical-align: middle;
 }
@@ -182,7 +186,13 @@ body {
 }
 
 .empty-state {
-  padding: 2.5rem 1.5rem;
+  padding: 1.5rem 1rem;
   text-align: center;
   color: color-mix(in srgb, var(--ink) 55%, transparent);
+  font-size: 0.875rem;
+}
+
+textarea.input {
+  min-height: 4.5rem;
+  resize: vertical;
 }

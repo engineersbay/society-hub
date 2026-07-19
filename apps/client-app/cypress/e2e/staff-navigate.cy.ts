@@ -15,7 +15,7 @@ describe("Client App staff (Admin mode) navigation", () => {
       statusCode: 200,
       body: { items: [], page: 1, limit: 20, total: 0 },
     });
-    cy.intercept("GET", "**/v1/dashboard/stats", {
+    cy.intercept("GET", "**/v1/dashboard/stats*", {
       statusCode: 200,
       body: {
         openComplaints: 2,

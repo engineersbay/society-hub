@@ -4,7 +4,7 @@ import type { ComplaintDto } from "@society-hub/types";
 import { useAuth } from "../auth";
 import { canUseAdminMode, useAppMode } from "../app-mode";
 import { Icon } from "../components/icons";
-import { STATUS_LABELS, statusBadgeClass } from "../lib/complaint-labels";
+import { STATUS_LABELS, statusBadgeClass } from "@society-hub/ui";
 
 export function ComplaintsPage() {
   const { client, user } = useAuth();
@@ -34,9 +34,9 @@ export function ComplaintsPage() {
 
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h1 className="font-display text-2xl">
+          <h1 className="font-display text-xl sm:text-2xl">
             {staffView ? "Complaint queue" : "My complaints"}
           </h1>
           <p className="text-sm text-black/55">
@@ -50,7 +50,7 @@ export function ComplaintsPage() {
         </Link>
       </div>
 
-      <div className="relative mb-4">
+      <div className="relative mb-3">
         <Icon
           name="search"
           className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black/35"

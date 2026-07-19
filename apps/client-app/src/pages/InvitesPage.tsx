@@ -75,15 +75,18 @@ export function InvitesPage() {
   }
 
   return (
-    <div className="max-w-2xl" data-testid="invites-page">
-      <h1 className="font-display text-2xl">Invites</h1>
-      <p className="mt-1 text-sm text-black/55">
-        Invite residents by email and/or WhatsApp (Gupshup). Without provider keys, messages
-        are stubbed in logs for local testing.
-      </p>
+    <div className="sh-page sh-page-wide" data-testid="invites-page">
+      <div className="sh-page-header">
+        <div>
+          <h1 className="font-display text-xl sm:text-2xl">Invites</h1>
+          <p className="mt-0.5 text-sm text-black/55">
+            Invite by email and/or WhatsApp. Without provider keys, delivery is stubbed locally.
+          </p>
+        </div>
+      </div>
 
-      <form className="card mt-6 space-y-4 p-6" onSubmit={onSubmit} data-testid="invites-form">
-        <div className="grid gap-4 sm:grid-cols-2">
+      <form className="card sh-section space-y-3" onSubmit={onSubmit} data-testid="invites-form">
+        <div className="grid gap-2.5 sm:grid-cols-2">
           <div>
             <label className="label" htmlFor="invite-email">
               Email
