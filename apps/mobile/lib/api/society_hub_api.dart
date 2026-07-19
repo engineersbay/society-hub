@@ -353,9 +353,10 @@ class SocietyHubApi {
     );
   }
 
-  Future<DashboardStatsDto> getDashboardStats() {
+  Future<DashboardStatsDto> getDashboardStats({bool mine = false}) {
+    final mineQs = mine ? '?mine=1' : '';
     return _request(
-      '/v1/dashboard/stats',
+      '/v1/dashboard/stats$mineQs',
       parse: (json) =>
           DashboardStatsDto.fromJson(json as Map<String, dynamic>),
     );

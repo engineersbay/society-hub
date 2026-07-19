@@ -26,12 +26,13 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
 
   Future<void> _load() async {
     final api = ref.read(apiProvider);
+    final staffView = ref.read(sessionProvider.notifier).isStaffView;
     try {
-      final stats = await api.getDashboardStats();
+      final stats = await api.getDashboardStats(mine: !staffView);
       if (mounted) setState(() => _stats = stats);
     } catch (_) {}
     try {
-      final list = await api.listComplaints(page: 1, limit: 4);
+      final list = await api.listComplaints(page: 1, limit: 4, mine: !staffView);
       if (mounted) setState(() => _recent = list.items);
     } catch (_) {}
   }
@@ -41,6 +42,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     final session = ref.watch(sessionProvider);
     final user = session.user;
     final staffView = ref.watch(sessionProvider.notifier).isStaffView;
+    ref.listen(sessionProvider, (prev, next) {
+      if (prev?.mode != next.mode) {
+        _load();
+      }
+    });
     final firstName = user?.name?.split(' ').first;
 
     return RefreshIndicator(
