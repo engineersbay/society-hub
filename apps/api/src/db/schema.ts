@@ -68,6 +68,12 @@ export const flats = mysqlTable(
     tenantId: tenantId(),
     wingId: char("wing_id", { length: 36 }).notNull(),
     number: varchar("number", { length: 32 }).notNull(),
+    /** Floor within the wing (null = unset). */
+    floor: int("floor"),
+    /** Primary parking slot label linked to this flat (optional). */
+    parkingSlot: varchar("parking_slot", { length: 32 }),
+    /** Extensible JSON bag for society-specific flat attributes. */
+    detailsJson: text("details_json"),
     ...timestamps,
   },
   (t) => [
