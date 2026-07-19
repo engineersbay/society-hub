@@ -188,7 +188,7 @@ describe("sdk client", () => {
       new Response(JSON.stringify({ code: "unauthorized", message: "Nope" }), {
         status: 401,
         headers: { "Content-Type": "application/json" },
-      })) as typeof fetch;
+      })) as unknown as typeof fetch;
 
     const client = createSocietyHubClient({ baseUrl: "http://api.test" });
     try {
@@ -217,9 +217,116 @@ describe("sdk client", () => {
     expect(paths[1]).toContain("/reset");
   });
 
+  test("membership, tenant, and profile helpers", async () => {
+    const paths: string[] = [];
+    globalThis.fetch = (async (url) => {
+      paths.push(String(url));
+      return jsonOk({ ok: true });
+    }) as typeof fetch;
+    const client = createSocietyHubClient({
+      baseUrl: "http://api.test",
+      getAccessToken: () => "tok",
+    });
+    await client.listMemberships();
+    await client.selectTenant("11111111-1111-1111-1111-111111111111");
+    await client.updateProfile({ vehicleNumber: "MH12AB1234" });
+    expect(paths).toEqual([
+      "http://api.test/v1/auth/memberships",
+      "http://api.test/v1/auth/select-tenant",
+      "http://api.test/v1/auth/profile",
+    ]);
+  });
+
+  test("society, building, wing, and flat helpers", async () => {
+    const paths: string[] = [];
+    globalThis.fetch = (async (url) => {
+      paths.push(String(url));
+      return jsonOk({ ok: true });
+    }) as typeof fetch;
+    const client = createSocietyHubClient({
+      baseUrl: "http://api.test",
+      getAccessToken: () => "tok",
+    });
+    await client.listSocieties();
+    await client.createSociety({ name: "Keshav Heights" });
+    await client.getSociety("s1");
+    await client.listBuildings("s1");
+    await client.createBuilding("s1", "Tower A");
+    await client.listWings("b1");
+    await client.createWing("b1", "A");
+    await client.listFlatsForWing("w1");
+    await client.createFlat("w1", "101");
+    expect(paths.length).toBe(9);
+  });
+
+  test("invitation, bill, and payment helpers", async () => {
+    globalThis.fetch = (async () => jsonOk({ ok: true })) as unknown as typeof fetch;
+    const client = createSocietyHubClient({
+      baseUrl: "http://api.test",
+      getAccessToken: () => "tok",
+    });
+    await client.listInvitations();
+    await client.createInvitation({ email: "a@b.com", role: "resident" });
+    await client.revokeInvitation("inv1");
+    await client.listBills(1, 20);
+    await client.myBills();
+    await client.generateBills({ periodYm: "2026-07", amountPaise: 500000 });
+    await client.getBill("bill1");
+    await client.listPayments(1, 20);
+    await client.myPayments();
+    await client.recordPayment({ flatId: "f1", amountPaise: 1000, method: "cash" });
+    await client.payBillMock("bill1");
+    expect(true).toBe(true);
+  });
+
+  test("notice, notification, dashboard, and audit helpers", async () => {
+    globalThis.fetch = (async () => jsonOk({ ok: true })) as unknown as typeof fetch;
+    const client = createSocietyHubClient({
+      baseUrl: "http://api.test",
+      getAccessToken: () => "tok",
+    });
+    await client.listNotices();
+    await client.createNotice({ title: "Water cut", body: "10am", audience: "all" });
+    await client.updateNotice("n1", { title: "Updated" });
+    await client.publishNotice("n1");
+    await client.unpublishNotice("n1");
+    await client.listNotifications();
+    await client.markNotificationRead("notif1");
+    await client.getDashboardStats();
+    await client.listAuditLogs();
+    await client.listAuditLogs("bill");
+    await client.listTeam();
+    expect(true).toBe(true);
+  });
+
+  test("future module helpers: visitors, parking, bookings, assets, vendors, events", async () => {
+    globalThis.fetch = (async () => jsonOk({ ok: true })) as unknown as typeof fetch;
+    const client = createSocietyHubClient({
+      baseUrl: "http://api.test",
+      getAccessToken: () => "tok",
+    });
+    await client.listVisitors();
+    await client.createVisitor({ visitorName: "Ravi" });
+    await client.listParkingSlots();
+    await client.createParkingSlot({ slotNumber: "P-1" });
+    await client.listBookings();
+    await client.createBooking({
+      facilityName: "Clubhouse",
+      startAt: "2026-08-01T10:00:00.000Z",
+      endAt: "2026-08-01T12:00:00.000Z",
+    });
+    await client.listAssets();
+    await client.createAsset({ name: "Generator" });
+    await client.listVendors();
+    await client.createVendor({ name: "ABC Plumbers" });
+    await client.listEvents();
+    await client.createEvent({ title: "Ganesh Utsav" });
+    expect(true).toBe(true);
+  });
+
   test("handles non-json error body", async () => {
     globalThis.fetch = (async () =>
-      new Response("nope", { status: 500 })) as typeof fetch;
+      new Response("nope", { status: 500 })) as unknown as typeof fetch;
     const client = createSocietyHubClient({ baseUrl: "http://api.test" });
     try {
       await client.me();

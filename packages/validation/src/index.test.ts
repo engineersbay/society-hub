@@ -1,19 +1,39 @@
 import { describe, expect, test } from "bun:test";
 import {
   changePasswordSchema,
+  createAssetSchema,
+  createBookingSchema,
+  createBuildingSchema,
+  createComplaintCommentSchema,
   createComplaintSchema,
+  createEventSchema,
+  createFlatSchema,
+  createInvitationSchema,
+  createNoticeSchema,
+  createParkingSlotSchema,
+  createSocietySchema,
+  createVendorSchema,
+  createVisitorSchema,
+  createWingSchema,
   forgotPasswordSchema,
+  generateBillsSchema,
   googleAuthSchema,
   listQuerySchema,
   loginPasswordSchema,
   loginPinSchema,
   onboardResidentSchema,
+  razorpayWebhookSchema,
+  recordPaymentSchema,
   refreshSchema,
   requestOtpSchema,
   resetPasswordSchema,
+  selectTenantSchema,
   setPinSchema,
   updateComplaintStatusSchema,
+  updateNoticeSchema,
+  updateResidentProfileSchema,
   verifyOtpSchema,
+  voidBillSchema,
 } from "./index";
 
 describe("validation schemas", () => {
@@ -101,6 +121,14 @@ describe("validation schemas", () => {
       }).type,
     ).toBe("plumbing");
     expect(
+      createComplaintSchema.parse({
+        title: "Leak",
+        type: "plumbing",
+        description: "Kitchen sink drip",
+        flatId: "66666666-6666-6666-6666-666666666666",
+      }).flatId,
+    ).toBe("66666666-6666-6666-6666-666666666666");
+    expect(
       updateComplaintStatusSchema.parse({ status: "resolved" }).status,
     ).toBe("resolved");
   });
@@ -111,5 +139,93 @@ describe("validation schemas", () => {
       limit: 10,
     });
     expect(listQuerySchema.parse({})).toEqual({ page: 1, limit: 20 });
+  });
+
+  test("selectTenantSchema and complaint comment schema", () => {
+    const tenantId = "11111111-1111-1111-1111-111111111111";
+    expect(selectTenantSchema.parse({ tenantId }).tenantId).toBe(tenantId);
+    expect(() => selectTenantSchema.parse({ tenantId: "bad" })).toThrow();
+    expect(createComplaintCommentSchema.parse({ body: "Update please" }).body).toBe(
+      "Update please",
+    );
+    expect(() => createComplaintCommentSchema.parse({ body: "" })).toThrow();
+  });
+
+  test("society/structure schemas", () => {
+    expect(
+      createSocietySchema.parse({ name: "Keshav Heights", city: "Pune" }).name,
+    ).toBe("Keshav Heights");
+    expect(createBuildingSchema.parse({ name: "Tower A" }).name).toBe("Tower A");
+    expect(createWingSchema.parse({ name: "A" }).name).toBe("A");
+    expect(createFlatSchema.parse({ number: "101" }).number).toBe("101");
+  });
+
+  test("createInvitationSchema and updateResidentProfileSchema", () => {
+    expect(
+      createInvitationSchema.parse({ email: "a@b.com", role: "resident" }).role,
+    ).toBe("resident");
+    expect(createInvitationSchema.parse({}).role).toBe("resident");
+    expect(
+      updateResidentProfileSchema.parse({ vehicleNumber: "MH12AB1234" })
+        .vehicleNumber,
+    ).toBe("MH12AB1234");
+  });
+
+  test("billing and payment schemas", () => {
+    expect(
+      generateBillsSchema.parse({ periodYm: "2026-07", amountPaise: 500000 })
+        .periodYm,
+    ).toBe("2026-07");
+    expect(() =>
+      generateBillsSchema.parse({ periodYm: "bad", amountPaise: 100 }),
+    ).toThrow();
+    expect(voidBillSchema.parse({ reason: "duplicate" }).reason).toBe(
+      "duplicate",
+    );
+    const flatId = "66666666-6666-6666-6666-666666666666";
+    expect(
+      recordPaymentSchema.parse({ flatId, amountPaise: 1000, method: "cash" })
+        .method,
+    ).toBe("cash");
+    expect(
+      razorpayWebhookSchema.parse({ orderId: "order_1", paymentId: "pay_1" })
+        .status,
+    ).toBe("success");
+  });
+
+  test("notice schemas", () => {
+    expect(
+      createNoticeSchema.parse({ title: "Water cut", body: "Tomorrow 10am" })
+        .audience,
+    ).toBe("all");
+    expect(updateNoticeSchema.parse({ title: "Updated" }).title).toBe(
+      "Updated",
+    );
+    expect(updateNoticeSchema.parse({}).title).toBeUndefined();
+  });
+
+  test("future module schemas", () => {
+    expect(
+      createVisitorSchema.parse({ visitorName: "Ravi Kumar" }).visitorName,
+    ).toBe("Ravi Kumar");
+    expect(
+      createParkingSlotSchema.parse({ slotNumber: "P-12" }).slotNumber,
+    ).toBe("P-12");
+    expect(
+      createBookingSchema.parse({
+        facilityName: "Clubhouse",
+        startAt: "2026-08-01T10:00:00.000Z",
+        endAt: "2026-08-01T12:00:00.000Z",
+      }).facilityName,
+    ).toBe("Clubhouse");
+    expect(createAssetSchema.parse({ name: "Generator" }).name).toBe(
+      "Generator",
+    );
+    expect(createVendorSchema.parse({ name: "ABC Plumbers" }).name).toBe(
+      "ABC Plumbers",
+    );
+    expect(createEventSchema.parse({ title: "Ganesh Utsav" }).title).toBe(
+      "Ganesh Utsav",
+    );
   });
 });

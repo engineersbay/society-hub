@@ -38,6 +38,8 @@ async function ensureSociety() {
     id: TENANT_ID,
     name: "Keshav Heights",
     address: "Pilot Society",
+    city: "Pune",
+    pincode: "411001",
     timezone: "Asia/Kolkata",
   });
 

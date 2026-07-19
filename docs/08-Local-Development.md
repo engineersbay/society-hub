@@ -92,7 +92,8 @@ Or step by step (same result):
 ```bash
 bun install
 cp apps/api/.env.example apps/api/.env
-cp apps/web/.env.example apps/web/.env
+cp apps/client-app/.env.example apps/client-app/.env
+cp apps/manage/.env.example apps/manage/.env
 
 # Create empty database (Workbench SQL tab OR CLI)
 # See section 4
@@ -150,7 +151,7 @@ DEV_AUTH=true
 DEV_OTP_CODE=123456
 JWT_SECRET=dev-change-me-society-hub-jwt-secret-32chars
 DATABASE_URL=mysql://root:1900Summer%40@127.0.0.1:3306/societyhub
-CORS_ORIGIN=http://localhost:5173,http://127.0.0.1:5173
+CORS_ORIGIN=http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174
 PUBLIC_API_URL=http://localhost:3000
 PORT=3000
 UPLOAD_DIR=./uploads
@@ -162,10 +163,18 @@ Notes:
 - `DEV_AUTH=true` returns OTP / password-reset codes in API responses (local only)
 - Superadmin login password defaults to `Test@1234` (override with `SUPERADMIN_PASSWORD`)
 
-### Web — `apps/web/.env`
+### Web (residents) — `apps/client-app/.env`
 
 ```env
 VITE_API_URL=http://localhost:3000
+VITE_MANAGE_URL=http://localhost:5174
+```
+
+### Manage (admin) — `apps/manage/.env`
+
+```env
+VITE_API_URL=http://localhost:3000
+VITE_WEB_URL=http://localhost:5173
 ```
 
 ---
@@ -184,13 +193,15 @@ bun run dev
 This starts:
 
 - API → http://localhost:3000  
-- Web → http://localhost:5173  
+- Web (residents) → http://localhost:5173  
+- Manage (admin) → http://localhost:5174  
 
 Run separately if needed:
 
 ```bash
 bun run dev:api
-bun run dev:web
+bun run dev:client-app
+bun run dev:manage
 ```
 
 Health check:
@@ -205,10 +216,10 @@ curl http://127.0.0.1:3000/health
 
 | Method | Credentials |
 |--------|-------------|
-| Email / password | `superadmin@societyhub.local` / `Test@1234` |
-| OTP (mobile) | Admin `9999999999` · Resident `8888888888` · code `123456` |
+| Email / password | Manage: `superadmin@societyhub.local` / `Test@1234` |
+| OTP (mobile) | Manage admin `9999999999` · Web resident `8888888888` · code `123456` |
 
-Login page default tab is **Email**. Forgot password uses the same DEV code `123456` when `DEV_AUTH=true`.
+Use **Manage** (`:5174`) for Admin / Super Admin. Use **Web** (`:5173`) for residents.
 
 ---
 
@@ -228,6 +239,26 @@ Login page default tab is **Email**. Forgot password uses the same DEV code `123
 | `bun run db:up` | **Optional** Docker MySQL on host `:3307` |
 | `bun run lint` | Typecheck packages/apps |
 | `bun run test` | Unit / API smoke tests (API must be up for API tests) |
+| `bun run test:e2e:cypress` | Cypress E2E for both web apps (boots each dev server automatically) |
+
+---
+
+## 8b. Cypress E2E
+
+Each web app (`apps/manage`, `apps/client-app`) has a Cypress suite under `cypress/e2e/*.cy.ts`. Specs use `cy.intercept` to mock the API, so they run **without** the API or a database — only the app's own Vite dev server needs to be up.
+
+```bash
+# Run both apps' Cypress suites (starts/stops each dev server for you)
+bun run test:e2e:cypress
+
+# Or one app at a time, with the dev server already running:
+cd apps/manage && bun run dev            # in one terminal
+cd apps/manage && bun run test:cypress   # headless run, in another
+cd apps/manage && bun run test:cypress:open  # interactive runner
+
+cd apps/client-app && bun run test:cypress
+cd apps/client-app && bun run test:cypress:open
+```
 
 ---
 
@@ -257,7 +288,7 @@ Docker maps container `3306` → host **`3307`** so it does not clash with Workb
 | `command not found: CREATE` | Run SQL in Workbench or `mysql -e "..."`, not in zsh |
 | `ER_ACCESS_DENIED` | Check root password; update `DATABASE_URL` (`%40` for `@`) |
 | `ECONNREFUSED 3306` | Start MySQL server (not just Workbench) |
-| API CORS errors | Ensure `CORS_ORIGIN` includes both `localhost` and `127.0.0.1` web origins |
+| API CORS errors | Ensure `CORS_ORIGIN` includes web (`5173`) and manage (`5174`) for both `localhost` and `127.0.0.1` |
 | Old auth routes after pull | Restart API process (`bun run dev` / kill port 3000) |
 | Port 3306 already in use | That is your native MySQL — use it; do not also need Docker |
 
@@ -282,7 +313,8 @@ bun run db:seed
 ```text
 society-hub/
   apps/api/          # Bun + Elysia API
-  apps/web/          # React web
+  apps/client-app/          # Resident React web
+  apps/manage/       # Admin React web
   packages/          # shared types, validation, sdk, auth
   docs/08-Local-Development.md   # this file
   devops/docker/     # optional Docker MySQL / images
@@ -296,6 +328,7 @@ society-hub/
 - [ ] Workbench connects to MySQL on `3306`  
 - [ ] Database `societyhub` exists  
 - [ ] `bun run db:migrate` and `bun run db:seed` succeeded  
-- [ ] `apps/api/.env` and `apps/web/.env` exist  
-- [ ] `bun run dev` → web + API up  
+- [ ] `apps/api/.env`, `apps/client-app/.env`, and `apps/manage/.env` exist  
+- [ ] `CORS_ORIGIN` includes ports `5173` and `5174`  
+- [ ] `bun run dev` → client-app + manage + API up  
 - [ ] Sign in with `superadmin@societyhub.local` / `Test@1234`  

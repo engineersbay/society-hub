@@ -15,5 +15,6 @@ copy_if_missing() {
 }
 
 copy_if_missing "$ROOT/apps/api/.env.example" "$ROOT/apps/api/.env"
-copy_if_missing "$ROOT/apps/web/.env.example" "$ROOT/apps/web/.env"
+copy_if_missing "$ROOT/apps/client-app/.env.example" "$ROOT/apps/client-app/.env"
+copy_if_missing "$ROOT/apps/manage/.env.example" "$ROOT/apps/manage/.env"
 echo "Env files ready."

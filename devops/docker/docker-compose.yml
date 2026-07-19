@@ -40,7 +40,7 @@ services:
       JWT_SECRET: docker-dev-jwt-secret-change-me-32c
       DEV_AUTH: "true"
       DEV_OTP_CODE: "123456"
-      CORS_ORIGIN: http://localhost:8080
+      CORS_ORIGIN: http://localhost:8080,http://localhost:8081
       PUBLIC_API_URL: http://localhost:3000
       UPLOAD_DIR: /app/apps/api/uploads
     ports:
@@ -49,13 +49,23 @@ services:
       mysql:
         condition: service_healthy
 
-  web:
+  client-app:
     profiles: ["app"]
     build:
       context: ../..
-      dockerfile: devops/docker/web.Dockerfile
+      dockerfile: devops/docker/client-app.Dockerfile
     ports:
       - "8080:80"
+    depends_on:
+      - api
+
+  manage:
+    profiles: ["app"]
+    build:
+      context: ../..
+      dockerfile: devops/docker/manage.Dockerfile
+    ports:
+      - "8081:80"
     depends_on:
       - api
 

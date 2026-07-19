@@ -5,13 +5,17 @@
   "scripts": {
     "dev": "turbo run dev --parallel",
     "dev:api": "turbo run dev --filter=@society-hub/api",
-    "dev:web": "turbo run dev --filter=@society-hub/web",
+    "dev:client-app": "turbo run dev --filter=@society-hub/client-app",
+    "dev:manage": "turbo run dev --filter=@society-hub/manage",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "test": "turbo run test",
-    "test:unit": "bun test --coverage packages/auth packages/validation packages/sdk apps/api/src/lib/errors.test.ts apps/api/src/lib/auth-helpers.test.ts apps/api/src/config.test.ts",
+    "test:unit": "bun test --coverage packages/auth packages/validation packages/sdk apps/api/src/lib/errors.test.ts apps/api/src/lib/auth-helpers.test.ts apps/api/src/lib/soft-delete.test.ts apps/api/src/lib/audit.test.ts apps/api/src/lib/notify.test.ts apps/api/src/lib/tenant-scope.test.ts apps/api/src/config.test.ts",
     "test:integration": "bun test apps/api/src/api.integration.test.ts",
     "test:ci": "bun run test:unit && bun run test:integration",
+    "test:e2e:cypress:manage": "start-server-and-test \"bun run --filter=@society-hub/manage dev\" http://localhost:5174 \"bun run --filter=@society-hub/manage test:cypress\"",
+    "test:e2e:cypress:client-app": "start-server-and-test \"bun run --filter=@society-hub/client-app dev\" http://localhost:5173 \"bun run --filter=@society-hub/client-app test:cypress\"",
+    "test:e2e:cypress": "bun run test:e2e:cypress:manage && bun run test:e2e:cypress:client-app",
     "setup": "bun install && bun run setup:env && bun run setup:db",
     "setup:env": "bash scripts/setup-env.sh",
     "setup:db": "bash scripts/setup-db.sh",
@@ -21,6 +25,7 @@
     "db:up": "docker compose -f devops/docker/docker-compose.yml up mysql -d"
   },
   "devDependencies": {
+    "start-server-and-test": "^3.0.11",
     "turbo": "^2.5.4",
     "typescript": "^5.8.3"
   },

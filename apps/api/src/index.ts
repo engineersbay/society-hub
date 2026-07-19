@@ -5,8 +5,30 @@ import { ZodError } from "zod";
 import { env } from "./config";
 import { AppError, toErrorBody } from "./lib/errors";
 import { authRoutes } from "./modules/auth/routes";
-import { adminRoutes } from "./modules/admin/routes";
+import { adminRoutes, teamRoutes } from "./modules/admin/routes";
 import { complaintRoutes, mediaRoutes } from "./modules/complaints/routes";
+import {
+  buildingRoutes,
+  flatRoutes,
+  societyRoutes,
+  wingRoutes,
+} from "./modules/societies/routes";
+import { invitationRoutes } from "./modules/invitations/routes";
+import { billRoutes } from "./modules/bills/routes";
+import { paymentRoutes } from "./modules/payments/routes";
+import { noticeRoutes } from "./modules/notices/routes";
+import { notificationRoutes } from "./modules/notifications/routes";
+import { dashboardRoutes } from "./modules/dashboard/routes";
+import { auditAliasRoutes, auditRoutes } from "./modules/audit/routes";
+import { profileRoutes } from "./modules/profile/routes";
+import {
+  assetRoutes,
+  bookingRoutes,
+  eventRoutes,
+  parkingRoutes,
+  vendorRoutes,
+  visitorRoutes,
+} from "./modules/misc/routes";
 
 const app = new Elysia()
   .use(
@@ -52,8 +74,28 @@ const app = new Elysia()
   .get("/health", () => ({ ok: true, service: "society-hub-api" }))
   .use(authRoutes)
   .use(adminRoutes)
+  .use(teamRoutes)
   .use(complaintRoutes)
   .use(mediaRoutes)
+  .use(societyRoutes)
+  .use(buildingRoutes)
+  .use(wingRoutes)
+  .use(flatRoutes)
+  .use(invitationRoutes)
+  .use(billRoutes)
+  .use(paymentRoutes)
+  .use(noticeRoutes)
+  .use(notificationRoutes)
+  .use(dashboardRoutes)
+  .use(auditRoutes)
+  .use(auditAliasRoutes)
+  .use(profileRoutes)
+  .use(visitorRoutes)
+  .use(parkingRoutes)
+  .use(bookingRoutes)
+  .use(assetRoutes)
+  .use(vendorRoutes)
+  .use(eventRoutes)
   .listen(env.port);
 
 console.log(

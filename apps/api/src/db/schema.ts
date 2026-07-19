@@ -30,7 +30,11 @@ export const societies = mysqlTable("societies", {
   id: id(),
   name: varchar("name", { length: 200 }).notNull(),
   address: varchar("address", { length: 500 }),
+  city: varchar("city", { length: 120 }),
+  pincode: varchar("pincode", { length: 12 }),
   timezone: varchar("timezone", { length: 64 }).notNull().default("Asia/Kolkata"),
+  slaDays: int("sla_days").notNull().default(3),
+  billingDefaults: text("billing_defaults"),
   ...timestamps,
 });
 
@@ -188,6 +192,7 @@ export const complaints = mysqlTable(
     description: text("description").notNull(),
     status: mysqlEnum("status", [
       "open",
+      "assigned",
       "in_progress",
       "resolved",
       "closed",
@@ -196,12 +201,42 @@ export const complaints = mysqlTable(
       .default("open"),
     flatId: char("flat_id", { length: 36 }).notNull(),
     raisedByUserId: char("raised_by_user_id", { length: 36 }).notNull(),
+    assignedToUserId: char("assigned_to_user_id", { length: 36 }),
+    slaDueAt: datetime("sla_due_at", { mode: "string", fsp: 3 }),
     ...timestamps,
   },
   (t) => [
     index("complaints_tenant_status_idx").on(t.tenantId, t.status),
     uniqueIndex("complaints_tenant_ticket_uidx").on(t.tenantId, t.ticketNumber),
   ],
+);
+
+export const complaintComments = mysqlTable(
+  "complaint_comments",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    complaintId: char("complaint_id", { length: 36 }).notNull(),
+    userId: char("user_id", { length: 36 }).notNull(),
+    body: text("body").notNull(),
+    ...timestamps,
+  },
+  (t) => [index("complaint_comments_complaint_idx").on(t.complaintId)],
+);
+
+export const complaintStatusEvents = mysqlTable(
+  "complaint_status_events",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    complaintId: char("complaint_id", { length: 36 }).notNull(),
+    fromStatus: varchar("from_status", { length: 32 }),
+    toStatus: varchar("to_status", { length: 32 }).notNull(),
+    actorUserId: char("actor_user_id", { length: 36 }).notNull(),
+    note: text("note"),
+    ...timestamps,
+  },
+  (t) => [index("complaint_status_events_complaint_idx").on(t.complaintId)],
 );
 
 export const complaintAttachments = mysqlTable(
@@ -218,4 +253,281 @@ export const complaintAttachments = mysqlTable(
     ...timestamps,
   },
   (t) => [index("attachments_complaint_idx").on(t.complaintId)],
+);
+
+export const invitations = mysqlTable(
+  "invitations",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    email: varchar("email", { length: 200 }),
+    phone: varchar("phone", { length: 20 }),
+    role: mysqlEnum("role", ["admin", "resident", "superadmin"]).notNull(),
+    token: varchar("token", { length: 128 }).notNull(),
+    status: mysqlEnum("status", ["pending", "accepted", "revoked"])
+      .notNull()
+      .default("pending"),
+    invitedBy: char("invited_by", { length: 36 }).notNull(),
+    ...timestamps,
+  },
+  (t) => [
+    index("invitations_tenant_idx").on(t.tenantId),
+    uniqueIndex("invitations_token_uidx").on(t.token),
+  ],
+);
+
+export const residentProfiles = mysqlTable(
+  "resident_profiles",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    userId: char("user_id", { length: 36 }).notNull(),
+    emergencyContact: varchar("emergency_contact", { length: 40 }),
+    vehicleNumber: varchar("vehicle_number", { length: 32 }),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex("resident_profiles_tenant_user_uidx").on(t.tenantId, t.userId),
+  ],
+);
+
+export const verificationDocuments = mysqlTable(
+  "verification_documents",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    residentId: char("resident_id", { length: 36 }).notNull(),
+    fileName: varchar("file_name", { length: 255 }).notNull(),
+    blobPath: varchar("blob_path", { length: 500 }).notNull(),
+    contentType: varchar("content_type", { length: 120 }).notNull(),
+    ...timestamps,
+  },
+  (t) => [index("verification_documents_resident_idx").on(t.residentId)],
+);
+
+export const bills = mysqlTable(
+  "bills",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    flatId: char("flat_id", { length: 36 }).notNull(),
+    periodYm: varchar("period_ym", { length: 7 }).notNull(),
+    amountPaise: int("amount_paise").notNull(),
+    status: mysqlEnum("status", [
+      "draft",
+      "issued",
+      "paid",
+      "void",
+      "corrected",
+    ])
+      .notNull()
+      .default("draft"),
+    notes: text("notes"),
+    ...timestamps,
+  },
+  (t) => [
+    index("bills_tenant_flat_idx").on(t.tenantId, t.flatId),
+    index("bills_tenant_period_idx").on(t.tenantId, t.periodYm),
+  ],
+);
+
+export const billLineItems = mysqlTable(
+  "bill_line_items",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    billId: char("bill_id", { length: 36 }).notNull(),
+    label: varchar("label", { length: 200 }).notNull(),
+    amountPaise: int("amount_paise").notNull(),
+    ...timestamps,
+  },
+  (t) => [index("bill_line_items_bill_idx").on(t.billId)],
+);
+
+export const payments = mysqlTable(
+  "payments",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    billId: char("bill_id", { length: 36 }),
+    flatId: char("flat_id", { length: 36 }).notNull(),
+    amountPaise: int("amount_paise").notNull(),
+    method: mysqlEnum("method", ["razorpay", "cash", "cheque", "neft"]).notNull(),
+    status: mysqlEnum("status", ["pending", "success", "failed"])
+      .notNull()
+      .default("pending"),
+    razorpayOrderId: varchar("razorpay_order_id", { length: 120 }),
+    razorpayPaymentId: varchar("razorpay_payment_id", { length: 120 }),
+    receiptNumber: varchar("receipt_number", { length: 64 }),
+    ...timestamps,
+  },
+  (t) => [
+    index("payments_tenant_flat_idx").on(t.tenantId, t.flatId),
+    index("payments_tenant_bill_idx").on(t.tenantId, t.billId),
+  ],
+);
+
+export const notices = mysqlTable(
+  "notices",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    title: varchar("title", { length: 200 }).notNull(),
+    body: text("body").notNull(),
+    audience: mysqlEnum("audience", ["all", "wing", "flat"])
+      .notNull()
+      .default("all"),
+    wingId: char("wing_id", { length: 36 }),
+    flatId: char("flat_id", { length: 36 }),
+    publishedAt: datetime("published_at", { mode: "string", fsp: 3 }),
+    unpublishedAt: datetime("unpublished_at", { mode: "string", fsp: 3 }),
+    ...timestamps,
+  },
+  (t) => [index("notices_tenant_idx").on(t.tenantId)],
+);
+
+export const noticeReads = mysqlTable(
+  "notice_reads",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    noticeId: char("notice_id", { length: 36 }).notNull(),
+    userId: char("user_id", { length: 36 }).notNull(),
+    readAt: datetime("read_at", { mode: "string", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex("notice_reads_notice_user_uidx").on(t.noticeId, t.userId),
+  ],
+);
+
+export const notifications = mysqlTable(
+  "notifications",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    userId: char("user_id", { length: 36 }).notNull(),
+    title: varchar("title", { length: 200 }).notNull(),
+    body: text("body").notNull(),
+    kind: varchar("kind", { length: 40 }).notNull().default("general"),
+    readAt: datetime("read_at", { mode: "string", fsp: 3 }),
+    linkPath: varchar("link_path", { length: 300 }),
+    ...timestamps,
+  },
+  (t) => [index("notifications_tenant_user_idx").on(t.tenantId, t.userId)],
+);
+
+export const auditLogs = mysqlTable(
+  "audit_logs",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    actorUserId: char("actor_user_id", { length: 36 }).notNull(),
+    action: varchar("action", { length: 80 }).notNull(),
+    entityType: varchar("entity_type", { length: 80 }).notNull(),
+    entityId: char("entity_id", { length: 36 }).notNull(),
+    meta: text("meta"),
+    ...timestamps,
+  },
+  (t) => [
+    index("audit_logs_tenant_idx").on(t.tenantId),
+    index("audit_logs_entity_idx").on(t.entityType, t.entityId),
+  ],
+);
+
+export const visitors = mysqlTable(
+  "visitors",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    flatId: char("flat_id", { length: 36 }).notNull(),
+    visitorName: varchar("visitor_name", { length: 120 }).notNull(),
+    phone: varchar("phone", { length: 20 }),
+    purpose: varchar("purpose", { length: 200 }),
+    expectedAt: datetime("expected_at", { mode: "string", fsp: 3 }),
+    checkedInAt: datetime("checked_in_at", { mode: "string", fsp: 3 }),
+    checkedOutAt: datetime("checked_out_at", { mode: "string", fsp: 3 }),
+    ...timestamps,
+  },
+  (t) => [index("visitors_tenant_flat_idx").on(t.tenantId, t.flatId)],
+);
+
+export const parkingSlots = mysqlTable(
+  "parking_slots",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    flatId: char("flat_id", { length: 36 }),
+    slotNumber: varchar("slot_number", { length: 32 }).notNull(),
+    vehicleNumber: varchar("vehicle_number", { length: 32 }),
+    type: varchar("type", { length: 32 }).notNull().default("car"),
+    ...timestamps,
+  },
+  (t) => [index("parking_slots_tenant_idx").on(t.tenantId)],
+);
+
+export const bookings = mysqlTable(
+  "bookings",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    facilityName: varchar("facility_name", { length: 120 }).notNull(),
+    flatId: char("flat_id", { length: 36 }).notNull(),
+    bookedByUserId: char("booked_by_user_id", { length: 36 }).notNull(),
+    startAt: datetime("start_at", { mode: "string", fsp: 3 }).notNull(),
+    endAt: datetime("end_at", { mode: "string", fsp: 3 }).notNull(),
+    status: mysqlEnum("status", ["pending", "confirmed", "cancelled"])
+      .notNull()
+      .default("pending"),
+    ...timestamps,
+  },
+  (t) => [index("bookings_tenant_idx").on(t.tenantId)],
+);
+
+export const assets = mysqlTable(
+  "assets",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    name: varchar("name", { length: 200 }).notNull(),
+    category: varchar("category", { length: 80 }),
+    location: varchar("location", { length: 200 }),
+    purchaseDate: datetime("purchase_date", { mode: "string", fsp: 3 }),
+    value: int("value_paise"),
+    notes: text("notes"),
+    ...timestamps,
+  },
+  (t) => [index("assets_tenant_idx").on(t.tenantId)],
+);
+
+export const vendors = mysqlTable(
+  "vendors",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    name: varchar("name", { length: 200 }).notNull(),
+    category: varchar("category", { length: 80 }),
+    phone: varchar("phone", { length: 20 }),
+    email: varchar("email", { length: 200 }),
+    notes: text("notes"),
+    ...timestamps,
+  },
+  (t) => [index("vendors_tenant_idx").on(t.tenantId)],
+);
+
+export const events = mysqlTable(
+  "events",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    title: varchar("title", { length: 200 }).notNull(),
+    description: text("description"),
+    startAt: datetime("start_at", { mode: "string", fsp: 3 }),
+    endAt: datetime("end_at", { mode: "string", fsp: 3 }),
+    location: varchar("location", { length: 200 }),
+    ...timestamps,
+  },
+  (t) => [index("events_tenant_idx").on(t.tenantId)],
 );

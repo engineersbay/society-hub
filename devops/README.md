@@ -6,7 +6,7 @@ Infrastructure and deployment assets for **staging** and **production** on **Azu
 
 | Phase | What happens |
 |-------|----------------|
-| **Now (Spec + Phase 1 development)** | Keep this folder as the source of truth for how we will deploy. Flesh out Dockerfiles when `apps/api` and `apps/web` exist. **Do not** provision paid Azure production until Phase 1 app is ready. |
+| **Now (Spec + Phase 1 development)** | Keep this folder as the source of truth for how we will deploy. Flesh out Dockerfiles when `apps/api` and `apps/client-app` exist. **Do not** provision paid Azure production until Phase 1 app is ready. |
 | **After Phase 1 development** | Provision staging → deploy containers → pilot UAT → then production. |
 | **Phase 2 product** | Scale workers, Redis, payments webhooks; still prefer Container Apps over AKS. |
 
@@ -22,8 +22,9 @@ devops/
   docker/
     README.md               ← container strategy
     api.Dockerfile          ← template for apps/api (finalize during build)
-    web.Dockerfile          ← template for apps/web static/nginx
-    docker-compose.yml      ← local/dev compose (MySQL, Redis, api, web)
+    client-app.Dockerfile          ← template for apps/client-app static/nginx
+    manage.Dockerfile       ← template for apps/manage static/nginx
+    docker-compose.yml      ← local/dev compose (MySQL, Redis, api, web, manage)
     .dockerignore
   azure/
     README.md               ← subscription, resource groups, naming
@@ -47,7 +48,8 @@ flowchart TB
   end
 
   subgraph aca [Azure Container Apps]
-    Web["web container or Static Web Apps"]
+    Web["web Static Web Apps / container"]
+    Manage["manage Static Web Apps / container"]
     API["api container Bun Elysia"]
     Worker["worker optional Phase2"]
   end
@@ -59,8 +61,10 @@ flowchart TB
   end
 
   Browser --> Web
+  Browser --> Manage
   Browser --> API
   Web --> API
+  Manage --> API
   API --> MySQL
   API --> Blob
   API --> Redis

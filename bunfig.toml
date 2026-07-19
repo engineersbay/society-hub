@@ -2,3 +2,7 @@
 coverage = true
 coverageThreshold = { lines = 0.9, functions = 0.9, statements = 0.9 }
 coverageSkipTestFiles = true
+# Table/column declarations pulled in transitively by lib unit tests (e.g.
+# soft-delete.test.ts imports `users` for typing); not meaningfully unit
+# testable on their own and exercised via the integration suite instead.
+coveragePathIgnorePatterns = ["apps/api/src/db/**"]

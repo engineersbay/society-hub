@@ -37,7 +37,7 @@
 
 ## 5. Web UI/UX (React + Vite + Tailwind)
 
-**Product constraint:** SocietyHub MVP is a **simple, responsive web app** — not a native app, not a dense admin console.
+**Product constraint:** SocietyHub MVP uses **two simple, responsive web apps** (`apps/client-app` + `apps/manage`) — not a native app, not a dense admin console.
 
 - **Simple UX:** one job per screen; primary CTA obvious; short copy; large tap targets on mobile
 - **Responsive:** usable at ~375px (phone browser) and desktop; bottom nav or compact header on small screens; avoid heavy sidebars on mobile

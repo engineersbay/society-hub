@@ -1,6 +1,6 @@
 # Mobile apps (future)
 
-Native mobile clients for SocietyHub are **out of Phase 1**. Phase 1 is the **simple responsive web app** (`apps/web` when scaffolded).
+Native mobile clients for SocietyHub are **out of Phase 1**. Phase 1 is the **simple responsive web app** (`apps/client-app` when scaffolded).
 
 ## Planned approach
 

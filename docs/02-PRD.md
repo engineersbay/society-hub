@@ -2,7 +2,7 @@
 
 **Document:** 02-PRD  
 **Product:** SocietyHub  
-**Version:** 1.3  
+**Version:** 1.4  
 **Related:** [Vision](00-Vision.md), [BRD](01-BRD.md), [Architecture](03-Architecture.md)
 
 ## 1. Document control
@@ -10,8 +10,8 @@
 | Field | Value |
 |-------|--------|
 | Status | Phase 1 = working Complaints; other planned features = Coming soon in UI |
-| Version | 1.3 |
-| MVP client | **Simple responsive web app** (React); phone + desktop browsers |
+| Version | 1.4 |
+| MVP clients | **Two** simple responsive React apps: **client-app** (residents) + **manage** (Admin / Super Admin); phone + desktop browsers |
 | Pilot | Keshav Heights Society |
 | Source inputs | PSD, Vision, BRD, stakeholder MVP refinement |
 
@@ -19,7 +19,16 @@
 
 SocietyHub is a multi-tenant SaaS for housing societies. The **product roadmap includes all planned modules** (complaints, billing, payments, notices, notifications, dashboards, etc.).  
 
-**Phase 1 ships working Complaints** (plus auth and onboard). Other planned modules appear in the simple responsive UI as **Coming soon** placeholders—so residents and admins see the full product direction without implementing those backends yet.
+**Phase 1 ships working Complaints** (plus auth and onboard). Other planned modules appear in the simple responsive UIs as **Coming soon** placeholders—so residents and admins see the full product direction without implementing those backends yet.
+
+**Clients (Fassport-style split):**
+
+| App | Audience | Phase 1 live |
+|-----|----------|--------------|
+| `apps/client-app` | Residents | Login, raise/track own complaints, account |
+| `apps/manage` | Society Admin + Super Admin | Login, onboard, all complaints + status updates, account |
+
+Both share one API (`apps/api`) and `packages/sdk`.
 
 ## 3. Goals and success metrics
 
@@ -60,7 +69,7 @@ Secretary / Treasurer / Committee / Tenant refinements and full RBAC matrix appl
 ## 5. Product principles
 
 1. **Simple UI/UX** — non-technical residents and admins; few screens; large tap targets; plain language; no clutter.
-2. **Responsive web only (MVP)** — one React web app that works on phone browsers and desktop; **no native app** for MVP.
+2. **Responsive web only (MVP)** — two React web apps (`apps/client-app` + `apps/manage`) that work on phone browsers and desktop; **no native app** for MVP.
 3. Secure; complaint raise must feel as easy as messaging.
 4. See also [Vision](00-Vision.md).
 
@@ -76,7 +85,7 @@ Secretary / Treasurer / Committee / Tenant refinements and full RBAC matrix appl
 | Show planned modules with a clear **Coming soon** label | Hide the roadmap entirely or pretend features work |
 | Readable contrast, simple Tailwind styling | Decorative cards, gradients, badge clutter |
 
-**Client:** responsive **web application** (React + Vite + Tailwind). Test at ~375px width and desktop.
+**Clients:** two responsive **web applications** (React + Vite + Tailwind): resident portal and manage portal. Test at ~375px width and desktop.
 
 ### 5.2 Information architecture — Complaints live, rest Coming soon
 
@@ -84,13 +93,13 @@ Navigation (simple list or bottom/side nav) includes **all planned product areas
 
 | Nav item | Phase 1 behavior |
 |----------|------------------|
-| Home / Complaints | **Live** — list, raise, detail, status (Admin: all complaints) |
+| Home / Complaints | **Live** — residents raise/track in `apps/client-app`; admins list all + status in `apps/manage` |
 | Bills / Maintenance | **Coming soon** — placeholder screen, no API |
 | Payments | **Coming soon** |
 | Notices | **Coming soon** |
 | Notifications | **Coming soon** (optional entry) |
 | Dashboard / Reports | **Coming soon** |
-| Residents / Directory | **Live enough for Admin onboard** only; richer directory Coming soon if not needed |
+| Residents / Directory | **Live in Manage** — Admin onboard only; richer directory Coming soon if not needed |
 | Settings / Profile | Minimal live (logout, PIN); extras Coming soon |
 
 **Coming soon screen:** short title, one-line “This feature is coming soon”, optional back to Complaints. No forms that submit. No dead ends without a way back.
