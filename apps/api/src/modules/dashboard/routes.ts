@@ -1,18 +1,23 @@
 import { Elysia } from "elysia";
 import { and, count, eq, inArray, isNotNull, isNull, ne } from "drizzle-orm";
 import type { DashboardStatsDto } from "@society-hub/types";
+import { listQuerySchema } from "@society-hub/validation";
 import { db } from "../../db/client";
 import { bills, bookings, complaints, notices, notifications } from "../../db/schema";
 import { authPlugin, isStaffRole, requireAuth } from "../../lib/auth-context";
 
-
 export const dashboardRoutes = new Elysia({ prefix: "/v1/dashboard" })
   .use(authPlugin)
-  .get("/stats", async ({ auth }) => {
+  .get("/stats", async ({ auth, query }) => {
     const claims = requireAuth(auth);
+    const { mine } = listQuerySchema
+      .pick({ mine: true })
+      .parse(query ?? {});
     const staff = isStaffRole(claims.role);
+    /** Society-wide KPIs only in admin staff view; Resident mode uses mine=1. */
+    const societyWide = staff && !mine;
 
-    const complaintWhere = staff
+    const complaintWhere = societyWide
       ? and(eq(complaints.tenantId, claims.tenantId), eq(complaints.isDeleted, false))
       : and(
           eq(complaints.tenantId, claims.tenantId),
@@ -28,7 +33,7 @@ export const dashboardRoutes = new Elysia({ prefix: "/v1/dashboard" })
       db.select({ total: count() }).from(complaints).where(complaintWhere),
     ]);
 
-    const billWhere = staff
+    const billWhere = societyWide
       ? and(eq(bills.tenantId, claims.tenantId), eq(bills.isDeleted, false))
       : and(
           eq(bills.tenantId, claims.tenantId),
@@ -42,16 +47,23 @@ export const dashboardRoutes = new Elysia({ prefix: "/v1/dashboard" })
       .where(and(billWhere, inArray(bills.status, ["issued"])));
     const duesOutstandingPaise = outstandingRows.reduce((sum, b) => sum + b.amountPaise, 0);
 
-    const [bookingRow] = await db
-      .select({ total: count() })
-      .from(bookings)
-      .where(
-        and(
+    const bookingWhere = societyWide
+      ? and(
           eq(bookings.tenantId, claims.tenantId),
           eq(bookings.isDeleted, false),
           ne(bookings.status, "cancelled"),
-        ),
-      );
+        )
+      : and(
+          eq(bookings.tenantId, claims.tenantId),
+          eq(bookings.bookedByUserId, claims.sub),
+          eq(bookings.isDeleted, false),
+          ne(bookings.status, "cancelled"),
+        );
+
+    const [bookingRow] = await db
+      .select({ total: count() })
+      .from(bookings)
+      .where(bookingWhere);
 
     const [noticeRow] = await db
       .select({ total: count() })

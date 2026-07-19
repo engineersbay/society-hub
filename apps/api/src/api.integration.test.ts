@@ -612,8 +612,22 @@ describe("api integration", () => {
       headers: { Authorization: `Bearer ${admin.tokens.accessToken}` },
     });
     expect(stats.ok).toBe(true);
-    const statsBody = (await stats.json()) as { totalComplaints: number };
+    const statsBody = (await stats.json()) as {
+      totalComplaints: number;
+      openComplaints: number;
+    };
     expect(statsBody.totalComplaints).toBeGreaterThanOrEqual(0);
+
+    const mineStats = await fetch(`${base}/v1/dashboard/stats?mine=1`, {
+      headers: { Authorization: `Bearer ${admin.tokens.accessToken}` },
+    });
+    expect(mineStats.ok).toBe(true);
+    const mineBody = (await mineStats.json()) as {
+      totalComplaints: number;
+      openComplaints: number;
+    };
+    expect(mineBody.totalComplaints).toBeLessThanOrEqual(statsBody.totalComplaints);
+    expect(mineBody.openComplaints).toBeLessThanOrEqual(statsBody.openComplaints);
 
     const resident = await otpLogin("8888888888");
     const residentStats = await fetch(`${base}/v1/dashboard/stats`, {
