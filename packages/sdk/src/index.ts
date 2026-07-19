@@ -15,6 +15,8 @@ import type {
   NoticeDto,
   NotificationDto,
   AuditLogDto,
+  ActivityEventDto,
+  PlatformUserDto,
   TeamMemberDto,
   VisitorDto,
   ParkingSlotDto,
@@ -268,6 +270,17 @@ export function createSocietyHubClient(opts: SocietyHubClientOptions) {
         method: "POST",
         body: JSON.stringify(body),
       }),
+
+    listPlatformUsers: (q?: string) => {
+      const query = q?.trim() ? `?q=${encodeURIComponent(q.trim())}` : "";
+      return request<PlatformUserDto[]>(`/v1/manage/users${query}`);
+    },
+    getPlatformUser: (id: string) =>
+      request<PlatformUserDto>(`/v1/manage/users/${id}`),
+    listUserActivity: (userId: string) =>
+      request<ActivityEventDto[]>(`/v1/manage/users/${userId}/activity`),
+    listPlatformActivity: () =>
+      request<ActivityEventDto[]>("/v1/manage/activity"),
 
     listBuildings: (societyId: string) =>
       request<BuildingDto[]>(`/v1/societies/${societyId}/buildings`),

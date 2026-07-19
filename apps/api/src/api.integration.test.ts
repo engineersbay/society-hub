@@ -31,7 +31,7 @@ async function passwordLogin(email: string, password: string) {
   });
   expect(res.ok).toBe(true);
   return (await res.json()) as {
-    user: { role: string; email: string | null };
+    user: { id: string; role: string; email: string | null };
     tokens: { accessToken: string; refreshToken: string };
   };
 }
@@ -294,6 +294,50 @@ describe("api integration", () => {
       tokens: { accessToken: string };
     };
     expect(selected.user.tenantId).toBe(list[0]!.tenantId);
+  });
+
+  test("platform user directory and activity trail", async () => {
+    const session = await passwordLogin(
+      "superadmin@societyhub.local",
+      "Test@1234",
+    );
+    const auth = {
+      Authorization: `Bearer ${session.tokens.accessToken}`,
+    };
+
+    const usersRes = await fetch(
+      `${base}/v1/manage/users?q=${encodeURIComponent("superadmin")}`,
+      { headers: auth },
+    );
+    expect(usersRes.status).toBe(200);
+    const usersList = (await usersRes.json()) as {
+      id: string;
+      email: string | null;
+      memberships: { role: string }[];
+    }[];
+    expect(Array.isArray(usersList)).toBe(true);
+    expect(usersList.length).toBeGreaterThan(0);
+    const me =
+      usersList.find((u) => u.id === session.user.id) ??
+      usersList.find((u) => u.email === session.user.email);
+    expect(me).toMatchObject({ id: session.user.id });
+    expect(me!.memberships.some((m) => m.role === "superadmin")).toBe(true);
+
+    const activityRes = await fetch(
+      `${base}/v1/manage/users/${me!.id}/activity`,
+      { headers: auth },
+    );
+    expect(activityRes.status).toBe(200);
+    const activity = (await activityRes.json()) as {
+      action: string;
+      message: string | null;
+    }[];
+    expect(activity.some((a) => a.action === "user.password_login")).toBe(true);
+
+    const platform = await fetch(`${base}/v1/manage/activity`, { headers: auth });
+    expect(platform.status).toBe(200);
+    const feed = (await platform.json()) as { action: string }[];
+    expect(feed.length).toBeGreaterThan(0);
   });
 
   test("superadmin can create a society via manage flow", async () => {

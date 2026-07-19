@@ -218,10 +218,43 @@ export type AuditLogDto = {
   actorUserId: string;
   actorName: string | null;
   action: string;
+  message?: string | null;
   entityType: string;
   entityId: string;
   meta: string | null;
   createdAt: string;
+};
+
+/** Fassport-style activity event (platform / entity history). */
+export type ActivityEventDto = {
+  id: string;
+  tenantId: string;
+  societyName: string | null;
+  actorUserId: string;
+  actorName: string | null;
+  action: string;
+  message: string | null;
+  entityType: string;
+  entityId: string;
+  meta: string | null;
+  createdAt: string;
+};
+
+export type PlatformUserMembershipDto = {
+  tenantId: string;
+  societyName: string;
+  role: Role;
+};
+
+export type PlatformUserDto = {
+  id: string;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  username: string | null;
+  memberships: PlatformUserMembershipDto[];
+  createdAt: string;
+  lastActivityAt: string | null;
 };
 
 export type TeamMemberDto = {

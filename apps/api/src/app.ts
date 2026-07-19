@@ -23,6 +23,10 @@ import { auditAliasRoutes, auditRoutes } from "./modules/audit/routes";
 import { profileRoutes } from "./modules/profile/routes";
 import { manageTeamRoutes } from "./modules/manage/team-routes";
 import {
+  manageActivityRoutes,
+  manageUserRoutes,
+} from "./modules/manage/user-routes";
+import {
   assetRoutes,
   bookingRoutes,
   eventRoutes,
@@ -101,6 +105,8 @@ export function createApp() {
     .use(mediaRoutes)
     .use(societyRoutes)
     .use(manageTeamRoutes)
+    .use(manageUserRoutes)
+    .use(manageActivityRoutes)
     .use(buildingRoutes)
     .use(wingRoutes)
     .use(flatRoutes)
