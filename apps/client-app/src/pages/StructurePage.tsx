@@ -11,8 +11,11 @@ function BuildingBlock({ building }: { building: BuildingDto }) {
   const [wings, setWings] = useState<WingDto[]>([]);
   const [flatsByWing, setFlatsByWing] = useState<Record<string, FlatDto[]>>({});
   const [newWing, setNewWing] = useState("");
-  const [newFlat, setNewFlat] = useState<Record<string, string>>({});
+  const [draft, setDraft] = useState<
+    Record<string, { number: string; floor: string; parkingSlot: string }>
+  >({});
   const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   function loadWings() {
     client
@@ -47,14 +50,19 @@ function BuildingBlock({ building }: { building: BuildingDto }) {
 
   async function addFlat(wingId: string, e: FormEvent) {
     e.preventDefault();
-    const value = newFlat[wingId]?.trim();
-    if (!value) return;
+    const d = draft[wingId] ?? { number: "", floor: "", parkingSlot: "" };
+    if (!d.number.trim()) return;
+    setError(null);
     try {
-      await client.createFlat(wingId, value);
-      setNewFlat((m) => ({ ...m, [wingId]: "" }));
+      await client.createFlat(wingId, {
+        number: d.number.trim(),
+        floor: d.floor === "" ? null : Number(d.floor),
+        parkingSlot: d.parkingSlot.trim() || null,
+      });
+      setDraft((m) => ({ ...m, [wingId]: { number: "", floor: "", parkingSlot: "" } }));
       loadFlats(wingId);
-    } catch {
-      // best effort
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.body.message : "Failed to add flat");
     }
   }
 
@@ -72,37 +80,91 @@ function BuildingBlock({ building }: { building: BuildingDto }) {
 
       {open && (
         <div className="mt-4 space-y-4">
-          {wings.map((w) => (
-            <div key={w.id} className="rounded-lg border border-[var(--sand)] p-3">
-              <button
-                type="button"
-                className="flex w-full items-center justify-between text-left text-sm font-medium"
-                onClick={() => loadFlats(w.id)}
-              >
-                <span>Wing {w.name}</span>
-                <span className="text-xs text-black/40">View flats</span>
-              </button>
-              {flatsByWing[w.id] && (
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {flatsByWing[w.id]!.length === 0 && (
-                    <p className="text-xs text-black/40">No flats yet.</p>
-                  )}
-                  {flatsByWing[w.id]!.map((f) => (
-                    <span key={f.id} className="badge">{f.number}</span>
-                  ))}
-                </div>
-              )}
-              <form className="mt-2 flex gap-2" onSubmit={(e) => addFlat(w.id, e)}>
-                <input
-                  className="input !py-1.5 text-sm"
-                  placeholder="Flat number"
-                  value={newFlat[w.id] ?? ""}
-                  onChange={(e) => setNewFlat((m) => ({ ...m, [w.id]: e.target.value }))}
-                />
-                <button className="btn btn-ghost btn-sm" type="submit">Add flat</button>
-              </form>
-            </div>
-          ))}
+          {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
+          {wings.map((w) => {
+            const d = draft[w.id] ?? { number: "", floor: "", parkingSlot: "" };
+            const flats = flatsByWing[w.id];
+            const byFloor = new Map<number | "unset", FlatDto[]>();
+            (flats ?? []).forEach((f) => {
+              const key = f.floor ?? "unset";
+              const list = byFloor.get(key) ?? [];
+              list.push(f);
+              byFloor.set(key, list);
+            });
+
+            return (
+              <div key={w.id} className="rounded-lg border border-[var(--sand)] p-3">
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between text-left text-sm font-medium"
+                  onClick={() => loadFlats(w.id)}
+                >
+                  <span>Wing {w.name}</span>
+                  <span className="text-xs text-black/40">View flats by floor</span>
+                </button>
+                {flats && (
+                  <div className="mt-2 space-y-2">
+                    {flats.length === 0 && (
+                      <p className="text-xs text-black/40">No flats yet.</p>
+                    )}
+                    {[...byFloor.entries()].map(([floor, list]) => (
+                      <div key={String(floor)}>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-black/40">
+                          {floor === "unset" ? "No floor set" : `Floor ${floor}`}
+                        </p>
+                        <div className="mt-1 flex flex-wrap gap-1.5">
+                          {list.map((f) => (
+                            <span key={f.id} className="badge" title={f.parkingSlot ?? undefined}>
+                              {f.number}
+                              {f.parkingSlot ? ` · ${f.parkingSlot}` : ""}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <form
+                  className="mt-3 grid gap-2 sm:grid-cols-4"
+                  onSubmit={(e) => addFlat(w.id, e)}
+                  data-testid="structure-add-flat-form"
+                >
+                  <input
+                    className="input !py-1.5 text-sm"
+                    placeholder="Flat no."
+                    value={d.number}
+                    onChange={(e) =>
+                      setDraft((m) => ({ ...m, [w.id]: { ...d, number: e.target.value } }))
+                    }
+                    required
+                  />
+                  <input
+                    className="input !py-1.5 text-sm"
+                    placeholder="Floor"
+                    inputMode="numeric"
+                    value={d.floor}
+                    onChange={(e) =>
+                      setDraft((m) => ({ ...m, [w.id]: { ...d, floor: e.target.value } }))
+                    }
+                  />
+                  <input
+                    className="input !py-1.5 text-sm"
+                    placeholder="Parking slot"
+                    value={d.parkingSlot}
+                    onChange={(e) =>
+                      setDraft((m) => ({
+                        ...m,
+                        [w.id]: { ...d, parkingSlot: e.target.value },
+                      }))
+                    }
+                  />
+                  <button className="btn btn-ghost btn-sm" type="submit">
+                    Add flat
+                  </button>
+                </form>
+              </div>
+            );
+          })}
           <form className="flex gap-2" onSubmit={addWing}>
             <input
               className="input text-sm"
@@ -111,7 +173,9 @@ function BuildingBlock({ building }: { building: BuildingDto }) {
               onChange={(e) => setNewWing(e.target.value)}
               data-testid="structure-new-wing"
             />
-            <button className="btn btn-ghost btn-sm" type="submit">Add wing</button>
+            <button className="btn btn-ghost btn-sm" type="submit">
+              Add wing
+            </button>
           </form>
         </div>
       )}
@@ -158,7 +222,8 @@ export function StructurePage() {
       <div className="mb-6">
         <h1 className="font-display text-2xl">{society?.name ?? "Society structure"}</h1>
         <p className="mt-1 text-sm text-black/55">
-          {[society?.city, society?.pincode].filter(Boolean).join(" · ") || society?.address || "Buildings, wings and flats"}
+          Buildings → wings → floors → flats (with parking slots). Needed so residents can
+          raise complaints against the right flat.
         </p>
       </div>
 
@@ -168,24 +233,28 @@ export function StructurePage() {
           <BuildingBlock key={b.id} building={b} />
         ))}
         {buildings.length === 0 && (
-          <div className="empty-state" data-testid="structure-empty">No buildings added yet.</div>
+          <div className="empty-state" data-testid="structure-empty">
+            No buildings added yet.
+          </div>
         )}
       </div>
 
       <form className="card mt-4 flex flex-wrap items-end gap-2 p-4" onSubmit={addBuilding}>
         <div className="flex-1">
-          <label className="label" htmlFor="new-building">Add building</label>
+          <label className="label" htmlFor="new-building">
+            Add building
+          </label>
           <input
             id="new-building"
             className="input"
-            placeholder="e.g. Tower B"
             value={newBuilding}
             onChange={(e) => setNewBuilding(e.target.value)}
+            placeholder="Tower A"
             data-testid="structure-new-building"
           />
         </div>
         <button className="btn btn-primary" type="submit" data-testid="structure-add-building">
-          Add building
+          Add
         </button>
       </form>
       {error && <p className="mt-3 text-sm text-[var(--danger)]">{error}</p>}
