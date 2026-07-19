@@ -55,8 +55,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/home/complaints/:id',
-            builder: (context, state) =>
-                ComplaintDetailPage(id: state.pathParameters['id']!),
+            builder: (context, state) => ComplaintDetailPage(
+              id: state.pathParameters['id']!,
+              justCreated:
+                  state.uri.queryParameters['justCreated'] == '1',
+            ),
           ),
           GoRoute(
             path: '/home/onboard',

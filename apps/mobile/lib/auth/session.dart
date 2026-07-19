@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -7,9 +8,9 @@ import '../api/models.dart';
 import '../api/society_hub_api.dart';
 import '../config/api_config.dart';
 
-const _accessKey = 'sh_mobile_access';
-const _refreshKey = 'sh_mobile_refresh';
-const _userKey = 'sh_mobile_user';
+const accessTokenStorageKey = 'sh_mobile_access';
+const refreshTokenStorageKey = 'sh_mobile_refresh';
+const userStorageKey = 'sh_mobile_user';
 
 /// Roles allowed in Client App (mirrors web `auth.tsx`).
 const allowedRoles = {
@@ -66,16 +67,31 @@ class SessionState {
   }
 }
 
+final secureStorageProvider = Provider<FlutterSecureStorage>((ref) {
+  return const FlutterSecureStorage();
+});
+
+final apiConfigProvider = Provider<ApiConfig>((ref) {
+  return ApiConfig.fromEnvironment();
+});
+
+/// When true, skip reading secure storage / calling `/me` on startup (tests).
+final skipSessionRestoreProvider = Provider<bool>((ref) => false);
+
+/// Optional Dio injection for tests — wired via [SessionController.replaceApiForTest].
+final sessionProvider =
+    NotifierProvider<SessionController, SessionState>(SessionController.new);
+
 class SessionController extends Notifier<SessionState> {
-  late final FlutterSecureStorage _storage;
-  late final SocietyHubApi api;
+  late FlutterSecureStorage _storage;
+  late SocietyHubApi api;
   String? _access;
   String? _refresh;
 
   @override
   SessionState build() {
-    _storage = const FlutterSecureStorage();
-    final config = ApiConfig.fromEnvironment();
+    _storage = ref.watch(secureStorageProvider);
+    final config = ref.watch(apiConfigProvider);
     api = SocietyHubApi(
       config: config,
       getAccessToken: () => _access,
@@ -83,15 +99,25 @@ class SessionController extends Notifier<SessionState> {
       onTokens: _persistTokens,
       onSessionInvalid: clearSession,
     );
-    Future.microtask(_restore);
-    return const SessionState();
+    final skip = ref.watch(skipSessionRestoreProvider);
+    if (!skip) {
+      Future.microtask(_restore);
+      return const SessionState();
+    }
+    return const SessionState(loading: false);
+  }
+
+  /// Swap API client after build (unit / widget tests with mocked Dio).
+  @visibleForTesting
+  void replaceApiForTest(SocietyHubApi next) {
+    api = next;
   }
 
   Future<void> _restore() async {
     try {
-      _access = await _storage.read(key: _accessKey);
-      _refresh = await _storage.read(key: _refreshKey);
-      final raw = await _storage.read(key: _userKey);
+      _access = await _storage.read(key: accessTokenStorageKey);
+      _refresh = await _storage.read(key: refreshTokenStorageKey);
+      final raw = await _storage.read(key: userStorageKey);
       if (_access == null || raw == null) {
         state = state.copyWith(loading: false, clearUser: true);
         return;
@@ -132,12 +158,12 @@ class SessionController extends Notifier<SessionState> {
   Future<void> _persistTokens(AuthTokens tokens) async {
     _access = tokens.accessToken;
     _refresh = tokens.refreshToken;
-    await _storage.write(key: _accessKey, value: tokens.accessToken);
-    await _storage.write(key: _refreshKey, value: tokens.refreshToken);
+    await _storage.write(key: accessTokenStorageKey, value: tokens.accessToken);
+    await _storage.write(key: refreshTokenStorageKey, value: tokens.refreshToken);
   }
 
   Future<void> _persistUser(UserDto user) async {
-    await _storage.write(key: _userKey, value: jsonEncode(user.toJson()));
+    await _storage.write(key: userStorageKey, value: jsonEncode(user.toJson()));
   }
 
   Future<void> setSession(UserDto user, AuthTokens tokens) async {
@@ -161,9 +187,9 @@ class SessionController extends Notifier<SessionState> {
     final refresh = _refresh;
     _access = null;
     _refresh = null;
-    await _storage.delete(key: _accessKey);
-    await _storage.delete(key: _refreshKey);
-    await _storage.delete(key: _userKey);
+    await _storage.delete(key: accessTokenStorageKey);
+    await _storage.delete(key: refreshTokenStorageKey);
+    await _storage.delete(key: userStorageKey);
     if (refresh != null && refresh.isNotEmpty) {
       try {
         await api.logout(refresh);
@@ -184,10 +210,10 @@ class SessionController extends Notifier<SessionState> {
     if (user == null) return false;
     return canUseAdminMode(user.role) && state.mode == AppMode.admin;
   }
-}
 
-final sessionProvider =
-    NotifierProvider<SessionController, SessionState>(SessionController.new);
+  String? get debugAccessToken => _access;
+  String? get debugRefreshToken => _refresh;
+}
 
 final apiProvider = Provider<SocietyHubApi>((ref) {
   return ref.watch(sessionProvider.notifier).api;

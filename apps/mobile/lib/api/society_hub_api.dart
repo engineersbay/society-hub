@@ -20,21 +20,23 @@ class SocietyHubApi {
     required TokenGetter getRefreshToken,
     required TokensSaver onTokens,
     required SessionCleared onSessionInvalid,
+    Dio? dio,
   })  : _getAccessToken = getAccessToken,
         _getRefreshToken = getRefreshToken,
         _onTokens = onTokens,
         _onSessionInvalid = onSessionInvalid,
-        _dio = Dio(
-          BaseOptions(
-            baseUrl: config.baseUrl,
-            connectTimeout: const Duration(seconds: 15),
-            receiveTimeout: const Duration(seconds: 30),
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json',
-            },
-          ),
-        ) {
+        _dio = dio ??
+            Dio(
+              BaseOptions(
+                baseUrl: config.baseUrl,
+                connectTimeout: const Duration(seconds: 15),
+                receiveTimeout: const Duration(seconds: 30),
+                headers: {
+                  'Accept': 'application/json',
+                  'Content-Type': 'application/json',
+                },
+              ),
+            ) {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
@@ -245,9 +247,14 @@ class SocietyHubApi {
     );
   }
 
-  Future<PaginatedComplaints> listComplaints({int page = 1, int limit = 20}) {
+  Future<PaginatedComplaints> listComplaints({
+    int page = 1,
+    int limit = 20,
+    bool mine = false,
+  }) {
+    final mineQs = mine ? '&mine=1' : '';
     return _request(
-      '/v1/complaints?page=$page&limit=$limit',
+      '/v1/complaints?page=$page&limit=$limit$mineQs',
       parse: (json) =>
           PaginatedComplaints.fromJson(json as Map<String, dynamic>),
     );
@@ -281,12 +288,68 @@ class SocietyHubApi {
     );
   }
 
-  Future<ComplaintDto> updateComplaintStatus(String id, String status) {
+  Future<ComplaintDto> updateComplaintStatus(
+    String id,
+    String status, {
+    String? note,
+    String? assignedToUserId,
+  }) {
     return _request(
       '/v1/complaints/$id/status',
       method: 'PATCH',
-      data: {'status': status},
+      data: {
+        'status': status,
+        'note': note,
+        'assignedToUserId': assignedToUserId,
+      },
       parse: (json) => ComplaintDto.fromJson(json as Map<String, dynamic>),
+    );
+  }
+
+  Future<ComplaintDto> uploadAttachment({
+    required String complaintId,
+    required String filePath,
+    required String filename,
+  }) async {
+    try {
+      final form = FormData.fromMap({
+        'file': await MultipartFile.fromFile(filePath, filename: filename),
+      });
+      final res = await _dio.post<dynamic>(
+        '/v1/complaints/$complaintId/attachments',
+        data: form,
+        options: Options(
+          contentType: 'multipart/form-data',
+          extra: {'auth': true},
+        ),
+      );
+      return ComplaintDto.fromJson(res.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  Future<ResidentProfileDto> getProfile() {
+    return _request(
+      '/v1/profile',
+      parse: (json) =>
+          ResidentProfileDto.fromJson(json as Map<String, dynamic>),
+    );
+  }
+
+  Future<ResidentProfileDto> updateProfile({
+    String? emergencyContact,
+    String? vehicleNumber,
+  }) {
+    return _request(
+      '/v1/profile',
+      method: 'PATCH',
+      data: {
+        'emergencyContact': emergencyContact,
+        'vehicleNumber': vehicleNumber,
+      },
+      parse: (json) =>
+          ResidentProfileDto.fromJson(json as Map<String, dynamic>),
     );
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../api/models.dart';
 import '../core/theme.dart';
 
 class ShCard extends StatelessWidget {
@@ -146,7 +147,7 @@ class StatusBadge extends StatelessWidget {
         border: Border.all(color: AppColors.sand.withValues(alpha: 0.6)),
       ),
       child: Text(
-        status.replaceAll('_', ' '),
+        complaintStatusLabel(status),
         style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: fg),
       ),
     );

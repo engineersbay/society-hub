@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../api/models.dart';
 import '../../../auth/session.dart';
+import '../../../core/app_keys.dart';
 import '../../../core/theme.dart';
 import '../../../shared/widgets.dart';
 
@@ -16,14 +17,42 @@ class AccountPage extends ConsumerStatefulWidget {
 
 class _AccountPageState extends ConsumerState<AccountPage> {
   final _pin = TextEditingController();
+  final _emergency = TextEditingController();
+  final _vehicle = TextEditingController();
+  ResidentProfileDto? _profile;
   bool _busy = false;
+  bool _profileBusy = false;
   String? _message;
   String? _error;
+  String? _profileMessage;
+  String? _profileError;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
 
   @override
   void dispose() {
     _pin.dispose();
+    _emergency.dispose();
+    _vehicle.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadProfile() async {
+    try {
+      final profile = await ref.read(apiProvider).getProfile();
+      if (!mounted) return;
+      setState(() {
+        _profile = profile;
+        _emergency.text = profile.emergencyContact ?? '';
+        _vehicle.text = profile.vehicleNumber ?? '';
+      });
+    } on ApiException {
+      // Profile is optional for staff without a residents row.
+    }
   }
 
   Future<void> _setPin() async {
@@ -45,25 +74,235 @@ class _AccountPageState extends ConsumerState<AccountPage> {
     }
   }
 
+  Future<void> _saveProfile() async {
+    setState(() {
+      _profileBusy = true;
+      _profileError = null;
+      _profileMessage = null;
+    });
+    try {
+      final next = await ref.read(apiProvider).updateProfile(
+            emergencyContact: _emergency.text.trim().isEmpty
+                ? null
+                : _emergency.text.trim(),
+            vehicleNumber: _vehicle.text.trim().isEmpty
+                ? null
+                : _vehicle.text.trim().toUpperCase(),
+          );
+      if (!mounted) return;
+      setState(() {
+        _profile = next;
+        _profileMessage = 'Profile updated';
+      });
+    } on ApiException catch (e) {
+      setState(() => _profileError = e.message);
+    } finally {
+      if (mounted) setState(() => _profileBusy = false);
+    }
+  }
+
+  Widget _flatField(String label, String value, {Key? key}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label.toUpperCase(),
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
+              color: Colors.black45,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            key: key,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(sessionProvider).user;
+    final flat = _profile?.flat;
+    final flatLabel = flat != null
+        ? flat.label
+        : user?.flatNumber != null
+            ? 'Flat ${user!.flatNumber}'
+            : null;
 
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
         Text('Account', style: displayStyle(size: 28)),
+        const SizedBox(height: 4),
+        Text(
+          [
+            user?.email ?? user?.phone ?? 'No contact',
+            user?.role ?? '—',
+            if (flatLabel != null)
+              flatLabel.startsWith('Flat') ? flatLabel : 'Flat $flatLabel',
+          ].join(' · '),
+          style: const TextStyle(color: Colors.black54),
+        ),
+        const SizedBox(height: 16),
+        ShCard(
+          key: AppKeys.accountFlatDetails,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'My flat',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Society home linked to your account in this society.',
+                style: TextStyle(color: Colors.black54, fontSize: 13),
+              ),
+              const SizedBox(height: 12),
+              if (flat != null)
+                Wrap(
+                  spacing: 24,
+                  runSpacing: 4,
+                  children: [
+                    SizedBox(
+                      width: 140,
+                      child: _flatField(
+                        'Society',
+                        _profile?.societyName ?? '—',
+                        key: AppKeys.accountSocietyName,
+                      ),
+                    ),
+                    SizedBox(
+                      width: 140,
+                      child: _flatField(
+                        'Flat',
+                        flat.label,
+                        key: AppKeys.accountFlatNumber,
+                      ),
+                    ),
+                    SizedBox(
+                      width: 140,
+                      child: _flatField(
+                        'Building',
+                        flat.buildingName ?? '—',
+                      ),
+                    ),
+                    SizedBox(
+                      width: 140,
+                      child: _flatField('Wing', flat.wingName ?? '—'),
+                    ),
+                    SizedBox(
+                      width: 140,
+                      child: _flatField(
+                        'Floor',
+                        flat.floor != null ? '${flat.floor}' : '—',
+                      ),
+                    ),
+                    SizedBox(
+                      width: 140,
+                      child: _flatField(
+                        'Parking',
+                        flat.parkingSlot ?? '—',
+                      ),
+                    ),
+                    SizedBox(
+                      width: 280,
+                      child: _flatField(
+                        'Occupancy',
+                        flat.isOwner ? 'Owner' : 'Tenant / occupant',
+                      ),
+                    ),
+                  ],
+                )
+              else
+                const Text(
+                  key: AppKeys.accountFlatEmpty,
+                  'No flat is linked to your account in this society yet. Ask a society admin to onboard you.',
+                  style: TextStyle(color: Colors.black54, fontSize: 13),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        ShCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'Profile',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Helpful for security and society records.',
+                style: TextStyle(color: Colors.black54, fontSize: 14),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                key: AppKeys.accountEmergencyContact,
+                controller: _emergency,
+                decoration: const InputDecoration(
+                  labelText: 'Emergency contact',
+                  hintText: 'Name & phone number',
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                key: AppKeys.accountVehicleNumber,
+                controller: _vehicle,
+                textCapitalization: TextCapitalization.characters,
+                decoration: const InputDecoration(
+                  labelText: 'Vehicle number',
+                  hintText: 'MH12AB1234',
+                ),
+              ),
+              const SizedBox(height: 12),
+              ShPrimaryButton(
+                label: 'Save profile',
+                busy: _profileBusy,
+                onPressed: _saveProfile,
+              ),
+              if (_profileMessage != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  _profileMessage!,
+                  style: const TextStyle(color: Color(0xFF2E7D32)),
+                ),
+              ],
+              if (_profileError != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  _profileError!,
+                  style: const TextStyle(color: AppColors.danger),
+                ),
+              ],
+            ],
+          ),
+        ),
         const SizedBox(height: 16),
         ShCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(user?.name ?? '—', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 18)),
+              Text(
+                user?.name ?? '—',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 18,
+                ),
+              ),
               const SizedBox(height: 8),
               Text('Role: ${user?.role ?? '—'}'),
               Text('Phone: ${user?.phone ?? '—'}'),
               Text('Email: ${user?.email ?? '—'}'),
-              if (user?.flatNumber != null) Text('Flat: ${user!.flatNumber}'),
             ],
           ),
         ),
@@ -96,7 +335,10 @@ class _AccountPageState extends ConsumerState<AccountPage> {
               ),
               if (_message != null) ...[
                 const SizedBox(height: 8),
-                Text(_message!, style: const TextStyle(color: Color(0xFF2E7D32))),
+                Text(
+                  _message!,
+                  style: const TextStyle(color: Color(0xFF2E7D32)),
+                ),
               ],
               if (_error != null) ...[
                 const SizedBox(height: 8),

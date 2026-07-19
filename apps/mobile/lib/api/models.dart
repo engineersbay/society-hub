@@ -117,23 +117,84 @@ class FlatDto {
     required this.id,
     required this.number,
     required this.wingName,
+    this.floor,
+    this.parkingSlot,
   });
 
   final String id;
   final String number;
   final String? wingName;
+  final int? floor;
+  final String? parkingSlot;
 
   factory FlatDto.fromJson(Map<String, dynamic> json) {
     return FlatDto(
       id: json['id'] as String,
       number: json['number'] as String,
       wingName: json['wingName'] as String?,
+      floor: (json['floor'] as num?)?.toInt(),
+      parkingSlot: json['parkingSlot'] as String?,
     );
   }
 
   String get label {
     if (wingName == null || wingName!.isEmpty) return number;
     return '$wingName-$number';
+  }
+}
+
+class ComplaintAttachmentDto {
+  const ComplaintAttachmentDto({
+    required this.id,
+    required this.contentKind,
+    required this.contentType,
+    required this.url,
+    required this.byteSize,
+  });
+
+  final String id;
+  final String contentKind;
+  final String contentType;
+  final String url;
+  final int byteSize;
+
+  factory ComplaintAttachmentDto.fromJson(Map<String, dynamic> json) {
+    return ComplaintAttachmentDto(
+      id: json['id'] as String,
+      contentKind: json['contentKind'] as String? ?? 'image',
+      contentType: json['contentType'] as String? ?? '',
+      url: json['url'] as String? ?? '',
+      byteSize: (json['byteSize'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
+class ComplaintStatusEventDto {
+  const ComplaintStatusEventDto({
+    required this.id,
+    required this.fromStatus,
+    required this.toStatus,
+    required this.note,
+    required this.actorName,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String? fromStatus;
+  final String toStatus;
+  final String? note;
+  final String? actorName;
+  final String createdAt;
+
+  factory ComplaintStatusEventDto.fromJson(Map<String, dynamic> json) {
+    return ComplaintStatusEventDto(
+      id: json['id'] as String,
+      fromStatus: json['fromStatus'] as String?,
+      toStatus: json['toStatus'] as String,
+      note: json['note'] as String?,
+      actorName: json['actorName'] as String?,
+      createdAt: json['createdAt'] as String? ?? '',
+    );
   }
 }
 
@@ -149,31 +210,122 @@ class ComplaintDto {
     required this.flatNumber,
     required this.residentName,
     required this.createdAt,
+    this.typeOtherText,
+    this.queuePosition,
+    this.openAheadCount,
+    this.queueHint,
+    this.attachments = const [],
+    this.statusEvents = const [],
+    this.closingNote,
   });
 
   final String id;
   final String ticketNumber;
   final String title;
   final String type;
+  final String? typeOtherText;
   final String description;
   final String status;
   final String flatId;
   final String flatNumber;
   final String? residentName;
   final String createdAt;
+  final int? queuePosition;
+  final int? openAheadCount;
+  final String? queueHint;
+  final List<ComplaintAttachmentDto> attachments;
+  final List<ComplaintStatusEventDto> statusEvents;
+  final String? closingNote;
 
   factory ComplaintDto.fromJson(Map<String, dynamic> json) {
+    final attachmentsJson = json['attachments'] as List<dynamic>? ?? [];
+    final eventsJson = json['statusEvents'] as List<dynamic>? ?? [];
     return ComplaintDto(
       id: json['id'] as String,
       ticketNumber: json['ticketNumber'] as String,
       title: json['title'] as String,
       type: json['type'] as String,
+      typeOtherText: json['typeOtherText'] as String?,
       description: json['description'] as String? ?? '',
       status: json['status'] as String,
       flatId: json['flatId'] as String? ?? '',
       flatNumber: json['flatNumber'] as String? ?? '',
       residentName: json['residentName'] as String?,
       createdAt: json['createdAt'] as String? ?? '',
+      queuePosition: (json['queuePosition'] as num?)?.toInt(),
+      openAheadCount: (json['openAheadCount'] as num?)?.toInt(),
+      queueHint: json['queueHint'] as String?,
+      attachments: attachmentsJson
+          .map((e) => ComplaintAttachmentDto.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      statusEvents: eventsJson
+          .map((e) => ComplaintStatusEventDto.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      closingNote: json['closingNote'] as String?,
+    );
+  }
+}
+
+class ProfileFlatDto {
+  const ProfileFlatDto({
+    required this.id,
+    required this.number,
+    required this.wingName,
+    required this.buildingName,
+    required this.floor,
+    required this.parkingSlot,
+    required this.isOwner,
+  });
+
+  final String id;
+  final String number;
+  final String? wingName;
+  final String? buildingName;
+  final int? floor;
+  final String? parkingSlot;
+  final bool isOwner;
+
+  factory ProfileFlatDto.fromJson(Map<String, dynamic> json) {
+    return ProfileFlatDto(
+      id: json['id'] as String,
+      number: json['number'] as String,
+      wingName: json['wingName'] as String?,
+      buildingName: json['buildingName'] as String?,
+      floor: (json['floor'] as num?)?.toInt(),
+      parkingSlot: json['parkingSlot'] as String?,
+      isOwner: json['isOwner'] as bool? ?? false,
+    );
+  }
+
+  String get label {
+    if (wingName == null || wingName!.isEmpty) return number;
+    return '$wingName-$number';
+  }
+}
+
+class ResidentProfileDto {
+  const ResidentProfileDto({
+    required this.userId,
+    required this.emergencyContact,
+    required this.vehicleNumber,
+    required this.societyName,
+    required this.flat,
+  });
+
+  final String userId;
+  final String? emergencyContact;
+  final String? vehicleNumber;
+  final String? societyName;
+  final ProfileFlatDto? flat;
+
+  factory ResidentProfileDto.fromJson(Map<String, dynamic> json) {
+    final flatJson = json['flat'] as Map<String, dynamic>?;
+    return ResidentProfileDto(
+      userId: json['userId'] as String,
+      emergencyContact: json['emergencyContact'] as String?,
+      vehicleNumber: json['vehicleNumber'] as String?,
+      societyName: json['societyName'] as String?,
+      flat: flatJson == null ? null : ProfileFlatDto.fromJson(flatJson),
     );
   }
 }
@@ -256,4 +408,30 @@ class PaginatedComplaints {
       total: (json['total'] as num?)?.toInt() ?? items.length,
     );
   }
+}
+
+/// Friendly labels matching web Client App.
+const Map<String, String> complaintTypeLabels = {
+  'electric': 'Electric',
+  'plumbing': 'Plumbing',
+  'housekeeping': 'Housekeeping',
+  'security': 'Security',
+  'lift': 'Lift',
+  'other': 'Other',
+};
+
+const Map<String, String> complaintStatusLabels = {
+  'open': 'In queue',
+  'assigned': 'Acknowledged',
+  'in_progress': 'In progress',
+  'resolved': 'Resolved',
+  'closed': 'Closed',
+};
+
+String complaintStatusLabel(String status) =>
+    complaintStatusLabels[status] ?? status.replaceAll('_', ' ');
+
+String complaintTypeLabel(String type, {String? other}) {
+  if (type == 'other' && other != null && other.isNotEmpty) return other;
+  return complaintTypeLabels[type] ?? type;
 }

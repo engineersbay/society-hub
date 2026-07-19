@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../auth/session.dart';
+import '../../../core/app_keys.dart';
 import '../../../core/theme.dart';
 import '../../../shared/widgets.dart';
 
@@ -125,6 +126,7 @@ class AppShell extends ConsumerWidget {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                   child: Container(
+                    key: AppKeys.modeToggle,
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
                       color: AppColors.mist.withValues(alpha: 0.6),
@@ -134,6 +136,7 @@ class AppShell extends ConsumerWidget {
                       children: [
                         Expanded(
                           child: _ModeChip(
+                            key: AppKeys.modeAdmin,
                             label: 'Admin',
                             selected: session.mode == AppMode.admin,
                             onTap: () => ref
@@ -143,6 +146,7 @@ class AppShell extends ConsumerWidget {
                         ),
                         Expanded(
                           child: _ModeChip(
+                            key: AppKeys.modeResident,
                             label: 'Resident',
                             selected: session.mode == AppMode.resident,
                             onTap: () => ref
@@ -214,6 +218,7 @@ class AppShell extends ConsumerWidget {
 
 class _ModeChip extends StatelessWidget {
   const _ModeChip({
+    super.key,
     required this.label,
     required this.selected,
     required this.onTap,

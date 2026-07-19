@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../api/models.dart';
 import '../../../auth/session.dart';
+import '../../../core/app_keys.dart';
 import '../../../core/theme.dart';
 import '../../../shared/widgets.dart';
 
@@ -121,6 +122,7 @@ class _OnboardPageState extends ConsumerState<OnboardPage> {
         ),
         const SizedBox(height: 20),
         ShCard(
+          key: AppKeys.onboardForm,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -140,11 +142,13 @@ class _OnboardPageState extends ConsumerState<OnboardPage> {
               ),
               const SizedBox(height: 12),
               TextField(
+                key: AppKeys.onboardName,
                 controller: _name,
                 decoration: const InputDecoration(labelText: 'Resident name'),
               ),
               const SizedBox(height: 12),
               TextField(
+                key: AppKeys.onboardPhone,
                 controller: _phone,
                 keyboardType: TextInputType.phone,
                 decoration: const InputDecoration(labelText: 'Phone'),
@@ -172,6 +176,7 @@ class _OnboardPageState extends ConsumerState<OnboardPage> {
               ),
               const SizedBox(height: 20),
               ShPrimaryButton(
+                key: AppKeys.onboardSubmit,
                 label: 'Onboard resident',
                 busy: _busy,
                 onPressed: _submit,

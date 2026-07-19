@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../api/models.dart';
 import '../../../auth/session.dart';
 import '../../../config/api_config.dart';
+import '../../../core/app_keys.dart';
 import '../../../core/theme.dart';
 import '../../../shared/widgets.dart';
 
@@ -113,6 +114,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       children: _LoginMode.values.map((m) {
                         final selected = _mode == m;
                         return ChoiceChip(
+                          key: _modeKey(m),
                           label: Text(_modeLabel(m)),
                           selected: selected,
                           onSelected: (_) => setState(() {
@@ -148,6 +150,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       const SizedBox(height: 12),
                       Text(
                         _error!,
+                        key: AppKeys.loginError,
                         textAlign: TextAlign.center,
                         style: const TextStyle(color: AppColors.danger),
                       ),
@@ -162,6 +165,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     );
   }
 
+  Key _modeKey(_LoginMode m) => switch (m) {
+        _LoginMode.password => AppKeys.loginModePassword,
+        _LoginMode.otp => AppKeys.loginModeOtp,
+        _LoginMode.pin => AppKeys.loginModePin,
+        _LoginMode.google => AppKeys.loginModeGoogle,
+      };
+
   String _modeLabel(_LoginMode m) => switch (m) {
         _LoginMode.password => 'Email',
         _LoginMode.otp => 'OTP',
@@ -171,18 +181,21 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   List<Widget> _passwordForm() => [
         TextField(
+          key: AppKeys.loginEmail,
           controller: _email,
           keyboardType: TextInputType.emailAddress,
           decoration: const InputDecoration(labelText: 'Email'),
         ),
         const SizedBox(height: 12),
         TextField(
+          key: AppKeys.loginPassword,
           controller: _password,
           obscureText: true,
           decoration: const InputDecoration(labelText: 'Password'),
         ),
         const SizedBox(height: 20),
         ShPrimaryButton(
+          key: AppKeys.loginSubmit,
           label: 'Sign in',
           busy: _busy,
           onPressed: () => _apply(
@@ -196,6 +209,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   List<Widget> _otpForm() => [
         TextField(
+          key: AppKeys.loginPhone,
           controller: _phone,
           keyboardType: TextInputType.phone,
           decoration: const InputDecoration(labelText: 'Mobile'),
@@ -203,6 +217,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         if (_otpSent) ...[
           const SizedBox(height: 12),
           TextField(
+            key: AppKeys.loginOtpCode,
             controller: _code,
             keyboardType: TextInputType.number,
             decoration: const InputDecoration(labelText: 'OTP'),
@@ -210,6 +225,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         ],
         const SizedBox(height: 20),
         ShPrimaryButton(
+          key: AppKeys.loginSubmit,
           label: _otpSent ? 'Verify & continue' : 'Send OTP',
           busy: _busy,
           onPressed: () {
@@ -229,12 +245,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   List<Widget> _pinForm() => [
         TextField(
+          key: AppKeys.loginPhone,
           controller: _phone,
           keyboardType: TextInputType.phone,
           decoration: const InputDecoration(labelText: 'Mobile'),
         ),
         const SizedBox(height: 12),
         TextField(
+          key: AppKeys.loginPin,
           controller: _pin,
           obscureText: true,
           keyboardType: TextInputType.number,
@@ -242,6 +260,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         ),
         const SizedBox(height: 20),
         ShPrimaryButton(
+          key: AppKeys.loginSubmit,
           label: 'Sign in with PIN',
           busy: _busy,
           onPressed: () => _apply(
@@ -264,6 +283,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       ),
       const SizedBox(height: 12),
       TextField(
+        key: AppKeys.loginPhone,
         controller: _phone,
         keyboardType: TextInputType.phone,
         decoration: InputDecoration(
@@ -272,6 +292,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       ),
       const SizedBox(height: 20),
       ShPrimaryButton(
+        key: AppKeys.loginSubmit,
         label: isDev ? 'Continue with Google (dev)' : 'Continue with Google',
         busy: _busy,
         onPressed: () {
