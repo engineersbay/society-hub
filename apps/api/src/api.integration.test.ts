@@ -251,6 +251,124 @@ describe("api integration", () => {
     expect(onboard.ok).toBe(true);
   });
 
+  test("CSV resident import upserts on re-upload", async () => {
+    const admin = await otpLogin("9999999999");
+    const auth = {
+      Authorization: `Bearer ${admin.tokens.accessToken}`,
+      "Content-Type": "application/json",
+    };
+    const flats = (await (
+      await fetch(`${base}/v1/admin/flats`, { headers: auth })
+    ).json()) as {
+      id: string;
+      number: string;
+      wingName: string | null;
+      floor: number | null;
+      parkingSlot: string | null;
+    }[];
+    expect(flats.length).toBeGreaterThan(0);
+    const flat = flats[0]!;
+    const phone = `6${String(Date.now()).slice(-9)}`;
+    const email = `csv-upsert-${Date.now()}@example.com`;
+
+    const first = await fetch(`${base}/v1/admin/residents/import`, {
+      method: "POST",
+      headers: auth,
+      body: JSON.stringify({
+        rows: [
+          {
+            name: "Csv Import One",
+            phone,
+            email,
+            flatNumber: flat.number,
+            wingName: flat.wingName,
+            floor: flat.floor ?? 2,
+            parkingSlot: flat.parkingSlot ?? "P-CSV-1",
+            emergencyContact: "9111111111",
+            vehicleNumber: "MH12CSV0001",
+          },
+        ],
+        sendInvites: false,
+        updateFlats: true,
+      }),
+    });
+    expect(first.ok).toBe(true);
+    const firstBody = (await first.json()) as {
+      created: number;
+      updated: number;
+      unchanged: number;
+      skipped: number;
+      errors: unknown[];
+    };
+    expect(firstBody.created).toBe(1);
+    expect(firstBody.updated).toBe(0);
+    expect(firstBody.errors).toEqual([]);
+
+    const second = await fetch(`${base}/v1/admin/residents/import`, {
+      method: "POST",
+      headers: auth,
+      body: JSON.stringify({
+        rows: [
+          {
+            name: "Csv Import Updated",
+            phone,
+            email,
+            flatNumber: flat.number,
+            wingName: flat.wingName,
+            floor: (flat.floor ?? 2) + 1,
+            parkingSlot: "P-CSV-UPD",
+            emergencyContact: "9222222222",
+            vehicleNumber: "MH12CSV0002",
+            isOwner: false,
+          },
+        ],
+        sendInvites: false,
+        updateFlats: true,
+      }),
+    });
+    expect(second.ok).toBe(true);
+    const secondBody = (await second.json()) as {
+      created: number;
+      updated: number;
+      unchanged: number;
+      skipped: number;
+      errors: unknown[];
+    };
+    expect(secondBody.created).toBe(0);
+    expect(secondBody.updated).toBe(1);
+    expect(secondBody.errors).toEqual([]);
+
+    const third = await fetch(`${base}/v1/admin/residents/import`, {
+      method: "POST",
+      headers: auth,
+      body: JSON.stringify({
+        rows: [
+          {
+            name: "Csv Import Updated",
+            phone,
+            email,
+            flatNumber: flat.number,
+            wingName: flat.wingName,
+            isOwner: false,
+            emergencyContact: "9222222222",
+            vehicleNumber: "MH12CSV0002",
+          },
+        ],
+        sendInvites: false,
+        updateFlats: true,
+      }),
+    });
+    expect(third.ok).toBe(true);
+    const thirdBody = (await third.json()) as {
+      created: number;
+      updated: number;
+      unchanged: number;
+    };
+    expect(thirdBody.created).toBe(0);
+    expect(thirdBody.updated).toBe(0);
+    expect(thirdBody.unchanged).toBe(1);
+  });
+
   test("validation error shape", async () => {
     const res = await fetch(`${base}/v1/auth/password/login`, {
       method: "POST",

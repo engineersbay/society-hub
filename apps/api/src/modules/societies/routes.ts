@@ -29,8 +29,19 @@ import {
   requirePlatform,
   requireSocietyStaff,
 } from "../../lib/auth-context";
+import { syncFlatParkingSlot } from "../admin/onboard-resident";
 
 const DEFAULT_CHAIR_PASSWORD = "Test@1234";
+
+function parseDetails(raw: string | null): Record<string, string> | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Record<string, string>;
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
 
 async function buildSocietyDto(societyId: string): Promise<SocietyDto> {
   const [society] = await db
@@ -314,6 +325,9 @@ export const wingRoutes = new Elysia({ prefix: "/v1/wings" })
       number: f.number,
       wingId: f.wingId,
       wingName: wing.name,
+      floor: f.floor,
+      parkingSlot: f.parkingSlot,
+      details: parseDetails(f.detailsJson),
     }));
   })
   .post("/:id/flats", async ({ auth, params, body }) => {
@@ -334,10 +348,27 @@ export const wingRoutes = new Elysia({ prefix: "/v1/wings" })
       tenantId: wing.tenantId,
       wingId: params.id,
       number: parsed.number,
+      floor: parsed.floor ?? null,
+      parkingSlot: parsed.parkingSlot ?? null,
+      detailsJson: parsed.details ? JSON.stringify(parsed.details) : null,
       createdBy: claims.sub,
       updatedBy: claims.sub,
     });
-    return { id, number: parsed.number, wingId: params.id, wingName: wing.name };
+    await syncFlatParkingSlot({
+      tenantId: wing.tenantId,
+      flatId: id,
+      parkingSlot: parsed.parkingSlot,
+      actorUserId: claims.sub,
+    });
+    return {
+      id,
+      number: parsed.number,
+      wingId: params.id,
+      wingName: wing.name,
+      floor: parsed.floor ?? null,
+      parkingSlot: parsed.parkingSlot ?? null,
+      details: parsed.details ?? null,
+    };
   })
   .delete("/:id", async ({ auth, params }) => {
     const claims = requireAuth(auth);

@@ -5,43 +5,10 @@ import { updateResidentProfileSchema } from "@society-hub/validation";
 import { db } from "../../db/client";
 import { residentProfiles } from "../../db/schema";
 import { authPlugin, requireAuth } from "../../lib/auth-context";
+import { upsertProfile } from "./upsert-profile";
 
-async function upsertProfile(
-  tenantId: string,
-  userId: string,
-  patch: { emergencyContact?: string | null; vehicleNumber?: string | null },
-) {
-  const [existing] = await db
-    .select()
-    .from(residentProfiles)
-    .where(and(eq(residentProfiles.tenantId, tenantId), eq(residentProfiles.userId, userId)))
-    .limit(1);
-
-  if (!existing) {
-    await db.insert(residentProfiles).values({
-      id: crypto.randomUUID(),
-      tenantId,
-      userId,
-      emergencyContact: patch.emergencyContact ?? null,
-      vehicleNumber: patch.vehicleNumber ?? null,
-      createdBy: userId,
-      updatedBy: userId,
-    });
-    return;
-  }
-
-  await db
-    .update(residentProfiles)
-    .set({
-      emergencyContact:
-        patch.emergencyContact !== undefined ? patch.emergencyContact : existing.emergencyContact,
-      vehicleNumber:
-        patch.vehicleNumber !== undefined ? patch.vehicleNumber : existing.vehicleNumber,
-      isDeleted: false,
-      updatedBy: userId,
-    })
-    .where(eq(residentProfiles.id, existing.id));
-}
+/** Shared with auth/routes.ts so `PATCH /v1/auth/profile` (used by the SDK) stays in sync. */
+export { upsertProfile };
 
 export async function getProfileDto(
   tenantId: string,
@@ -77,6 +44,3 @@ export const profileRoutes = new Elysia({ prefix: "/v1/profile" })
     await upsertProfile(claims.tenantId, claims.sub, parsed);
     return getProfileDto(claims.tenantId, claims.sub);
   });
-
-/** Shared with auth/routes.ts so `PATCH /v1/auth/profile` (used by the SDK) stays in sync. */
-export { upsertProfile };
