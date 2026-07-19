@@ -29,6 +29,7 @@ import {
   isStaffRole,
   requireAuth,
   requireRole,
+  requireSocietyStaff,
 } from "../../lib/auth-context";
 
 function slaDueAt(days: number) {
@@ -170,7 +171,16 @@ export const complaintRoutes = new Elysia({ prefix: "/v1/complaints" })
   })
   .post("/", async ({ auth, body }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["resident", "admin", "superadmin"]);
+    requireRole(claims, [
+      "resident",
+      "tenant",
+      "chairperson",
+      "admin",
+      "secretary",
+      "treasurer",
+      "cashier",
+      "committee",
+    ]);
     const parsed = createComplaintSchema.parse(body);
 
     // Residents use their linked flat; staff/superadmin may pick a flat in-body.
@@ -240,7 +250,7 @@ export const complaintRoutes = new Elysia({ prefix: "/v1/complaints" })
   })
   .patch("/:id/status", async ({ auth, params, body }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     const parsed = updateComplaintStatusSchema.parse(body);
     const [existing] = await db
       .select()
@@ -360,7 +370,7 @@ export const complaintRoutes = new Elysia({ prefix: "/v1/complaints" })
   })
   .delete("/:id", async ({ auth, params }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     const [existing] = await db
       .select()
       .from(complaints)

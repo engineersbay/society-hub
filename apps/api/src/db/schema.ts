@@ -103,7 +103,17 @@ export const userRoles = mysqlTable(
     id: id(),
     tenantId: tenantId(),
     userId: char("user_id", { length: 36 }).notNull(),
-    role: mysqlEnum("role", ["admin", "resident", "superadmin"]).notNull(),
+    role: mysqlEnum("role", [
+      "superadmin",
+      "chairperson",
+      "admin",
+      "secretary",
+      "treasurer",
+      "cashier",
+      "committee",
+      "resident",
+      "tenant",
+    ]).notNull(),
     ...timestamps,
   },
   (t) => [
@@ -262,7 +272,17 @@ export const invitations = mysqlTable(
     tenantId: tenantId(),
     email: varchar("email", { length: 200 }),
     phone: varchar("phone", { length: 20 }),
-    role: mysqlEnum("role", ["admin", "resident", "superadmin"]).notNull(),
+    role: mysqlEnum("role", [
+      "superadmin",
+      "chairperson",
+      "admin",
+      "secretary",
+      "treasurer",
+      "cashier",
+      "committee",
+      "resident",
+      "tenant",
+    ]).notNull(),
     token: varchar("token", { length: 128 }).notNull(),
     status: mysqlEnum("status", ["pending", "accepted", "revoked"])
       .notNull()

@@ -2,61 +2,17 @@ import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../auth";
 import { Icon, type IconName } from "./icons";
-import { SocietySwitcher } from "./SocietySwitcher";
 
-type NavItem = { to: string; label: string; icon: IconName; superadminOnly?: boolean };
-type NavSection = { title: string; items: NavItem[] };
+type NavItem = { to: string; label: string; icon: IconName };
 
-const sections: NavSection[] = [
-  {
-    title: "Overview",
-    items: [{ to: "/dashboard", label: "Dashboard", icon: "dashboard" }],
-  },
-  {
-    title: "Operations",
-    items: [
-      { to: "/complaints", label: "Complaints", icon: "complaints" },
-      { to: "/onboard", label: "Onboard resident", icon: "onboard" },
-      { to: "/invites", label: "Invites", icon: "invites" },
-      { to: "/team", label: "Team", icon: "team" },
-    ],
-  },
-  {
-    title: "Society",
-    items: [{ to: "/societies", label: "Societies", icon: "societies", superadminOnly: true }],
-  },
-  {
-    title: "Finance",
-    items: [
-      { to: "/bills", label: "Bills", icon: "bills" },
-      { to: "/payments", label: "Payments", icon: "payments" },
-    ],
-  },
-  {
-    title: "Communication",
-    items: [
-      { to: "/notices", label: "Notices", icon: "notices" },
-      { to: "/notifications", label: "Notifications", icon: "bell" },
-    ],
-  },
-  {
-    title: "Community",
-    items: [
-      { to: "/visitors", label: "Visitors", icon: "visitors" },
-      { to: "/parking", label: "Parking", icon: "parking" },
-      { to: "/bookings", label: "Bookings", icon: "bookings" },
-      { to: "/assets", label: "Assets", icon: "assets" },
-      { to: "/vendors", label: "Vendors", icon: "vendors" },
-      { to: "/events", label: "Events", icon: "events" },
-    ],
-  },
-  {
-    title: "System",
-    items: [{ to: "/audit", label: "Audit log", icon: "audit" }],
-  },
+const navItems: NavItem[] = [
+  { to: "/societies", label: "Societies", icon: "societies" },
 ];
 
-const WEB_URL = import.meta.env.VITE_WEB_URL ?? "http://localhost:5173";
+const APP_ORIGIN =
+  import.meta.env.VITE_APP_ORIGIN ??
+  import.meta.env.VITE_WEB_URL ??
+  "http://app.localhost:5173";
 
 function NavRow({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }) {
   return (
@@ -80,7 +36,6 @@ function NavRow({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const { user, clearSession } = useAuth();
-  const isSuperadmin = user?.role === "superadmin";
 
   return (
     <div className="flex h-full flex-col">
@@ -96,27 +51,10 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         </div>
       </div>
 
-      <div className="px-4 pb-4">
-        <SocietySwitcher />
-      </div>
-
-      <nav className="flex-1 space-y-5 overflow-y-auto px-3 pb-4">
-        {sections.map((section) => {
-          const items = section.items.filter((i) => !i.superadminOnly || isSuperadmin);
-          if (items.length === 0) return null;
-          return (
-            <div key={section.title}>
-              <p className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-black/35">
-                {section.title}
-              </p>
-              <div className="space-y-0.5">
-                {items.map((item) => (
-                  <NavRow key={item.to} item={item} onNavigate={onNavigate} />
-                ))}
-              </div>
-            </div>
-          );
-        })}
+      <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 pb-4">
+        {navItems.map((item) => (
+          <NavRow key={item.to} item={item} onNavigate={onNavigate} />
+        ))}
       </nav>
 
       <div className="border-t border-[var(--sand)] px-3 py-3 lg:hidden">
@@ -134,13 +72,13 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
       <div className="border-t border-[var(--sand)] px-4 py-4">
         <a
-          href={WEB_URL}
+          href={APP_ORIGIN}
           target="_blank"
           rel="noreferrer"
           className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-[var(--leaf)] hover:bg-[var(--mist)]/70"
         >
           <Icon name="externalLink" className="h-4 w-4" />
-          Open App
+          Open Client App
         </a>
         {user?.name && (
           <p className="mt-2 truncate px-3 text-xs text-black/40">

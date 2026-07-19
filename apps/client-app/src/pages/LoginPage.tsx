@@ -5,7 +5,7 @@ import { useAuth } from "../auth";
 
 type Mode = "password" | "otp" | "pin" | "google";
 
-const MANAGE_URL = import.meta.env.VITE_MANAGE_URL ?? "http://localhost:5174";
+const MANAGE_URL = import.meta.env.VITE_MANAGE_URL ?? "http://manage.localhost:5174";
 
 export function LoginPage() {
   const { user, client, setSession } = useAuth();
@@ -35,7 +35,7 @@ export function LoginPage() {
       try {
         setSession(res.user, res.tokens);
       } catch {
-        setError(`Society admins use Manage instead: ${MANAGE_URL}`);
+        setError(`SocietyHub platform team members use Manage instead: ${MANAGE_URL}`);
       }
     } catch (err) {
       setError(err instanceof ApiClientError ? err.body.message : "Failed");
@@ -267,7 +267,7 @@ export function LoginPage() {
           </p>
         )}
         <p className="mt-6 text-center text-sm text-black/50">
-          Society admin?{" "}
+          SocietyHub platform team?{" "}
           <a className="text-[var(--leaf)]" href={MANAGE_URL}>
             Open Manage
           </a>

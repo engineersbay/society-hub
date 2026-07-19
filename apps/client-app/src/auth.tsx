@@ -5,10 +5,22 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { AuthTokens, UserDto } from "@society-hub/types";
+import type { AuthTokens, Role, UserDto } from "@society-hub/types";
 import { createSocietyHubClient, type SocietyHubClient } from "@society-hub/sdk";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
+
+/** Society staff + residents may use the Client App. Platform-only superadmins may not. */
+const ALLOWED_ROLES: Role[] = [
+  "chairperson",
+  "admin",
+  "secretary",
+  "treasurer",
+  "cashier",
+  "committee",
+  "resident",
+  "tenant",
+];
 
 type AuthState = {
   user: UserDto | null;
@@ -24,11 +36,11 @@ const ACCESS_KEY = "sh_web_access";
 const REFRESH_KEY = "sh_web_refresh";
 const USER_KEY = "sh_web_user";
 
-// Society admins manage exclusively from the Manage app; superadmins may
-// still sign in to the resident web app (e.g. to preview it) and get a
-// cross-link back to Manage from the shell.
-function isStaff(user: UserDto) {
-  return user.role === "admin";
+// Society staff (chairperson/secretary/treasurer/cashier/committee) and
+// residents/tenants use the Client App. Platform-only superadmins (no
+// society staff membership) must use Manage instead.
+function isAllowed(user: UserDto) {
+  return (ALLOWED_ROLES as string[]).includes(user.role);
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -51,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (raw && access) {
       try {
         const parsed = JSON.parse(raw) as UserDto;
-        if (isStaff(parsed)) {
+        if (!isAllowed(parsed)) {
           clearStorage();
           setLoading(false);
           return;
@@ -60,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         client
           .me()
           .then((me) => {
-            if (isStaff(me)) {
+            if (!isAllowed(me)) {
               clearStorage();
               setUser(null);
               return;
@@ -88,10 +100,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   function setSession(next: UserDto, tokens: AuthTokens) {
-    if (isStaff(next)) {
+    if (!isAllowed(next)) {
       clearStorage();
       setUser(null);
-      throw new Error("STAFF_USE_MANAGE");
+      throw new Error("PLATFORM_USE_MANAGE");
     }
     localStorage.setItem(ACCESS_KEY, tokens.accessToken);
     localStorage.setItem(REFRESH_KEY, tokens.refreshToken);

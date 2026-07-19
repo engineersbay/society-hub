@@ -10,7 +10,7 @@ import {
   authPlugin,
   isStaffRole,
   requireAuth,
-  requireRole,
+    requireSocietyStaff,
 } from "../../lib/auth-context";
 
 export function generateReceiptNumber() {
@@ -38,7 +38,7 @@ export const paymentRoutes = new Elysia({ prefix: "/v1/payments" })
   .use(authPlugin)
   .get("/", async ({ auth, query }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     const q = listQuerySchema.parse(query);
     const offset = (q.page - 1) * q.limit;
     const where = and(eq(payments.tenantId, claims.tenantId), eq(payments.isDeleted, false));
@@ -83,7 +83,7 @@ export const paymentRoutes = new Elysia({ prefix: "/v1/payments" })
   })
   .post("/", async ({ auth, body }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     const parsed = recordPaymentSchema.parse(body);
 
     const [flat] = await db

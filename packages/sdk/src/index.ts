@@ -243,6 +243,31 @@ export function createSocietyHubClient(opts: SocietyHubClientOptions) {
         body: JSON.stringify(body),
       }),
     getSociety: (id: string) => request<SocietyDto>(`/v1/societies/${id}`),
+    addSocietyTeamMember: (
+      societyId: string,
+      body: {
+        email?: string;
+        phone?: string;
+        name?: string;
+        role?:
+          | "chairperson"
+          | "admin"
+          | "secretary"
+          | "treasurer"
+          | "cashier"
+          | "committee";
+      },
+    ) =>
+      request<{
+        ok: true;
+        userId: string;
+        tenantId: string;
+        role: string;
+        societyName: string;
+      }>(`/v1/manage/societies/${societyId}/team`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
 
     listBuildings: (societyId: string) =>
       request<BuildingDto[]>(`/v1/societies/${societyId}/buildings`),

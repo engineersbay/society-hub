@@ -88,7 +88,26 @@ export const listQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
 
-const roleEnum = z.enum(["admin", "resident", "superadmin"]);
+const roleEnum = z.enum([
+  "superadmin",
+  "chairperson",
+  "admin",
+  "secretary",
+  "treasurer",
+  "cashier",
+  "committee",
+  "resident",
+  "tenant",
+]);
+
+export const societyStaffRoleEnum = z.enum([
+  "chairperson",
+  "admin",
+  "secretary",
+  "treasurer",
+  "cashier",
+  "committee",
+]);
 
 export const createSocietySchema = z.object({
   name: z.string().min(1).max(200),

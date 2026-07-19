@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import type { ComplaintDto, ComplaintStatus } from "@society-hub/types";
 import { useAuth } from "../auth";
+import { canUseAdminMode, useAppMode } from "../app-mode";
 
 const STATUSES: ComplaintStatus[] = [
   "open",
@@ -13,6 +14,8 @@ const STATUSES: ComplaintStatus[] = [
 export function ComplaintDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { client, user } = useAuth();
+  const { mode } = useAppMode();
+  const showStaffControls = canUseAdminMode(user?.role) && mode === "admin";
   const [complaint, setComplaint] = useState<ComplaintDto | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,7 +59,7 @@ export function ComplaintDetailPage() {
         </strong>
       </p>
 
-      {user?.role === "admin" || user?.role === "superadmin" ? (
+      {showStaffControls ? (
         <div className="mt-4 flex flex-wrap gap-2">
           {STATUSES.map((s) => (
             <button

@@ -1,13 +1,60 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../auth";
+import { canUseAdminMode, useAppMode } from "../app-mode";
 import { Icon, type IconName } from "./icons";
 import { SocietySwitcher } from "./SocietySwitcher";
 
 type NavItem = { to: string; label: string; icon: IconName };
 type NavSection = { title: string; items: NavItem[] };
 
-const sections: NavSection[] = [
+const adminSections: NavSection[] = [
+  {
+    title: "Overview",
+    items: [{ to: "/dashboard", label: "Dashboard", icon: "dashboard" }],
+  },
+  {
+    title: "Operations",
+    items: [
+      { to: "/complaints", label: "Complaints", icon: "complaints" },
+      { to: "/onboard", label: "Onboard resident", icon: "onboard" },
+      { to: "/invites", label: "Invites", icon: "invites" },
+      { to: "/team", label: "Team", icon: "team" },
+    ],
+  },
+  {
+    title: "Finance",
+    items: [
+      { to: "/bills", label: "Bills", icon: "bills" },
+      { to: "/payments", label: "Payments", icon: "payments" },
+    ],
+  },
+  {
+    title: "Communication",
+    items: [
+      { to: "/notices", label: "Notices", icon: "notices" },
+      { to: "/notifications", label: "Notifications", icon: "bell" },
+    ],
+  },
+  {
+    title: "Society",
+    items: [
+      { to: "/structure", label: "Structure", icon: "structure" },
+      { to: "/visitors", label: "Visitors", icon: "visitors" },
+      { to: "/parking", label: "Parking", icon: "parking" },
+      { to: "/bookings", label: "Bookings", icon: "bookings" },
+      { to: "/assets", label: "Assets", icon: "assets" },
+      { to: "/vendors", label: "Vendors", icon: "vendors" },
+      { to: "/events", label: "Events", icon: "events" },
+    ],
+  },
+  {
+    title: "System",
+    items: [{ to: "/audit", label: "Audit log", icon: "audit" }],
+  },
+];
+
+const residentSections: NavSection[] = [
   {
     title: "Overview",
     items: [{ to: "/dashboard", label: "Dashboard", icon: "dashboard" }],
@@ -40,7 +87,7 @@ const sections: NavSection[] = [
   },
 ];
 
-const MANAGE_URL = import.meta.env.VITE_MANAGE_URL ?? "http://localhost:5174";
+const MANAGE_URL = import.meta.env.VITE_MANAGE_URL ?? "http://manage.localhost:5174";
 
 function NavRow({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }) {
   return (
@@ -62,9 +109,49 @@ function NavRow({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }
   );
 }
 
+function ModeToggle() {
+  const { mode, setMode } = useAppMode();
+  return (
+    <div
+      className="mb-4 grid grid-cols-2 gap-1 rounded-lg bg-[var(--mist)]/60 p-1"
+      data-testid="app-mode-toggle"
+    >
+      <button
+        type="button"
+        data-testid="app-mode-admin"
+        className={[
+          "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+          mode === "admin"
+            ? "bg-white text-[var(--leaf-dark)] shadow-sm"
+            : "text-[var(--ink)]/60 hover:text-[var(--leaf-dark)]",
+        ].join(" ")}
+        onClick={() => setMode("admin")}
+      >
+        Admin
+      </button>
+      <button
+        type="button"
+        data-testid="app-mode-resident"
+        className={[
+          "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+          mode === "resident"
+            ? "bg-white text-[var(--leaf-dark)] shadow-sm"
+            : "text-[var(--ink)]/60 hover:text-[var(--leaf-dark)]",
+        ].join(" ")}
+        onClick={() => setMode("resident")}
+      >
+        Resident
+      </button>
+    </div>
+  );
+}
+
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const { user, clearSession } = useAuth();
-  const showManageLink = user?.role === "superadmin";
+  const { mode } = useAppMode();
+  const showToggle = canUseAdminMode(user?.role);
+  const effectiveMode = showToggle ? mode : "resident";
+  const sections = effectiveMode === "admin" ? adminSections : residentSections;
 
   return (
     <div className="flex h-full flex-col">
@@ -82,7 +169,8 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         </div>
       </div>
 
-      <div className="px-4 pb-4">
+      <div className="px-4 pb-2">
+        {showToggle && <ModeToggle />}
         <SocietySwitcher />
       </div>
 
@@ -115,7 +203,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       </div>
 
       <div className="border-t border-[var(--sand)] px-4 py-4">
-        {showManageLink && (
+        {user?.role === "superadmin" && (
           <a
             href={MANAGE_URL}
             target="_blank"
@@ -138,7 +226,15 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
 export function Shell() {
   const { user, clearSession } = useAuth();
+  const { mode, setMode } = useAppMode();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Pure residents never see the Admin toggle — force resident mode.
+  useEffect(() => {
+    if (user && !canUseAdminMode(user.role) && mode !== "resident") {
+      setMode("resident");
+    }
+  }, [user, mode, setMode]);
 
   return (
     <div className="min-h-screen lg:flex">

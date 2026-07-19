@@ -1,0 +1,136 @@
+import { FormEvent, useEffect, useState } from "react";
+import { Navigate } from "react-router-dom";
+import type { FlatDto } from "@society-hub/types";
+import { ApiClientError } from "@society-hub/sdk";
+import { useAuth } from "../auth";
+import { canUseAdminMode } from "../app-mode";
+
+export function OnboardPage() {
+  const { user, client } = useAuth();
+  const [flats, setFlats] = useState<FlatDto[]>([]);
+  const [societyName, setSocietyName] = useState<string | null>(null);
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [flatId, setFlatId] = useState("");
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const allowed = canUseAdminMode(user?.role);
+
+  useEffect(() => {
+    if (!allowed) return;
+    client.listFlats().then((rows) => {
+      setFlats(rows);
+      if (rows[0]) setFlatId(rows[0].id);
+    });
+    client
+      .listMemberships()
+      .then((rows) => {
+        const mine = rows.find((r) => r.tenantId === user?.tenantId);
+        if (mine) setSocietyName(mine.societyName);
+      })
+      .catch(() => undefined);
+  }, [client, user, allowed]);
+
+  if (!allowed) return <Navigate to="/dashboard" replace />;
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setMessage(null);
+    try {
+      const res = await client.onboardResident({ name, phone, flatId, email });
+      setMessage(`Onboarded ${res.user.name} (${res.user.phone})`);
+      setName("");
+      setPhone("");
+      setEmail("");
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.body.message : "Failed");
+    }
+  }
+
+  return (
+    <div className="max-w-md">
+      <h1 className="font-display text-2xl">Onboard resident</h1>
+      <p className="mt-1 text-sm text-black/55">
+        Link a phone and flat so they can log in and raise complaints.
+      </p>
+      <form className="card mt-6 space-y-4 p-6" onSubmit={onSubmit}>
+        <div>
+          <label className="label" htmlFor="onboard-society-name">
+            Society
+          </label>
+          <input
+            id="onboard-society-name"
+            data-testid="onboard-society-name"
+            className="input bg-[var(--mist)]/50"
+            value={societyName ?? "—"}
+            readOnly
+            disabled
+          />
+        </div>
+        <div>
+          <label className="label" htmlFor="name">
+            Resident name
+          </label>
+          <input
+            id="name"
+            className="input"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+          />
+        </div>
+        <div>
+          <label className="label" htmlFor="phone">
+            Phone
+          </label>
+          <input
+            id="phone"
+            className="input"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            required
+          />
+        </div>
+        <div>
+          <label className="label" htmlFor="onboard-email">
+            Email
+          </label>
+          <input
+            id="onboard-email"
+            className="input"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+        </div>
+        <div>
+          <label className="label" htmlFor="flat">
+            Flat
+          </label>
+          <select
+            id="flat"
+            className="input"
+            value={flatId}
+            onChange={(e) => setFlatId(e.target.value)}
+            required
+          >
+            {flats.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.wingName ? `${f.wingName}-` : ""}
+                {f.number}
+              </option>
+            ))}
+          </select>
+        </div>
+        <button className="btn btn-primary" data-testid="onboard-submit" type="submit">
+          Onboard
+        </button>
+      </form>
+      {message && <p className="mt-3 text-sm text-[var(--leaf)]">{message}</p>}
+      {error && <p className="mt-3 text-sm text-[var(--danger)]">{error}</p>}
+    </div>
+  );
+}

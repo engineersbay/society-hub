@@ -250,13 +250,18 @@ describe("sdk client", () => {
     await client.listSocieties();
     await client.createSociety({ name: "Keshav Heights" });
     await client.getSociety("s1");
+    await client.addSocietyTeamMember("s1", {
+      email: "ops@societyhub.local",
+      role: "secretary",
+    });
     await client.listBuildings("s1");
     await client.createBuilding("s1", "Tower A");
     await client.listWings("b1");
     await client.createWing("b1", "A");
     await client.listFlatsForWing("w1");
     await client.createFlat("w1", "101");
-    expect(paths.length).toBe(9);
+    expect(paths.length).toBe(10);
+    expect(paths.some((p) => p.includes("/v1/manage/societies/s1/team"))).toBe(true);
   });
 
   test("invitation, bill, and payment helpers", async () => {

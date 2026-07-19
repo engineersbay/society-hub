@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import type { ComplaintDto } from "@society-hub/types";
 import { useAuth } from "../auth";
+import { canUseAdminMode, useAppMode } from "../app-mode";
 import { Icon } from "../components/icons";
 
 function statusBadgeClass(status: ComplaintDto["status"]) {
@@ -11,7 +12,9 @@ function statusBadgeClass(status: ComplaintDto["status"]) {
 }
 
 export function ComplaintsPage() {
-  const { client } = useAuth();
+  const { client, user } = useAuth();
+  const { mode } = useAppMode();
+  const staffView = canUseAdminMode(user?.role) && mode === "admin";
   const [items, setItems] = useState<ComplaintDto[]>([]);
   const [search, setSearch] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -27,16 +30,21 @@ export function ComplaintsPage() {
     const q = search.trim().toLowerCase();
     if (!q) return items;
     return items.filter(
-      (c) => c.title.toLowerCase().includes(q) || c.ticketNumber.toLowerCase().includes(q),
+      (c) =>
+        c.title.toLowerCase().includes(q) ||
+        c.ticketNumber.toLowerCase().includes(q) ||
+        (staffView && c.flatNumber.toLowerCase().includes(q)),
     );
-  }, [items, search]);
+  }, [items, search, staffView]);
 
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="font-display text-2xl">Complaints</h1>
-          <p className="text-sm text-black/55">Your raised complaints</p>
+          <p className="text-sm text-black/55">
+            {staffView ? "All society complaints — update status from detail" : "Your raised complaints"}
+          </p>
         </div>
         <Link to="/complaints/new" className="btn btn-primary" data-testid="new-complaint-link">
           Raise complaint
@@ -50,7 +58,7 @@ export function ComplaintsPage() {
         />
         <input
           className="input pl-9"
-          placeholder="Search your complaints…"
+          placeholder={staffView ? "Search ticket, title or flat…" : "Search your complaints…"}
           data-testid="complaints-search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}

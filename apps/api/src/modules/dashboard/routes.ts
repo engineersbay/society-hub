@@ -1,13 +1,10 @@
 import { Elysia } from "elysia";
-import { and, count, eq, inArray, isNotNull, isNull, lt, ne } from "drizzle-orm";
+import { and, count, eq, inArray, isNotNull, isNull, ne } from "drizzle-orm";
 import type { DashboardStatsDto } from "@society-hub/types";
 import { db } from "../../db/client";
 import { bills, bookings, complaints, notices, notifications } from "../../db/schema";
 import { authPlugin, isStaffRole, requireAuth } from "../../lib/auth-context";
 
-function nowMysql() {
-  return new Date().toISOString().replace("T", " ").replace("Z", "");
-}
 
 export const dashboardRoutes = new Elysia({ prefix: "/v1/dashboard" })
   .use(authPlugin)
@@ -23,24 +20,12 @@ export const dashboardRoutes = new Elysia({ prefix: "/v1/dashboard" })
           eq(complaints.isDeleted, false),
         );
 
-    const [[openRow], [totalRow], [slaRow]] = await Promise.all([
+    const [[openRow], [totalRow]] = await Promise.all([
       db
         .select({ total: count() })
         .from(complaints)
         .where(and(complaintWhere, inArray(complaints.status, ["open", "assigned", "in_progress"]))),
       db.select({ total: count() }).from(complaints).where(complaintWhere),
-      db
-        .select({ total: count() })
-        .from(complaints)
-        .where(
-          and(
-            complaintWhere,
-            isNotNull(complaints.slaDueAt),
-            lt(complaints.slaDueAt, nowMysql()),
-            ne(complaints.status, "closed"),
-            ne(complaints.status, "resolved"),
-          ),
-        ),
     ]);
 
     const billWhere = staff

@@ -23,10 +23,10 @@ SocietyHub is a multi-tenant SaaS for housing societies. The **product roadmap i
 
 **Clients (Fassport-style split):**
 
-| App | Audience | Phase 1 live |
-|-----|----------|--------------|
-| `apps/client-app` | Residents | Login, raise/track own complaints, account |
-| `apps/manage` | Society Admin + Super Admin | Login, onboard, all complaints + status updates, account |
+| App | Audience | Modes |
+|-----|----------|--------|
+| `apps/client-app` (`app.localhost:5173`) | Society members | **Admin \| Resident** toggle (like Fassport Raise \| Invest). Staff: Chairperson, Secretary, Treasurer, Cashier, Committee. Residents/tenants: Resident mode only. |
+| `apps/manage` (`manage.localhost:5174`) | SocietyHub **platform employees** only | Create societies, add people to a society team. Day-to-day society admin is **not** here — add yourself to the society team and use Client App Admin. |
 
 Both share one API (`apps/api`) and `packages/sdk`.
 

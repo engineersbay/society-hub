@@ -1,0 +1,60 @@
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
+import type { Role } from "@society-hub/types";
+
+/** Society Client App Admin-mode roles (Fassport "Raise"). Mirrors apps/api SOCIETY_STAFF_ROLES. */
+export const SOCIETY_STAFF_ROLES: Role[] = [
+  "chairperson",
+  "admin",
+  "secretary",
+  "treasurer",
+  "cashier",
+  "committee",
+];
+
+export function canUseAdminMode(role: Role | null | undefined) {
+  return !!role && (SOCIETY_STAFF_ROLES as string[]).includes(role);
+}
+
+export type AppMode = "admin" | "resident";
+
+const MODE_KEY = "sh_app_mode";
+
+type AppModeState = {
+  mode: AppMode;
+  setMode: (mode: AppMode) => void;
+};
+
+const AppModeContext = createContext<AppModeState | null>(null);
+
+export function AppModeProvider({ children }: { children: ReactNode }) {
+  const [mode, setModeState] = useState<AppMode>(() => {
+    const stored = localStorage.getItem(MODE_KEY);
+    return stored === "admin" || stored === "resident" ? stored : "admin";
+  });
+
+  useEffect(() => {
+    localStorage.setItem(MODE_KEY, mode);
+  }, [mode]);
+
+  function setMode(next: AppMode) {
+    setModeState(next);
+  }
+
+  return (
+    <AppModeContext.Provider value={{ mode, setMode }}>
+      {children}
+    </AppModeContext.Provider>
+  );
+}
+
+export function useAppMode() {
+  const ctx = useContext(AppModeContext);
+  if (!ctx) throw new Error("useAppMode outside AppModeProvider");
+  return ctx;
+}

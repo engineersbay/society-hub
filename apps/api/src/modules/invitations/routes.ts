@@ -6,7 +6,8 @@ import { env } from "../../config";
 import { db } from "../../db/client";
 import { invitations } from "../../db/schema";
 import { AppError } from "../../lib/errors";
-import { authPlugin, requireAuth, requireRole } from "../../lib/auth-context";
+import { authPlugin, requireAuth,
+  requireSocietyStaff } from "../../lib/auth-context";
 
 function toDto(row: typeof invitations.$inferSelect): InvitationDto {
   return {
@@ -54,7 +55,7 @@ export const invitationRoutes = new Elysia({ prefix: "/v1/invitations" })
   .use(authPlugin)
   .get("/", async ({ auth }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     const rows = await db
       .select()
       .from(invitations)
@@ -69,13 +70,13 @@ export const invitationRoutes = new Elysia({ prefix: "/v1/invitations" })
   })
   .post("/", async ({ auth, body }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     const parsed = createInvitationSchema.parse(body);
     return createInvitationForTenant(claims.tenantId, claims.sub, parsed);
   })
   .post("/:id/revoke", async ({ auth, params }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     const [row] = await db
       .select()
       .from(invitations)

@@ -7,9 +7,47 @@ export function hashToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
 }
 
-/** Society staff who can manage complaints/onboard (not residents). */
+/** Society Client App Admin-mode roles (Fassport "Raise"). */
+export const SOCIETY_STAFF_ROLES: Role[] = [
+  "chairperson",
+  "admin", // legacy alias of chairperson
+  "secretary",
+  "treasurer",
+  "cashier",
+  "committee",
+];
+
+export const RESIDENT_ROLES: Role[] = ["resident", "tenant"];
+
+export const PLATFORM_ROLES: Role[] = ["superadmin"];
+
+/** Normalize legacy `admin` → `chairperson` for display/JWT preference. */
+export function normalizeRole(role: Role): Role {
+  return role === "admin" ? "chairperson" : role;
+}
+
+export function isSocietyStaffRole(role: Role) {
+  return (SOCIETY_STAFF_ROLES as string[]).includes(role);
+}
+
+export function isPlatformRole(role: Role) {
+  return (PLATFORM_ROLES as string[]).includes(role);
+}
+
+export function isResidentLikeRole(role: Role) {
+  return (RESIDENT_ROLES as string[]).includes(role);
+}
+
+/**
+ * Society day-to-day staff (Client Admin). Does NOT include platform superadmin
+ * unless they also hold a society staff membership (JWT role would be staff).
+ */
 export function isStaffRole(role: Role) {
-  return role === "admin" || role === "superadmin";
+  return isSocietyStaffRole(role);
+}
+
+export function canUseAdminMode(role: Role) {
+  return isSocietyStaffRole(role);
 }
 
 export function requireAuth(auth: AccessClaims | null): AccessClaims {
@@ -20,5 +58,17 @@ export function requireAuth(auth: AccessClaims | null): AccessClaims {
 export function requireRole(auth: AccessClaims, roles: Role[]) {
   if (!roles.includes(auth.role)) {
     throw new AppError(403, "forbidden", "Insufficient permissions");
+  }
+}
+
+export function requireSocietyStaff(auth: AccessClaims) {
+  if (!isSocietyStaffRole(auth.role)) {
+    throw new AppError(403, "forbidden", "Society staff role required");
+  }
+}
+
+export function requirePlatform(auth: AccessClaims) {
+  if (!isPlatformRole(auth.role)) {
+    throw new AppError(403, "forbidden", "Platform employee role required");
   }
 }

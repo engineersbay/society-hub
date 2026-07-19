@@ -17,6 +17,14 @@ import { NotificationsPage } from "./pages/NotificationsPage";
 import { VisitorsPage } from "./pages/VisitorsPage";
 import { ParkingPage } from "./pages/ParkingPage";
 import { BookingsPage } from "./pages/BookingsPage";
+import { OnboardPage } from "./pages/OnboardPage";
+import { InvitesPage } from "./pages/InvitesPage";
+import { TeamPage } from "./pages/TeamPage";
+import { AuditPage } from "./pages/AuditPage";
+import { StructurePage } from "./pages/StructurePage";
+import { AssetsPage } from "./pages/AssetsPage";
+import { VendorsPage } from "./pages/VendorsPage";
+import { EventsPage } from "./pages/EventsPage";
 
 function Protected({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -59,6 +67,14 @@ export function App() {
         <Route path="visitors" element={<VisitorsPage />} />
         <Route path="parking" element={<ParkingPage />} />
         <Route path="bookings" element={<BookingsPage />} />
+        <Route path="onboard" element={<OnboardPage />} />
+        <Route path="invites" element={<InvitesPage />} />
+        <Route path="team" element={<TeamPage />} />
+        <Route path="audit" element={<AuditPage />} />
+        <Route path="structure" element={<StructurePage />} />
+        <Route path="assets" element={<AssetsPage />} />
+        <Route path="vendors" element={<VendorsPage />} />
+        <Route path="events" element={<EventsPage />} />
         <Route path="account" element={<AccountPage />} />
         <Route path="pin" element={<Navigate to="/account" replace />} />
       </Route>

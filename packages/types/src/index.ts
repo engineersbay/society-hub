@@ -1,4 +1,14 @@
-export type Role = "admin" | "resident" | "superadmin";
+export type Role =
+  | "superadmin"
+  | "chairperson"
+  /** @deprecated Use chairperson — kept for DB/JWT backward compatibility */
+  | "admin"
+  | "secretary"
+  | "treasurer"
+  | "cashier"
+  | "committee"
+  | "resident"
+  | "tenant";
 
 export type ComplaintStatus =
   | "open"
@@ -94,6 +104,7 @@ export type MembershipDto = {
   tenantId: string;
   societyName: string;
   role: Role;
+  canUseAdminMode: boolean;
 };
 
 export type SocietyDto = {

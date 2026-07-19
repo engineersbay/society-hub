@@ -34,7 +34,7 @@ export function SocietiesPage() {
 
   useEffect(load, [client]);
 
-  if (user?.role !== "superadmin") return <Navigate to="/dashboard" replace />;
+  if (user?.role !== "superadmin") return <Navigate to="/login" replace />;
 
   async function submit(e: FormEvent) {
     e.preventDefault();

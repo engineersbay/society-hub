@@ -28,7 +28,8 @@ import {
 } from "../../db/schema";
 import { AppError } from "../../lib/errors";
 import { softDelete } from "../../lib/soft-delete";
-import { authPlugin, requireAuth, requireRole } from "../../lib/auth-context";
+import { authPlugin, requireAuth,
+  requireSocietyStaff } from "../../lib/auth-context";
 
 function toVisitorDto(row: typeof visitors.$inferSelect, flatNumber: string | null): VisitorDto {
   return {
@@ -118,7 +119,7 @@ export const parkingRoutes = new Elysia({ prefix: "/v1/parking" })
   })
   .post("/", async ({ auth, body }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     const parsed = createParkingSlotSchema.parse(body);
     const id = crypto.randomUUID();
     await db.insert(parkingSlots).values({
@@ -141,7 +142,7 @@ export const parkingRoutes = new Elysia({ prefix: "/v1/parking" })
   })
   .delete("/:id", async ({ auth, params }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     await softDelete(parkingSlots, params.id, claims.sub);
     return { ok: true as const };
   });
@@ -219,7 +220,7 @@ export const assetRoutes = new Elysia({ prefix: "/v1/assets" })
   .use(authPlugin)
   .get("/", async ({ auth }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     const rows = await db
       .select()
       .from(assets)
@@ -228,7 +229,7 @@ export const assetRoutes = new Elysia({ prefix: "/v1/assets" })
   })
   .post("/", async ({ auth, body }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     const parsed = createAssetSchema.parse(body);
     const id = crypto.randomUUID();
     await db.insert(assets).values({
@@ -248,7 +249,7 @@ export const assetRoutes = new Elysia({ prefix: "/v1/assets" })
   })
   .delete("/:id", async ({ auth, params }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     await softDelete(assets, params.id, claims.sub);
     return { ok: true as const };
   });
@@ -269,7 +270,7 @@ export const vendorRoutes = new Elysia({ prefix: "/v1/vendors" })
   .use(authPlugin)
   .get("/", async ({ auth }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     const rows = await db
       .select()
       .from(vendors)
@@ -278,7 +279,7 @@ export const vendorRoutes = new Elysia({ prefix: "/v1/vendors" })
   })
   .post("/", async ({ auth, body }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     const parsed = createVendorSchema.parse(body);
     const id = crypto.randomUUID();
     await db.insert(vendors).values({
@@ -297,7 +298,7 @@ export const vendorRoutes = new Elysia({ prefix: "/v1/vendors" })
   })
   .delete("/:id", async ({ auth, params }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     await softDelete(vendors, params.id, claims.sub);
     return { ok: true as const };
   });
@@ -327,7 +328,7 @@ export const eventRoutes = new Elysia({ prefix: "/v1/events" })
   })
   .post("/", async ({ auth, body }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     const parsed = createEventSchema.parse(body);
     const id = crypto.randomUUID();
     await db.insert(events).values({
@@ -346,7 +347,7 @@ export const eventRoutes = new Elysia({ prefix: "/v1/events" })
   })
   .delete("/:id", async ({ auth, params }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     await softDelete(events, params.id, claims.sub);
     return { ok: true as const };
   });

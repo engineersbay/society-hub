@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import type { ComplaintDto, DashboardStatsDto } from "@society-hub/types";
 import { useAuth } from "../auth";
+import { canUseAdminMode, useAppMode } from "../app-mode";
 
 function rupees(paise: number) {
   return `₹${(paise / 100).toLocaleString("en-IN")}`;
@@ -9,6 +10,8 @@ function rupees(paise: number) {
 
 export function DashboardPage() {
   const { client, user } = useAuth();
+  const { mode } = useAppMode();
+  const staffView = canUseAdminMode(user?.role) && mode === "admin";
   const [stats, setStats] = useState<DashboardStatsDto | null>(null);
   const [recent, setRecent] = useState<ComplaintDto[]>([]);
 
@@ -55,7 +58,7 @@ export function DashboardPage() {
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         <div className="card p-5">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-semibold">Your recent complaints</h2>
+            <h2 className="font-semibold">{staffView ? "Recent complaints" : "Your recent complaints"}</h2>
             <Link to="/complaints" className="text-sm text-[var(--leaf)]">
               View all
             </Link>
@@ -82,10 +85,21 @@ export function DashboardPage() {
         <div className="card p-5">
           <h2 className="mb-3 font-semibold">Quick actions</h2>
           <div className="grid grid-cols-2 gap-2">
-            <Link to="/bills" className="btn btn-ghost text-sm">Pay dues</Link>
-            <Link to="/bookings" className="btn btn-ghost text-sm">Book clubhouse</Link>
-            <Link to="/visitors" className="btn btn-ghost text-sm">Expect visitor</Link>
-            <Link to="/parking" className="btn btn-ghost text-sm">Parking</Link>
+            {staffView ? (
+              <>
+                <Link to="/onboard" className="btn btn-ghost text-sm">Onboard resident</Link>
+                <Link to="/invites" className="btn btn-ghost text-sm">Send invite</Link>
+                <Link to="/bills" className="btn btn-ghost text-sm">Generate bills</Link>
+                <Link to="/notices" className="btn btn-ghost text-sm">New notice</Link>
+              </>
+            ) : (
+              <>
+                <Link to="/bills" className="btn btn-ghost text-sm">Pay dues</Link>
+                <Link to="/bookings" className="btn btn-ghost text-sm">Book clubhouse</Link>
+                <Link to="/visitors" className="btn btn-ghost text-sm">Expect visitor</Link>
+                <Link to="/parking" className="btn btn-ghost text-sm">Parking</Link>
+              </>
+            )}
           </div>
         </div>
       </div>

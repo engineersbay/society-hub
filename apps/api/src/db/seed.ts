@@ -83,7 +83,7 @@ async function ensureSociety() {
       id: id(),
       tenantId: TENANT_ID,
       userId: ADMIN_USER_ID,
-      role: "admin",
+      role: "chairperson",
     },
     {
       id: id(),

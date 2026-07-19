@@ -1,6 +1,9 @@
-import { beforeAll, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { createApp } from "./app";
 
-const base = process.env.API_URL ?? "http://127.0.0.1:3000";
+/** In-process base URL — set in beforeAll so Bun coverage instruments route modules. */
+let base = "";
+let server: ReturnType<ReturnType<typeof createApp>["listen"]> | null = null;
 
 async function otpLogin(phone: string) {
   await fetch(`${base}/v1/auth/otp/request`, {
@@ -33,14 +36,32 @@ async function passwordLogin(email: string, password: string) {
   };
 }
 
+/** Unique YYYY-MM so bill generate always creates unpaid rows across re-runs. */
+function uniquePeriodYm() {
+  const n = Date.now() + Math.floor(Math.random() * 10_000);
+  const year = 3000 + (n % 6000);
+  const month = String((Math.floor(n / 37) % 12) + 1).padStart(2, "0");
+  return `${year}-${month}`;
+}
+
 describe("api integration", () => {
-  beforeAll(async () => {
-    const health = await fetch(`${base}/health`);
-    if (!health.ok) {
-      throw new Error(
-        `API not reachable at ${base}. Start with: bun run --filter=@society-hub/api dev`,
-      );
+  beforeAll(() => {
+    // Prefer an explicit API_URL (external server) for debugging; otherwise boot
+    // in-process so `bun test --coverage` measures module coverage.
+    if (process.env.API_URL) {
+      base = process.env.API_URL;
+      return;
     }
+    const app = createApp().listen(0);
+    server = app;
+    const port = app.server?.port;
+    if (!port) throw new Error("Failed to bind in-process API for integration tests");
+    base = `http://127.0.0.1:${port}`;
+  });
+
+  afterAll(() => {
+    server?.stop(true);
+    server = null;
   });
 
   test("health endpoint", async () => {
@@ -303,19 +324,18 @@ describe("api integration", () => {
     });
     expect(getRes.ok).toBe(true);
 
-    const buildingsRes = await fetch(
+    // Structure CRUD is Client App Admin (society staff), not platform.
+    const buildingsAsPlatform = await fetch(
       `${base}/v1/societies/${society.id}/buildings`,
       { headers: { Authorization: `Bearer ${session.tokens.accessToken}` } },
     );
-    expect(buildingsRes.ok).toBe(true);
-    const buildingList = (await buildingsRes.json()) as { id: string }[];
-    expect(buildingList.length).toBeGreaterThan(0);
+    expect(buildingsAsPlatform.status).toBe(403);
   });
 
   test("admin can generate bills and resident can pay a bill (mock)", async () => {
     const admin = await otpLogin("9999999999");
     // Unique YYYY-MM so re-runs never hit an already-paid period for flat 101.
-    const periodYm = `${2300 + (Date.now() % 600)}-${String((Date.now() % 12) + 1).padStart(2, "0")}`;
+    const periodYm = uniquePeriodYm();
     const generate = await fetch(`${base}/v1/bills/generate`, {
       method: "POST",
       headers: {
@@ -403,6 +423,12 @@ describe("api integration", () => {
     const statsBody = (await stats.json()) as { totalComplaints: number };
     expect(statsBody.totalComplaints).toBeGreaterThanOrEqual(0);
 
+    const resident = await otpLogin("8888888888");
+    const residentStats = await fetch(`${base}/v1/dashboard/stats`, {
+      headers: { Authorization: `Bearer ${resident.tokens.accessToken}` },
+    });
+    expect(residentStats.ok).toBe(true);
+
     const audit = await fetch(`${base}/v1/audit`, {
       headers: { Authorization: `Bearer ${admin.tokens.accessToken}` },
     });
@@ -464,11 +490,9 @@ describe("api integration", () => {
     );
   });
 
-  test("superadmin can raise complaint by selecting a flat", async () => {
-    const session = await passwordLogin(
-      "superadmin@societyhub.local",
-      process.env.SUPERADMIN_PASSWORD ?? "Test@1234",
-    );
+  test("chairperson can raise complaint by selecting a flat", async () => {
+    const session = await otpLogin("9999999999");
+    expect(session.user.role).toBe("chairperson");
     const flatsRes = await fetch(`${base}/v1/admin/flats`, {
       headers: { Authorization: `Bearer ${session.tokens.accessToken}` },
     });
@@ -483,10 +507,10 @@ describe("api integration", () => {
         Authorization: `Bearer ${session.tokens.accessToken}`,
       },
       body: JSON.stringify({
-        title: "Superadmin raised issue",
+        title: "Chairperson raised issue",
         type: "other",
         typeOtherText: "inspection",
-        description: "Raised while previewing the resident app",
+        description: "Raised from Client App Admin mode",
         flatId: flats[0]!.id,
       }),
     });
@@ -498,5 +522,1336 @@ describe("api integration", () => {
     };
     expect(complaint.flatId).toBe(flats[0]!.id);
     expect(complaint.flatNumber).toBe(flats[0]!.number);
+  });
+
+  test("platform can add SocietyHub user to society team", async () => {
+    const session = await passwordLogin(
+      "superadmin@societyhub.local",
+      process.env.SUPERADMIN_PASSWORD ?? "Test@1234",
+    );
+    const societies = await fetch(`${base}/v1/societies`, {
+      headers: { Authorization: `Bearer ${session.tokens.accessToken}` },
+    });
+    expect(societies.ok).toBe(true);
+    const list = (await societies.json()) as { id: string }[];
+    expect(list.length).toBeGreaterThan(0);
+
+    const email = `platform.ops.${Date.now()}@societyhub.local`;
+    const add = await fetch(`${base}/v1/manage/societies/${list[0]!.id}/team`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.tokens.accessToken}`,
+      },
+      body: JSON.stringify({
+        email,
+        name: "Platform Ops",
+        role: "secretary",
+      }),
+    });
+    expect(add.ok).toBe(true);
+    const body = (await add.json()) as { role: string; userId: string };
+    expect(body.role).toBe("secretary");
+  });
+
+  test("profile, notifications, team, and invitations", async () => {
+    const staff = await otpLogin("9999999999");
+    const auth = { Authorization: `Bearer ${staff.tokens.accessToken}` };
+
+    const profileGet = await fetch(`${base}/v1/profile`, { headers: auth });
+    expect(profileGet.ok).toBe(true);
+
+    const profilePatch = await fetch(`${base}/v1/profile`, {
+      method: "PATCH",
+      headers: { ...auth, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        emergencyContact: "9999999999",
+        vehicleNumber: "MH12AB1234",
+      }),
+    });
+    expect(profilePatch.ok).toBe(true);
+
+    const team = await fetch(`${base}/v1/team`, { headers: auth });
+    expect(team.ok).toBe(true);
+
+    const invite = await fetch(`${base}/v1/invitations`, {
+      method: "POST",
+      headers: { ...auth, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: `invite.${Date.now()}@example.com`,
+        role: "resident",
+      }),
+    });
+    expect(invite.ok).toBe(true);
+    const invitation = (await invite.json()) as { id: string };
+
+    const invites = await fetch(`${base}/v1/invitations`, { headers: auth });
+    expect(invites.ok).toBe(true);
+
+    const revoke = await fetch(`${base}/v1/invitations/${invitation.id}/revoke`, {
+      method: "POST",
+      headers: auth,
+    });
+    expect(revoke.ok).toBe(true);
+
+    const adminStructure = await fetch(`${base}/v1/admin/structure`, {
+      headers: auth,
+    });
+    expect(adminStructure.ok).toBe(true);
+
+    const adminTeam = await fetch(`${base}/v1/admin/team`, { headers: auth });
+    expect(adminTeam.ok).toBe(true);
+
+    const adminInvite = await fetch(`${base}/v1/admin/invites`, {
+      method: "POST",
+      headers: { ...auth, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        phone: `7${String(Date.now()).slice(-9)}`,
+        role: "committee",
+      }),
+    });
+    expect(adminInvite.ok).toBe(true);
+  });
+
+  test("structure buildings wings flats as chairperson", async () => {
+    const staff = await otpLogin("9999999999");
+    const auth = { Authorization: `Bearer ${staff.tokens.accessToken}` };
+    const me = await fetch(`${base}/v1/auth/me`, { headers: auth });
+    const user = (await me.json()) as { tenantId: string };
+
+    const buildings = await fetch(
+      `${base}/v1/societies/${user.tenantId}/buildings`,
+      { headers: auth },
+    );
+    expect(buildings.ok).toBe(true);
+    const buildingList = (await buildings.json()) as { id: string }[];
+    expect(buildingList.length).toBeGreaterThan(0);
+
+    const wings = await fetch(
+      `${base}/v1/buildings/${buildingList[0]!.id}/wings`,
+      { headers: auth },
+    );
+    expect(wings.ok).toBe(true);
+    const wingList = (await wings.json()) as { id: string }[];
+    expect(wingList.length).toBeGreaterThan(0);
+
+    const flats = await fetch(`${base}/v1/wings/${wingList[0]!.id}/flats`, {
+      headers: auth,
+    });
+    expect(flats.ok).toBe(true);
+
+    const newFlat = `C-${Date.now().toString().slice(-4)}`;
+    const createFlat = await fetch(
+      `${base}/v1/wings/${wingList[0]!.id}/flats`,
+      {
+        method: "POST",
+        headers: { ...auth, "Content-Type": "application/json" },
+        body: JSON.stringify({ number: newFlat }),
+      },
+    );
+    expect(createFlat.ok).toBe(true);
+    const flatBody = (await createFlat.json()) as { id: string };
+
+    const createBuilding = await fetch(
+      `${base}/v1/societies/${user.tenantId}/buildings`,
+      {
+        method: "POST",
+        headers: { ...auth, "Content-Type": "application/json" },
+        body: JSON.stringify({ name: `Tower-${Date.now().toString().slice(-4)}` }),
+      },
+    );
+    expect(createBuilding.ok).toBe(true);
+    const buildingBody = (await createBuilding.json()) as { id: string };
+
+    const createWing = await fetch(
+      `${base}/v1/buildings/${buildingBody.id}/wings`,
+      {
+        method: "POST",
+        headers: { ...auth, "Content-Type": "application/json" },
+        body: JSON.stringify({ name: `W-${Date.now().toString().slice(-3)}` }),
+      },
+    );
+    expect(createWing.ok).toBe(true);
+    const wingBody = (await createWing.json()) as { id: string };
+
+    expect(
+      (
+        await fetch(`${base}/v1/flats/${flatBody.id}`, {
+          method: "DELETE",
+          headers: auth,
+        })
+      ).ok,
+    ).toBe(true);
+    expect(
+      (
+        await fetch(`${base}/v1/wings/${wingBody.id}`, {
+          method: "DELETE",
+          headers: auth,
+        })
+      ).ok,
+    ).toBe(true);
+    expect(
+      (
+        await fetch(`${base}/v1/buildings/${buildingBody.id}`, {
+          method: "DELETE",
+          headers: auth,
+        })
+      ).ok,
+    ).toBe(true);
+  });
+
+  test("misc modules: visitors parking bookings assets vendors events", async () => {
+    const resident = await otpLogin("8888888888");
+    const staff = await otpLogin("9999999999");
+    const rAuth = {
+      Authorization: `Bearer ${resident.tokens.accessToken}`,
+      "Content-Type": "application/json",
+    };
+    const sAuth = {
+      Authorization: `Bearer ${staff.tokens.accessToken}`,
+      "Content-Type": "application/json",
+    };
+
+    const visitor = await fetch(`${base}/v1/visitors`, {
+      method: "POST",
+      headers: rAuth,
+      body: JSON.stringify({
+        visitorName: "Courier",
+        purpose: "Delivery",
+      }),
+    });
+    expect(visitor.ok).toBe(true);
+    const visitorBody = (await visitor.json()) as { id: string };
+
+    const visitors = await fetch(`${base}/v1/visitors`, {
+      headers: { Authorization: rAuth.Authorization },
+    });
+    expect(visitors.ok).toBe(true);
+
+    const delVisitor = await fetch(`${base}/v1/visitors/${visitorBody.id}`, {
+      method: "DELETE",
+      headers: { Authorization: rAuth.Authorization },
+    });
+    expect(delVisitor.ok).toBe(true);
+
+    const parking = await fetch(`${base}/v1/parking`, {
+      method: "POST",
+      headers: sAuth,
+      body: JSON.stringify({ slotNumber: `P-${Date.now().toString().slice(-4)}` }),
+    });
+    expect(parking.ok).toBe(true);
+    const parkingBody = (await parking.json()) as { id: string };
+    expect(
+      (
+        await fetch(`${base}/v1/parking`, {
+          headers: { Authorization: sAuth.Authorization },
+        })
+      ).ok,
+    ).toBe(true);
+    expect(
+      (
+        await fetch(`${base}/v1/parking/${parkingBody.id}`, {
+          method: "DELETE",
+          headers: { Authorization: sAuth.Authorization },
+        })
+      ).ok,
+    ).toBe(true);
+
+    const start = new Date(Date.now() + 3600_000)
+      .toISOString()
+      .replace("T", " ")
+      .replace("Z", "");
+    const end = new Date(Date.now() + 7200_000)
+      .toISOString()
+      .replace("T", " ")
+      .replace("Z", "");
+    const booking = await fetch(`${base}/v1/bookings`, {
+      method: "POST",
+      headers: rAuth,
+      body: JSON.stringify({
+        facilityName: "Clubhouse",
+        startAt: start,
+        endAt: end,
+      }),
+    });
+    expect(booking.ok).toBe(true);
+    const bookingBody = (await booking.json()) as { id: string };
+    expect(
+      (
+        await fetch(`${base}/v1/bookings`, {
+          headers: { Authorization: rAuth.Authorization },
+        })
+      ).ok,
+    ).toBe(true);
+    expect(
+      (
+        await fetch(`${base}/v1/bookings/${bookingBody.id}`, {
+          method: "DELETE",
+          headers: { Authorization: rAuth.Authorization },
+        })
+      ).ok,
+    ).toBe(true);
+
+    const asset = await fetch(`${base}/v1/assets`, {
+      method: "POST",
+      headers: sAuth,
+      body: JSON.stringify({ name: `Pump-${Date.now().toString().slice(-4)}` }),
+    });
+    expect(asset.ok).toBe(true);
+    const assetBody = (await asset.json()) as { id: string };
+    expect(
+      (
+        await fetch(`${base}/v1/assets`, {
+          headers: { Authorization: sAuth.Authorization },
+        })
+      ).ok,
+    ).toBe(true);
+    expect(
+      (
+        await fetch(`${base}/v1/assets/${assetBody.id}`, {
+          method: "DELETE",
+          headers: { Authorization: sAuth.Authorization },
+        })
+      ).ok,
+    ).toBe(true);
+
+    const vendor = await fetch(`${base}/v1/vendors`, {
+      method: "POST",
+      headers: sAuth,
+      body: JSON.stringify({ name: `Vendor-${Date.now().toString().slice(-4)}` }),
+    });
+    expect(vendor.ok).toBe(true);
+    const vendorBody = (await vendor.json()) as { id: string };
+    expect(
+      (
+        await fetch(`${base}/v1/vendors`, {
+          headers: { Authorization: sAuth.Authorization },
+        })
+      ).ok,
+    ).toBe(true);
+    expect(
+      (
+        await fetch(`${base}/v1/vendors/${vendorBody.id}`, {
+          method: "DELETE",
+          headers: { Authorization: sAuth.Authorization },
+        })
+      ).ok,
+    ).toBe(true);
+
+    const event = await fetch(`${base}/v1/events`, {
+      method: "POST",
+      headers: sAuth,
+      body: JSON.stringify({
+        title: `Fest-${Date.now().toString().slice(-4)}`,
+        startAt: start,
+      }),
+    });
+    expect(event.ok).toBe(true);
+    const eventBody = (await event.json()) as { id: string };
+    expect(
+      (
+        await fetch(`${base}/v1/events`, {
+          headers: { Authorization: sAuth.Authorization },
+        })
+      ).ok,
+    ).toBe(true);
+    expect(
+      (
+        await fetch(`${base}/v1/events/${eventBody.id}`, {
+          method: "DELETE",
+          headers: { Authorization: sAuth.Authorization },
+        })
+      ).ok,
+    ).toBe(true);
+  });
+
+  test("offline payment, receipt, void bill, notice update, soft-delete complaint", async () => {
+    const staff = await otpLogin("9999999999");
+    const resident = await otpLogin("8888888888");
+    const sAuth = {
+      Authorization: `Bearer ${staff.tokens.accessToken}`,
+      "Content-Type": "application/json",
+    };
+    const rAuth = {
+      Authorization: `Bearer ${resident.tokens.accessToken}`,
+      "Content-Type": "application/json",
+    };
+
+    const flats = (await (
+      await fetch(`${base}/v1/admin/flats`, {
+        headers: { Authorization: sAuth.Authorization },
+      })
+    ).json()) as { id: string }[];
+
+    const periodYm = uniquePeriodYm();
+    await fetch(`${base}/v1/bills/generate`, {
+      method: "POST",
+      headers: sAuth,
+      body: JSON.stringify({ periodYm, amountPaise: 10000 }),
+    });
+
+    const bills = (await (
+      await fetch(`${base}/v1/bills/mine`, {
+        headers: { Authorization: rAuth.Authorization },
+      })
+    ).json()) as { id: string; status: string; periodYm: string }[];
+    const bill = bills.find((b) => b.periodYm === periodYm && b.status !== "paid");
+    expect(bill).toBeTruthy();
+
+    const offline = await fetch(`${base}/v1/payments`, {
+      method: "POST",
+      headers: sAuth,
+      body: JSON.stringify({
+        flatId: flats[0]!.id,
+        billId: bill!.id,
+        amountPaise: 10000,
+        method: "cash",
+      }),
+    });
+    expect(offline.ok).toBe(true);
+    const payment = (await offline.json()) as { id: string };
+
+    const receipt = await fetch(`${base}/v1/payments/${payment.id}/receipt`, {
+      headers: { Authorization: sAuth.Authorization },
+    });
+    expect(receipt.ok).toBe(true);
+
+    const periodYm2 = uniquePeriodYm();
+    await fetch(`${base}/v1/bills/generate`, {
+      method: "POST",
+      headers: sAuth,
+      body: JSON.stringify({ periodYm: periodYm2, amountPaise: 20000 }),
+    });
+    const bills2 = (await (
+      await fetch(`${base}/v1/bills`, {
+        headers: { Authorization: sAuth.Authorization },
+      })
+    ).json()) as { items: { id: string; periodYm: string; status: string }[] };
+    const toVoid = bills2.items.find(
+      (b) => b.periodYm === periodYm2 && b.status !== "void",
+    );
+    expect(toVoid).toBeTruthy();
+    const voidRes = await fetch(`${base}/v1/bills/${toVoid!.id}`, {
+      method: "DELETE",
+      headers: sAuth,
+      body: JSON.stringify({ reason: "duplicate" }),
+    });
+    expect(voidRes.ok).toBe(true);
+
+    const notice = await fetch(`${base}/v1/notices`, {
+      method: "POST",
+      headers: sAuth,
+      body: JSON.stringify({
+        title: "Temp notice",
+        body: "Body",
+        audience: "all",
+      }),
+    });
+    const noticeBody = (await notice.json()) as { id: string };
+    const update = await fetch(`${base}/v1/notices/${noticeBody.id}`, {
+      method: "PATCH",
+      headers: sAuth,
+      body: JSON.stringify({ title: "Updated notice" }),
+    });
+    expect(update.ok).toBe(true);
+    await fetch(`${base}/v1/notices/${noticeBody.id}/publish`, {
+      method: "POST",
+      headers: { Authorization: sAuth.Authorization },
+    });
+    const unpublish = await fetch(
+      `${base}/v1/notices/${noticeBody.id}/unpublish`,
+      { method: "POST", headers: { Authorization: sAuth.Authorization } },
+    );
+    expect(unpublish.ok).toBe(true);
+
+    const created = await fetch(`${base}/v1/complaints`, {
+      method: "POST",
+      headers: rAuth,
+      body: JSON.stringify({
+        title: "To delete",
+        type: "other",
+        typeOtherText: "noise",
+        description: "Will be soft-deleted",
+      }),
+    });
+    const complaint = (await created.json()) as { id: string };
+    const del = await fetch(`${base}/v1/complaints/${complaint.id}`, {
+      method: "DELETE",
+      headers: { Authorization: sAuth.Authorization },
+    });
+    expect(del.ok).toBe(true);
+  });
+
+  test("bills pay path, payments list/mine/webhook, notifications, media, auth extras", async () => {
+    const staff = await otpLogin("9999999999");
+    const resident = await otpLogin("8888888888");
+    const platform = await passwordLogin(
+      "superadmin@societyhub.local",
+      "Test@1234",
+    );
+    const sAuth = {
+      Authorization: `Bearer ${staff.tokens.accessToken}`,
+      "Content-Type": "application/json",
+    };
+    const rAuth = {
+      Authorization: `Bearer ${resident.tokens.accessToken}`,
+      "Content-Type": "application/json",
+    };
+
+    const periodYm = uniquePeriodYm();
+    const generated = await fetch(`${base}/v1/bills/generate`, {
+      method: "POST",
+      headers: sAuth,
+      body: JSON.stringify({ periodYm, amountPaise: 15000 }),
+    });
+    expect(generated.ok).toBe(true);
+    expect(((await generated.json()) as { created: number }).created).toBeGreaterThan(0);
+
+    const mine = (await (
+      await fetch(`${base}/v1/bills/mine`, {
+        headers: { Authorization: rAuth.Authorization },
+      })
+    ).json()) as { id: string; periodYm: string; status: string }[];
+    const bill = mine.find((b) => b.periodYm === periodYm && b.status !== "paid");
+    expect(bill).toBeTruthy();
+
+    const billGet = await fetch(`${base}/v1/bills/${bill!.id}`, {
+      headers: { Authorization: rAuth.Authorization },
+    });
+    expect(billGet.ok).toBe(true);
+
+    const pay = await fetch(`${base}/v1/bills/${bill!.id}/pay`, {
+      method: "POST",
+      headers: rAuth,
+    });
+    expect(pay.ok).toBe(true);
+    const paid = (await pay.json()) as {
+      id: string;
+      status: string;
+    };
+    expect(paid.status).toBe("success");
+
+    const paymentsList = await fetch(`${base}/v1/payments?page=1&limit=20`, {
+      headers: { Authorization: sAuth.Authorization },
+    });
+    expect(paymentsList.ok).toBe(true);
+
+    const paymentsMine = await fetch(`${base}/v1/payments/mine`, {
+      headers: { Authorization: rAuth.Authorization },
+    });
+    expect(paymentsMine.ok).toBe(true);
+
+    // Seed a pending razorpay payment for webhook coverage
+    const periodYm2 = uniquePeriodYm();
+    await fetch(`${base}/v1/bills/generate`, {
+      method: "POST",
+      headers: sAuth,
+      body: JSON.stringify({ periodYm: periodYm2, amountPaise: 18000 }),
+    });
+    const mine2 = (await (
+      await fetch(`${base}/v1/bills/mine`, {
+        headers: { Authorization: rAuth.Authorization },
+      })
+    ).json()) as { id: string; periodYm: string; status: string }[];
+    const bill2 = mine2.find((b) => b.periodYm === periodYm2 && b.status !== "paid");
+    const mockPay = await fetch(`${base}/v1/payments/mock`, {
+      method: "POST",
+      headers: rAuth,
+      body: JSON.stringify({ billId: bill2!.id }),
+    });
+    expect(mockPay.ok).toBe(true);
+    const mockBody = (await mockPay.json()) as { id: string };
+    const orderId = `order_dev_${mockBody.id.slice(0, 12)}`;
+
+    const webhookMissing = await fetch(`${base}/v1/payments/razorpay/webhook`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    expect(webhookMissing.status).toBe(400);
+
+    const webhookOk = await fetch(`${base}/v1/payments/razorpay/webhook`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        orderId,
+        paymentId: `pay_hook_${Date.now()}`,
+        status: "success",
+      }),
+    });
+    expect(webhookOk.ok).toBe(true);
+
+    const webhookMissingOrder = await fetch(
+      `${base}/v1/payments/razorpay/webhook`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId: "order_missing_xyz" }),
+      },
+    );
+    expect(webhookMissingOrder.status).toBe(404);
+
+    const notifs = await fetch(`${base}/v1/notifications`, {
+      headers: { Authorization: rAuth.Authorization },
+    });
+    expect(notifs.ok).toBe(true);
+    const notificationList = (await notifs.json()) as { id: string }[];
+    expect(notificationList.length).toBeGreaterThan(0);
+    const mark = await fetch(
+      `${base}/v1/notifications/${notificationList[0]!.id}/read`,
+      { method: "POST", headers: { Authorization: rAuth.Authorization } },
+    );
+    expect(mark.ok).toBe(true);
+    // Idempotent second mark
+    expect(
+      (
+        await fetch(
+          `${base}/v1/notifications/${notificationList[0]!.id}/read`,
+          { method: "POST", headers: { Authorization: rAuth.Authorization } },
+        )
+      ).ok,
+    ).toBe(true);
+
+    const created = await fetch(`${base}/v1/complaints`, {
+      method: "POST",
+      headers: rAuth,
+      body: JSON.stringify({
+        title: "With photo",
+        type: "other",
+        typeOtherText: "leak",
+        description: "Attachment coverage",
+      }),
+    });
+    const complaint = (await created.json()) as { id: string };
+    const form = new FormData();
+    form.append(
+      "file",
+      new File([Uint8Array.from([1, 2, 3, 4])], "leak.png", {
+        type: "image/png",
+      }),
+    );
+    const attach = await fetch(
+      `${base}/v1/complaints/${complaint.id}/attachments`,
+      {
+        method: "POST",
+        headers: { Authorization: rAuth.Authorization },
+        body: form,
+      },
+    );
+    expect(attach.ok).toBe(true);
+    const withAtt = (await attach.json()) as {
+      attachments: { id: string; url: string }[];
+    };
+    expect(withAtt.attachments.length).toBeGreaterThan(0);
+    const media = await fetch(
+      `${base}/v1/media/${withAtt.attachments[0]!.id}`,
+      { headers: { Authorization: rAuth.Authorization } },
+    );
+    expect(media.ok).toBe(true);
+
+    const staffList = await fetch(`${base}/v1/complaints?page=1&limit=5`, {
+      headers: { Authorization: sAuth.Authorization },
+    });
+    expect(staffList.ok).toBe(true);
+
+    const changePw = await fetch(`${base}/v1/auth/password/change`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${platform.tokens.accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        currentPassword: "Test@1234",
+        newPassword: "Test@1234",
+      }),
+    });
+    expect(changePw.ok).toBe(true);
+
+    const authProfile = await fetch(`${base}/v1/auth/profile`, {
+      method: "PATCH",
+      headers: rAuth,
+      body: JSON.stringify({ emergencyContact: "8888888888" }),
+    });
+    expect(authProfile.ok).toBe(true);
+
+    const auditLogs = await fetch(`${base}/v1/audit-logs`, {
+      headers: { Authorization: sAuth.Authorization },
+    });
+    expect(auditLogs.ok).toBe(true);
+
+    // Soft-delete a throwaway society (platform)
+    const createSociety = await fetch(`${base}/v1/societies`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${platform.tokens.accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name: `Temp Delete ${Date.now()}`,
+        city: "Pune",
+      }),
+    });
+    expect(createSociety.ok).toBe(true);
+    const society = (await createSociety.json()) as { id: string };
+    const delSociety = await fetch(`${base}/v1/societies/${society.id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${platform.tokens.accessToken}` },
+    });
+    expect(delSociety.ok).toBe(true);
+
+    // Error mapping + invitation helper coverage
+    const { toErrorBody, AppError } = await import("./lib/errors");
+    expect(toErrorBody(new AppError(404, "x", "y")).status).toBe(404);
+    const prevError = console.error;
+    console.error = () => {};
+    try {
+      expect(toErrorBody(new Error("boom")).body.code).toBe("internal_error");
+    } finally {
+      console.error = prevError;
+    }
+
+    const invite = await fetch(`${base}/v1/invitations`, {
+      method: "POST",
+      headers: sAuth,
+      body: JSON.stringify({
+        email: `token.${Date.now()}@example.com`,
+        role: "resident",
+      }),
+    });
+    const invitation = (await invite.json()) as { id: string; devToken?: string };
+    expect(invitation.devToken).toBeTruthy();
+    const { findPendingInvitationByToken } = await import(
+      "./modules/invitations/routes"
+    );
+    const pending = await findPendingInvitationByToken(invitation.devToken!);
+    expect(pending.id).toBe(invitation.id);
+
+    // Team add by phone (new user) + identity_required error
+    const me = (await (
+      await fetch(`${base}/v1/auth/me`, {
+        headers: { Authorization: sAuth.Authorization },
+      })
+    ).json()) as { tenantId: string };
+    const addPhone = await fetch(
+      `${base}/v1/manage/societies/${me.tenantId}/team`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${platform.tokens.accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          phone: `6${String(Date.now()).slice(-9)}`,
+          name: "Phone Staff",
+          role: "treasurer",
+        }),
+      },
+    );
+    expect(addPhone.ok).toBe(true);
+    const reuseEmail = `reuse2.${Date.now()}@example.com`;
+    await fetch(`${base}/v1/manage/societies/${me.tenantId}/team`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${platform.tokens.accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: reuseEmail,
+        name: "First",
+        role: "committee",
+      }),
+    });
+    const updateName = await fetch(
+      `${base}/v1/manage/societies/${me.tenantId}/team`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${platform.tokens.accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: reuseEmail,
+          name: "Updated Name",
+          role: "committee",
+        }),
+      },
+    );
+    expect(updateName.ok).toBe(true);
+
+    const badTeam = await fetch(
+      `${base}/v1/manage/societies/${me.tenantId}/team`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${platform.tokens.accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: "No identity", role: "secretary" }),
+      },
+    );
+    expect(badTeam.status).toBe(400);
+
+    // Booking without flatId for staff without flat → flat_required
+    const bookingBad = await fetch(`${base}/v1/bookings`, {
+      method: "POST",
+      headers: sAuth,
+      body: JSON.stringify({
+        facilityName: "Hall",
+        startAt: "2030-01-01 10:00:00",
+        endAt: "2030-01-01 11:00:00",
+      }),
+    });
+    expect(bookingBad.status).toBe(400);
+  });
+
+  test("auth error paths, fresh profile insert, and tenant scope guard", async () => {
+    // OTP expired/missing
+    const badOtp = await fetch(`${base}/v1/auth/otp/verify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone: "7000000001", code: "000000" }),
+    });
+    expect(badOtp.status).toBe(400);
+
+    await fetch(`${base}/v1/auth/otp/request`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone: "7000000002" }),
+    });
+    const wrongOtp = await fetch(`${base}/v1/auth/otp/verify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone: "7000000002", code: "000000" }),
+    });
+    expect(wrongOtp.status).toBe(400);
+
+    await fetch(`${base}/v1/auth/otp/request`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone: "7000000003" }),
+    });
+    const notOnboarded = await fetch(`${base}/v1/auth/otp/verify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone: "7000000003", code: "123456" }),
+    });
+    expect(notOnboarded.status).toBe(403);
+
+    const badGoogle = await fetch(`${base}/v1/auth/google`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idToken: "not-dev-token" }),
+    });
+    expect(badGoogle.status).toBe(400);
+
+    const googleUnknown = await fetch(`${base}/v1/auth/google`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idToken: "dev:7000000004" }),
+    });
+    expect(googleUnknown.status).toBe(403);
+
+    const pinMissing = await fetch(`${base}/v1/auth/pin/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone: "8888888888", pin: "1234" }),
+    });
+    // Resident may or may not have pin from earlier tests; either 400 or 401 is fine for coverage.
+    expect([400, 401].includes(pinMissing.status)).toBe(true);
+
+    const badPassword = await fetch(`${base}/v1/auth/password/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: "superadmin@societyhub.local",
+        password: "WrongPass1!",
+      }),
+    });
+    expect(badPassword.status).toBe(401);
+
+    const unknownEmail = await fetch(`${base}/v1/auth/password/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: "nobody@example.com",
+        password: "Whatever1!",
+      }),
+    });
+    expect(unknownEmail.status).toBe(401);
+
+    const resetBad = await fetch(`${base}/v1/auth/password/reset`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: "superadmin@societyhub.local",
+        code: "000000",
+        newPassword: "Test@1234",
+      }),
+    });
+    expect(resetBad.status).toBe(400);
+
+    const platform = await passwordLogin(
+      "superadmin@societyhub.local",
+      "Test@1234",
+    );
+    const changeBad = await fetch(`${base}/v1/auth/password/change`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${platform.tokens.accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        currentPassword: "NotCurrent1!",
+        newPassword: "Test@1234",
+      }),
+    });
+    expect(changeBad.status).toBe(401);
+
+    const badRefresh = await fetch(`${base}/v1/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken: "not.a.valid.jwt.token" }),
+    });
+    expect(badRefresh.status).toBe(401);
+
+    // Revoked refresh token path
+    const pinUser = await otpLogin("9999999999");
+    await fetch(`${base}/v1/auth/logout`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${pinUser.tokens.accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ refreshToken: pinUser.tokens.refreshToken }),
+    });
+    const revokedRefresh = await fetch(`${base}/v1/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken: pinUser.tokens.refreshToken }),
+    });
+    expect(revokedRefresh.status).toBe(401);
+
+    const pinNotSet = await fetch(`${base}/v1/auth/pin/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone: "8888888888", pin: "9999" }),
+    });
+    expect([400, 401].includes(pinNotSet.status)).toBe(true);
+
+    const resident = await otpLogin("8888888888");
+    const missingSociety = await fetch(`${base}/v1/auth/select-tenant`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${resident.tokens.accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        tenantId: "00000000-0000-0000-0000-000000000099",
+      }),
+    });
+    expect(missingSociety.status).toBe(404);
+
+    // Create a second society, then resident (not a member) tries select-tenant
+    const otherSociety = await fetch(`${base}/v1/societies`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${platform.tokens.accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name: `Other Soc ${Date.now()}`,
+        city: "Mumbai",
+      }),
+    });
+    expect(otherSociety.ok).toBe(true);
+    const other = (await otherSociety.json()) as { id: string };
+    const notMember = await fetch(`${base}/v1/auth/select-tenant`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${resident.tokens.accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ tenantId: other.id }),
+    });
+    expect(notMember.status).toBe(403);
+
+    // Tenant scope: staff cannot list buildings of another society
+    const staff = await otpLogin("9999999999");
+    const crossTenant = await fetch(
+      `${base}/v1/societies/${other.id}/buildings`,
+      { headers: { Authorization: `Bearer ${staff.tokens.accessToken}` } },
+    );
+    expect(crossTenant.status).toBe(403);
+
+    // Fresh resident → first profile PATCH hits insert path
+    const flats = (await (
+      await fetch(`${base}/v1/admin/flats`, {
+        headers: { Authorization: `Bearer ${staff.tokens.accessToken}` },
+      })
+    ).json()) as { id: string }[];
+    const phone = `5${String(Date.now()).slice(-9)}`;
+    await fetch(`${base}/v1/admin/residents`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${staff.tokens.accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name: "Profile Newbie",
+        phone,
+        flatId: flats[0]!.id,
+        email: `newbie.${Date.now()}@example.com`,
+      }),
+    });
+    const newbie = await otpLogin(phone);
+    const firstProfile = await fetch(`${base}/v1/profile`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${newbie.tokens.accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ vehicleNumber: "MH14ZZ9999" }),
+    });
+    expect(firstProfile.ok).toBe(true);
+
+    // Media via ?access_token=
+    const complaint = await fetch(`${base}/v1/complaints`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${newbie.tokens.accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        title: "Media token",
+        type: "other",
+        typeOtherText: "x",
+        description: "access_token query",
+      }),
+    });
+    const c = (await complaint.json()) as { id: string };
+    const form = new FormData();
+    form.append(
+      "file",
+      new File([Uint8Array.from([9, 8, 7])], "a.jpg", { type: "image/jpeg" }),
+    );
+    const attached = await fetch(`${base}/v1/complaints/${c.id}/attachments`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${newbie.tokens.accessToken}` },
+      body: form,
+    });
+    const withAtt = (await attached.json()) as {
+      attachments: { id: string }[];
+    };
+    const mediaQs = await fetch(
+      `${base}/v1/media/${withAtt.attachments[0]!.id}?access_token=${newbie.tokens.accessToken}`,
+    );
+    expect(mediaQs.ok).toBe(true);
+
+    // Complaint raise without flat for staff
+    const noFlat = await fetch(`${base}/v1/complaints`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${staff.tokens.accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        title: "No flat",
+        type: "plumbing",
+        description: "missing flatId",
+      }),
+    });
+    expect(noFlat.status).toBe(400);
+
+    // Onboard existing user (email/phone reuse) for admin update branch
+    const existingPhone = phone;
+    const reOnboard = await fetch(`${base}/v1/admin/residents`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${staff.tokens.accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name: "Profile Newbie Updated",
+        phone: existingPhone,
+        flatId: flats[0]!.id,
+        email: `newbie.${Date.now()}@example.com`,
+      }),
+    });
+    expect(reOnboard.ok).toBe(true);
+  });
+
+  test("thorough RBAC, remaining routes, and error paths", async () => {
+    const staff = await otpLogin("9999999999");
+    const resident = await otpLogin("8888888888");
+    const platform = await passwordLogin(
+      "superadmin@societyhub.local",
+      "Test@1234",
+    );
+    const sAuth = {
+      Authorization: `Bearer ${staff.tokens.accessToken}`,
+      "Content-Type": "application/json",
+    };
+    const rAuth = {
+      Authorization: `Bearer ${resident.tokens.accessToken}`,
+      "Content-Type": "application/json",
+    };
+    const pAuth = {
+      Authorization: `Bearer ${platform.tokens.accessToken}`,
+      "Content-Type": "application/json",
+    };
+
+    // 401 without bearer
+    expect((await fetch(`${base}/v1/auth/me`)).status).toBe(401);
+    expect((await fetch(`${base}/v1/complaints`)).status).toBe(401);
+    expect((await fetch(`${base}/v1/admin/flats`)).status).toBe(401);
+    expect((await fetch(`${base}/v1/bills/generate`, { method: "POST" })).status).toBe(401);
+
+    // 403 resident on staff-only
+    expect(
+      (
+        await fetch(`${base}/v1/bills/generate`, {
+          method: "POST",
+          headers: rAuth,
+          body: JSON.stringify({
+            periodYm: uniquePeriodYm(),
+            amountPaise: 1000,
+          }),
+        })
+      ).status,
+    ).toBe(403);
+    expect(
+      (
+        await fetch(`${base}/v1/payments?page=1`, {
+          headers: { Authorization: rAuth.Authorization },
+        })
+      ).status,
+    ).toBe(403);
+    expect(
+      (
+        await fetch(`${base}/v1/audit`, {
+          headers: { Authorization: rAuth.Authorization },
+        })
+      ).status,
+    ).toBe(403);
+    expect(
+      (
+        await fetch(`${base}/v1/admin/structure`, {
+          headers: { Authorization: rAuth.Authorization },
+        })
+      ).status,
+    ).toBe(403);
+    expect(
+      (
+        await fetch(`${base}/v1/societies`, {
+          method: "POST",
+          headers: rAuth,
+          body: JSON.stringify({ name: "Nope" }),
+        })
+      ).status,
+    ).toBe(403);
+    expect(
+      (
+        await fetch(`${base}/v1/manage/societies/${crypto.randomUUID()}/team`, {
+          method: "POST",
+          headers: rAuth,
+          body: JSON.stringify({ email: "x@y.com", role: "secretary" }),
+        })
+      ).status,
+    ).toBe(403);
+
+    // Societies list as platform + get own society as staff
+    const societies = await fetch(`${base}/v1/societies`, {
+      headers: { Authorization: pAuth.Authorization },
+    });
+    expect(societies.ok).toBe(true);
+    const societyList = (await societies.json()) as { id: string }[];
+    expect(societyList.length).toBeGreaterThan(0);
+    const me = (await (
+      await fetch(`${base}/v1/auth/me`, {
+        headers: { Authorization: sAuth.Authorization },
+      })
+    ).json()) as { tenantId: string };
+    const societyGet = await fetch(`${base}/v1/societies/${me.tenantId}`, {
+      headers: { Authorization: sAuth.Authorization },
+    });
+    expect(societyGet.ok).toBe(true);
+
+    // Complaint comments GET + invalid attachment type
+    const created = await fetch(`${base}/v1/complaints`, {
+      method: "POST",
+      headers: rAuth,
+      body: JSON.stringify({
+        title: "Comment list",
+        type: "other",
+        typeOtherText: "test",
+        description: "For GET comments coverage",
+      }),
+    });
+    const complaint = (await created.json()) as { id: string };
+    await fetch(`${base}/v1/complaints/${complaint.id}/comments`, {
+      method: "POST",
+      headers: rAuth,
+      body: JSON.stringify({ body: "First note" }),
+    });
+    const comments = await fetch(
+      `${base}/v1/complaints/${complaint.id}/comments`,
+      { headers: { Authorization: rAuth.Authorization } },
+    );
+    expect(comments.ok).toBe(true);
+    const commentList = (await comments.json()) as { body: string }[];
+    expect(commentList.some((c) => c.body === "First note")).toBe(true);
+
+    const badFile = new FormData();
+    badFile.append(
+      "file",
+      new File([Uint8Array.from([1])], "x.txt", { type: "text/plain" }),
+    );
+    const badAttach = await fetch(
+      `${base}/v1/complaints/${complaint.id}/attachments`,
+      {
+        method: "POST",
+        headers: { Authorization: rAuth.Authorization },
+        body: badFile,
+      },
+    );
+    expect(badAttach.status).toBe(400);
+
+    const missingFile = new FormData();
+    const noFile = await fetch(
+      `${base}/v1/complaints/${complaint.id}/attachments`,
+      {
+        method: "POST",
+        headers: { Authorization: rAuth.Authorization },
+        body: missingFile,
+      },
+    );
+    expect(noFile.status).toBe(400);
+
+    // Notice soft-delete
+    const notice = await fetch(`${base}/v1/notices`, {
+      method: "POST",
+      headers: sAuth,
+      body: JSON.stringify({
+        title: "Delete me",
+        body: "Temporary",
+        audience: "all",
+      }),
+    });
+    const noticeBody = (await notice.json()) as { id: string };
+    const delNotice = await fetch(`${base}/v1/notices/${noticeBody.id}`, {
+      method: "DELETE",
+      headers: { Authorization: sAuth.Authorization },
+    });
+    expect(delNotice.ok).toBe(true);
+
+    // Already-paid bill path
+    const periodYm = uniquePeriodYm();
+    await fetch(`${base}/v1/bills/generate`, {
+      method: "POST",
+      headers: sAuth,
+      body: JSON.stringify({ periodYm, amountPaise: 7777 }),
+    });
+    const mine = (await (
+      await fetch(`${base}/v1/bills/mine`, {
+        headers: { Authorization: rAuth.Authorization },
+      })
+    ).json()) as { id: string; periodYm: string; status: string }[];
+    const unpaid = mine.find((b) => b.periodYm === periodYm && b.status !== "paid");
+    expect(unpaid).toBeTruthy();
+    const firstPay = await fetch(`${base}/v1/bills/${unpaid!.id}/pay`, {
+      method: "POST",
+      headers: rAuth,
+    });
+    expect(firstPay.ok).toBe(true);
+    const secondPay = await fetch(`${base}/v1/bills/${unpaid!.id}/pay`, {
+      method: "POST",
+      headers: rAuth,
+    });
+    expect(secondPay.status).toBe(400);
+
+    // Mock pay missing billId
+    const mockBad = await fetch(`${base}/v1/payments/mock`, {
+      method: "POST",
+      headers: rAuth,
+      body: JSON.stringify({}),
+    });
+    expect(mockBad.status).toBe(400);
+
+    // Receipt not found
+    const missingReceipt = await fetch(
+      `${base}/v1/payments/${crypto.randomUUID()}/receipt`,
+      { headers: { Authorization: sAuth.Authorization } },
+    );
+    expect(missingReceipt.status).toBe(404);
+
+    // Media not found
+    const missingMedia = await fetch(
+      `${base}/v1/media/${crypto.randomUUID()}`,
+      { headers: { Authorization: rAuth.Authorization } },
+    );
+    expect(missingMedia.status).toBe(404);
+
+    // Invitation identity required + revoke unknown
+    const inviteBad = await fetch(`${base}/v1/invitations`, {
+      method: "POST",
+      headers: sAuth,
+      body: JSON.stringify({ role: "resident" }),
+    });
+    expect(inviteBad.status).toBe(400);
+    const revokeMissing = await fetch(
+      `${base}/v1/invitations/${crypto.randomUUID()}/revoke`,
+      { method: "POST", headers: { Authorization: sAuth.Authorization } },
+    );
+    expect(revokeMissing.status).toBe(404);
+
+    // Resident cannot open another resident's complaint (create as staff for other flat then try)
+    const otherComplaint = await fetch(`${base}/v1/complaints`, {
+      method: "POST",
+      headers: sAuth,
+      body: JSON.stringify({
+        title: "Staff raised",
+        type: "security",
+        description: "Gate issue",
+        flatId: (
+          await (
+            await fetch(`${base}/v1/admin/flats`, {
+              headers: { Authorization: sAuth.Authorization },
+            })
+          ).json() as { id: string }[]
+        )[0]!.id,
+      }),
+    });
+    expect(otherComplaint.ok).toBe(true);
+    const otherId = ((await otherComplaint.json()) as { id: string }).id;
+    // Resident may still see if they raised it — staff raised so resident GET should 404
+    const peek = await fetch(`${base}/v1/complaints/${otherId}`, {
+      headers: { Authorization: rAuth.Authorization },
+    });
+    expect(peek.status).toBe(404);
+
+    // Void with corrected flag
+    const periodVoid = uniquePeriodYm();
+    await fetch(`${base}/v1/bills/generate`, {
+      method: "POST",
+      headers: sAuth,
+      body: JSON.stringify({ periodYm: periodVoid, amountPaise: 3333 }),
+    });
+    const bills = (await (
+      await fetch(`${base}/v1/bills?page=1&limit=50`, {
+        headers: { Authorization: sAuth.Authorization },
+      })
+    ).json()) as { items: { id: string; periodYm: string }[] };
+    const toCorrect = bills.items.find((b) => b.periodYm === periodVoid);
+    expect(toCorrect).toBeTruthy();
+    const corrected = await fetch(`${base}/v1/bills/${toCorrect!.id}`, {
+      method: "DELETE",
+      headers: sAuth,
+      body: JSON.stringify({ corrected: true, reason: "typo" }),
+    });
+    expect(corrected.ok).toBe(true);
+
+    // OpenAPI docs surface is reachable
+    const docs = await fetch(`${base}/docs`);
+    expect(docs.ok).toBe(true);
   });
 });

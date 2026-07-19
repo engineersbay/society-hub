@@ -11,7 +11,7 @@ import {
   authPlugin,
   isStaffRole,
   requireAuth,
-  requireRole,
+    requireSocietyStaff,
 } from "../../lib/auth-context";
 import { generateReceiptNumber, toPaymentDto } from "../payments/routes";
 
@@ -45,7 +45,7 @@ export const billRoutes = new Elysia({ prefix: "/v1/bills" })
   .use(authPlugin)
   .get("/", async ({ auth, query }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     const q = listQuerySchema.parse(query);
     const offset = (q.page - 1) * q.limit;
     const where = and(eq(bills.tenantId, claims.tenantId), eq(bills.isDeleted, false));
@@ -90,7 +90,7 @@ export const billRoutes = new Elysia({ prefix: "/v1/bills" })
   })
   .post("/generate", async ({ auth, body }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     const parsed = generateBillsSchema.parse(body);
 
     const flatRows = await db
@@ -212,7 +212,7 @@ export const billRoutes = new Elysia({ prefix: "/v1/bills" })
   })
   .delete("/:id", async ({ auth, params, body }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     const { bill } = await loadBillWithFlat(params.id, claims.tenantId);
     const parsedBody = (body as { corrected?: boolean } | null) ?? {};
     const nextStatus = parsedBody.corrected ? "corrected" : "void";

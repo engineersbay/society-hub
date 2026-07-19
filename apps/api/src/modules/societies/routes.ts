@@ -1,5 +1,5 @@
 import { Elysia } from "elysia";
-import { and, count, eq } from "drizzle-orm";
+import { and, count, eq, inArray } from "drizzle-orm";
 import {
   createBuildingSchema,
   createFlatSchema,
@@ -20,7 +20,14 @@ import {
 import { AppError } from "../../lib/errors";
 import { softDelete } from "../../lib/soft-delete";
 import { assertTenantAccess } from "../../lib/tenant-scope";
-import { authPlugin, requireAuth, requireRole } from "../../lib/auth-context";
+import {
+  authPlugin,
+  isPlatformRole,
+  isSocietyStaffRole,
+  requireAuth,
+  requirePlatform,
+  requireSocietyStaff,
+} from "../../lib/auth-context";
 
 const DEFAULT_CHAIR_PASSWORD = "Test@1234";
 
@@ -39,7 +46,7 @@ async function buildSocietyDto(societyId: string): Promise<SocietyDto> {
     .where(
       and(
         eq(userRoles.tenantId, societyId),
-        eq(userRoles.role, "admin"),
+        inArray(userRoles.role, ["chairperson", "admin"]),
         eq(userRoles.isDeleted, false),
         eq(users.isDeleted, false),
       ),
@@ -64,7 +71,7 @@ export const societyRoutes = new Elysia({ prefix: "/v1/societies" })
   .use(authPlugin)
   .get("/", async ({ auth }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["superadmin"]);
+    requirePlatform(claims);
     const rows = await db
       .select()
       .from(societies)
@@ -73,13 +80,18 @@ export const societyRoutes = new Elysia({ prefix: "/v1/societies" })
   })
   .get("/:id", async ({ auth, params }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
-    assertTenantAccess(claims, params.id);
+    if (isPlatformRole(claims.role)) {
+      /* platform may open any society */
+    } else if (isSocietyStaffRole(claims.role)) {
+      assertTenantAccess(claims, params.id);
+    } else {
+      throw new AppError(403, "forbidden", "Insufficient permissions");
+    }
     return buildSocietyDto(params.id);
   })
   .post("/", async ({ auth, body }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["superadmin"]);
+    requirePlatform(claims);
     const parsed = createSocietySchema.parse(body);
 
     const societyId = crypto.randomUUID();
@@ -152,7 +164,7 @@ export const societyRoutes = new Elysia({ prefix: "/v1/societies" })
         id: crypto.randomUUID(),
         tenantId: societyId,
         userId: chairUserId,
-        role: "admin",
+        role: "chairperson",
         createdBy: claims.sub,
         updatedBy: claims.sub,
       });
@@ -162,13 +174,13 @@ export const societyRoutes = new Elysia({ prefix: "/v1/societies" })
   })
   .delete("/:id", async ({ auth, params }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["superadmin"]);
+    requirePlatform(claims);
     await softDelete(societies, params.id, claims.sub);
     return { ok: true as const };
   })
   .get("/:id/buildings", async ({ auth, params }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     assertTenantAccess(claims, params.id);
     const rows = await db
       .select()
@@ -186,7 +198,7 @@ export const societyRoutes = new Elysia({ prefix: "/v1/societies" })
   })
   .post("/:id/buildings", async ({ auth, params, body }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     assertTenantAccess(claims, params.id);
     const parsed = createBuildingSchema.parse(body);
     const id = crypto.randomUUID();
@@ -204,7 +216,7 @@ export const buildingRoutes = new Elysia({ prefix: "/v1/buildings" })
   .use(authPlugin)
   .get("/:id/wings", async ({ auth, params }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     const [building] = await db
       .select()
       .from(buildings)
@@ -234,7 +246,7 @@ export const buildingRoutes = new Elysia({ prefix: "/v1/buildings" })
   })
   .post("/:id/wings", async ({ auth, params, body }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     const [building] = await db
       .select()
       .from(buildings)
@@ -257,7 +269,7 @@ export const buildingRoutes = new Elysia({ prefix: "/v1/buildings" })
   })
   .delete("/:id", async ({ auth, params }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     const [building] = await db
       .select()
       .from(buildings)
@@ -273,7 +285,7 @@ export const wingRoutes = new Elysia({ prefix: "/v1/wings" })
   .use(authPlugin)
   .get("/:id/flats", async ({ auth, params }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     const [wing] = await db
       .select()
       .from(wings)
@@ -295,7 +307,7 @@ export const wingRoutes = new Elysia({ prefix: "/v1/wings" })
   })
   .post("/:id/flats", async ({ auth, params, body }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     const [wing] = await db
       .select()
       .from(wings)
@@ -318,7 +330,7 @@ export const wingRoutes = new Elysia({ prefix: "/v1/wings" })
   })
   .delete("/:id", async ({ auth, params }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     const [wing] = await db
       .select()
       .from(wings)
@@ -334,7 +346,7 @@ export const flatRoutes = new Elysia({ prefix: "/v1/flats" })
   .use(authPlugin)
   .delete("/:id", async ({ auth, params }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     const [flat] = await db
       .select()
       .from(flats)

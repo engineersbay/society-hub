@@ -17,7 +17,7 @@ import {
   authPlugin,
   buildUserDto,
   requireAuth,
-  requireRole,
+    requireSocietyStaff,
 } from "../../lib/auth-context";
 
 async function listTeamForTenant(tenantId: string): Promise<TeamMemberDto[]> {
@@ -34,7 +34,14 @@ async function listTeamForTenant(tenantId: string): Promise<TeamMemberDto[]> {
     .where(
       and(
         eq(userRoles.tenantId, tenantId),
-        inArray(userRoles.role, ["admin", "superadmin"]),
+        inArray(userRoles.role, [
+          "chairperson",
+          "admin",
+          "secretary",
+          "treasurer",
+          "cashier",
+          "committee",
+        ]),
         eq(userRoles.isDeleted, false),
         eq(users.isDeleted, false),
       ),
@@ -45,7 +52,7 @@ export const teamRoutes = new Elysia({ prefix: "/v1/team" })
   .use(authPlugin)
   .get("/", async ({ auth }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     return listTeamForTenant(claims.tenantId);
   });
 
@@ -53,7 +60,7 @@ export const adminRoutes = new Elysia({ prefix: "/v1/admin" })
   .use(authPlugin)
   .get("/flats", async ({ auth }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     const rows = await db
       .select({
         id: flats.id,
@@ -75,7 +82,7 @@ export const adminRoutes = new Elysia({ prefix: "/v1/admin" })
   })
   .get("/structure", async ({ auth }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
 
     const [buildingRows, wingRows, flatRows] = await Promise.all([
       db
@@ -113,18 +120,18 @@ export const adminRoutes = new Elysia({ prefix: "/v1/admin" })
   })
   .get("/team", async ({ auth }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     return listTeamForTenant(claims.tenantId);
   })
   .post("/invites", async ({ auth, body }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     const parsed = createInvitationSchema.parse(body);
     return createInvitationForTenant(claims.tenantId, claims.sub, parsed);
   })
   .post("/residents", async ({ auth, body }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     const parsed = onboardResidentSchema.parse(body);
 
     const [flat] = await db
