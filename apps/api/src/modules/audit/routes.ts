@@ -13,6 +13,7 @@ async function listAuditLogs(tenantId: string): Promise<AuditLogDto[]> {
       actorUserId: auditLogs.actorUserId,
       actorName: users.name,
       action: auditLogs.action,
+      message: auditLogs.message,
       entityType: auditLogs.entityType,
       entityId: auditLogs.entityId,
       meta: auditLogs.meta,

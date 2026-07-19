@@ -446,6 +446,8 @@ export const auditLogs = mysqlTable(
     tenantId: tenantId(),
     actorUserId: char("actor_user_id", { length: 36 }).notNull(),
     action: varchar("action", { length: 80 }).notNull(),
+    /** Human-readable summary (Fassport-style Event.message). */
+    message: varchar("message", { length: 500 }),
     entityType: varchar("entity_type", { length: 80 }).notNull(),
     entityId: char("entity_id", { length: 36 }).notNull(),
     meta: text("meta"),
@@ -454,6 +456,7 @@ export const auditLogs = mysqlTable(
   (t) => [
     index("audit_logs_tenant_idx").on(t.tenantId),
     index("audit_logs_entity_idx").on(t.entityType, t.entityId),
+    index("audit_logs_actor_idx").on(t.actorUserId),
   ],
 );
 
