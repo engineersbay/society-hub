@@ -1,24 +1,52 @@
-# Mobile apps (future)
+# SocietyHub Mobile (Flutter)
 
-Native mobile clients for SocietyHub are **out of Phase 1**. Phase 1 is the **simple responsive web app** (`apps/client-app` when scaffolded).
+Native Android + iOS client for the **Client App** experience — same Bun `/v1` API as `apps/client-app`, similar saffron / kumkum UI.
 
-## Planned approach
+Follow agent skill: [`.cursor/skills/societyhub-flutter-future/`](../../.cursor/skills/societyhub-flutter-future/SKILL.md)
 
-| Platform | Folder | Notes |
-|----------|--------|--------|
-| Android | [android/](android/) | Placeholder for Flutter Android host / future native |
-| iOS | [ios/](ios/) | Placeholder for Flutter iOS host / future native |
+## Scope
 
-**Preferred stack (when started):** Flutter (see Spec — Flutter is Future scope). One Flutter project can own both `android/` and `ios/` trees; until then these folders only reserve the monorepo layout.
+| In mobile | On web only |
+|-----------|-------------|
+| Auth (OTP, email/password, PIN, Google dev) | — |
+| Dashboard, complaints (list / raise / detail) | — |
+| Manual **single** resident onboard | **CSV bulk** import |
+| Account + set PIN | Structure / heavy admin bulk ops |
+| Coming soon stubs for other nav items | Full module UIs as Spec expands |
 
-## Phase 1
+## Run
 
-- Do **not** implement app code here.
-- Web may show **Coming soon** for a “Mobile app” marketing tip if desired; primary product is responsive web.
-- Reuse the same API / `packages/sdk` contracts when mobile work begins — no forked business rules.
+```bash
+# API must be running (see docs/08-Local-Development.md)
+cd apps/mobile
 
-## Spec
+# Android emulator → host machine API
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:3000 --dart-define=ENV=dev
 
-- [PRD](../../docs/02-PRD.md) — Future: Flutter native apps  
-- [Architecture](../../docs/03-Architecture.md)  
-- Skill: `.cursor/skills/societyhub-flutter-future`
+# iOS simulator
+flutter run --dart-define=API_BASE_URL=http://127.0.0.1:3000 --dart-define=ENV=dev
+
+# Physical device (use your LAN IP)
+flutter run --dart-define=API_BASE_URL=http://192.168.x.x:3000 --dart-define=ENV=dev
+```
+
+Local OTP when `DEV_AUTH=true`: phone `8888888888` / `9999999999`, code `123456`.
+
+## Checks
+
+```bash
+flutter analyze
+flutter test
+```
+
+## Layout
+
+```
+lib/
+  api/          # Dio client mirroring packages/sdk
+  auth/         # Secure session (Keychain / Keystore)
+  config/       # API_BASE_URL / ENV dart-defines
+  core/         # Theme matching client-app CSS
+  features/     # auth, shell, dashboard, complaints, onboard, account
+  shared/       # Reusable widgets
+```
