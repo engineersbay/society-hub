@@ -4,6 +4,7 @@ import type { SocietyDto } from "@society-hub/types";
 import { ApiClientError } from "@society-hub/sdk";
 import { useAuth } from "../auth";
 import { Icon } from "../components/icons";
+import { SOCIETY_COMING_SOON } from "../manage-nav";
 
 const APP_URL =
   import.meta.env.VITE_APP_ORIGIN ??
@@ -165,6 +166,52 @@ export function SocietyDetailPage() {
         society management (residents, complaints, bills) happens in the Client App.
       </p>
       <AddTeamMemberForm societyId={id} />
+
+      <div className="mt-10" data-testid="society-planned-controls">
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <h2 className="font-semibold">Platform controls for this society</h2>
+          <span className="rounded-full bg-[var(--sand)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-black/50">
+            Coming soon
+          </span>
+        </div>
+        <p className="mb-4 text-sm text-black/55">
+          Planned per-society controls. Shown for roadmap visibility — toggles are disabled
+          and do not save.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {SOCIETY_COMING_SOON.map((row) => (
+            <div
+              key={row.title}
+              className="card flex items-start justify-between gap-3 p-4 opacity-80"
+            >
+              <div>
+                <p className="text-sm font-medium">{row.title}</p>
+                <p className="mt-1 text-xs text-black/50">{row.detail}</p>
+              </div>
+              <button
+                type="button"
+                className="relative h-6 w-11 shrink-0 rounded-full bg-black/15"
+                disabled
+                aria-disabled="true"
+                title="Coming soon"
+              >
+                <span className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow" />
+              </button>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Link to="/feature-flags" className="btn btn-ghost text-sm">
+            Global feature flags
+          </Link>
+          <Link to="/subscriptions" className="btn btn-ghost text-sm">
+            Subscriptions
+          </Link>
+          <Link to="/payments" className="btn btn-ghost text-sm">
+            Payments
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }

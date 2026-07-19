@@ -1,24 +1,20 @@
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../auth";
-import { Icon, type IconName } from "./icons";
-
-type NavItem = { to: string; label: string; icon: IconName };
-
-const navItems: NavItem[] = [
-  { to: "/societies", label: "Societies", icon: "societies" },
-];
+import { MANAGE_NAV, type ManageNavItem } from "../manage-nav";
+import { Icon } from "./icons";
 
 const APP_ORIGIN =
   import.meta.env.VITE_APP_ORIGIN ??
   import.meta.env.VITE_WEB_URL ??
   "http://app.localhost:5173";
 
-function NavRow({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }) {
+function NavRow({ item, onNavigate }: { item: ManageNavItem; onNavigate?: () => void }) {
   return (
     <NavLink
       to={item.to}
       onClick={onNavigate}
+      data-testid={`nav-${item.to.slice(1)}`}
       className={({ isActive }) =>
         [
           "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
@@ -29,7 +25,12 @@ function NavRow({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }
       }
     >
       <Icon name={item.icon} className="h-[18px] w-[18px] shrink-0" />
-      <span className="truncate">{item.label}</span>
+      <span className="min-w-0 flex-1 truncate">{item.label}</span>
+      {item.status === "soon" && (
+        <span className="shrink-0 rounded-full bg-[var(--sand)] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-black/45">
+          Soon
+        </span>
+      )}
     </NavLink>
   );
 }
@@ -52,13 +53,22 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       </div>
 
       <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 pb-4">
-        {navItems.map((item) => (
+        {MANAGE_NAV.map((item) => (
           <NavRow key={item.to} item={item} onNavigate={onNavigate} />
         ))}
       </nav>
 
       <div className="border-t border-[var(--sand)] px-3 py-3 lg:hidden">
-        <NavRow item={{ to: "/account", label: "Account", icon: "account" }} onNavigate={onNavigate} />
+        <NavRow
+          item={{
+            to: "/account",
+            label: "Account",
+            icon: "account",
+            status: "live",
+            blurb: "Your platform account",
+          }}
+          onNavigate={onNavigate}
+        />
         <button
           type="button"
           data-testid="logout-button-mobile"

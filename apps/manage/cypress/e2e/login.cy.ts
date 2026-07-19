@@ -29,7 +29,7 @@ describe("Manage login", () => {
     cy.get('[data-testid="login-submit"]').click();
 
     cy.wait("@login");
-    cy.url().should("include", "/societies");
+    cy.url().should("include", "/dashboard");
   });
 
   it("shows an error message on invalid credentials", () => {

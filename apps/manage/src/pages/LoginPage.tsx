@@ -23,7 +23,7 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  if (user) return <Navigate to="/societies" replace />;
+  if (user) return <Navigate to="/dashboard" replace />;
 
   async function applySession(
     login: () => Promise<{ user: Parameters<typeof setSession>[0]; tokens: Parameters<typeof setSession>[1] }>,

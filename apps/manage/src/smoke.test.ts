@@ -3,30 +3,30 @@ import { App } from "./App";
 import { Shell } from "./components/Shell";
 import { LoginPage } from "./pages/LoginPage";
 import { DashboardPage } from "./pages/DashboardPage";
-import { ComplaintsPage } from "./pages/ComplaintsPage";
 import { SocietiesPage } from "./pages/SocietiesPage";
-import { BillsPage } from "./pages/BillsPage";
-import { PaymentsPage } from "./pages/PaymentsPage";
-import { NoticesPage } from "./pages/NoticesPage";
+import { ComingSoonPage } from "./pages/ComingSoonPage";
+import { MANAGE_NAV } from "./manage-nav";
 
-describe("web smoke unit", () => {
+describe("manage smoke unit", () => {
   it("placeholder passes", () => {
     expect(true).toBe(true);
   });
 
-  it("App and its routed pages import without throwing", () => {
+  it("App and primary Manage pages import without throwing", () => {
     for (const component of [
       App,
       Shell,
       LoginPage,
       DashboardPage,
-      ComplaintsPage,
       SocietiesPage,
-      BillsPage,
-      PaymentsPage,
-      NoticesPage,
+      ComingSoonPage,
     ]) {
       expect(typeof component).toBe("function");
     }
+  });
+
+  it("nav exposes live Users and Coming soon subscriptions", () => {
+    expect(MANAGE_NAV.some((n) => n.to === "/users" && n.status === "live")).toBe(true);
+    expect(MANAGE_NAV.some((n) => n.to === "/subscriptions" && n.status === "soon")).toBe(true);
   });
 });

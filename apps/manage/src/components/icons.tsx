@@ -13,6 +13,7 @@ export type IconName =
   | "bell"
   | "audit"
   | "team"
+  | "users"
   | "visitors"
   | "parking"
   | "bookings"
@@ -27,7 +28,13 @@ export type IconName =
   | "externalLink"
   | "search"
   | "plus"
-  | "back";
+  | "back"
+  | "settings"
+  | "toggle"
+  | "subscription"
+  | "discount"
+  | "integrations"
+  | "support";
 
 const paths: Record<IconName, ReactElement> = {
   dashboard: (
@@ -110,6 +117,14 @@ const paths: Record<IconName, ReactElement> = {
       <path d="M14.5 15.2c2.4.2 4.5 2 4.5 4.8" />
     </>
   ),
+  users: (
+    <>
+      <circle cx="9" cy="8" r="3" />
+      <circle cx="17" cy="9" r="2.5" />
+      <path d="M2.5 20c0-3 2.7-5.2 6.5-5.2S15.5 17 15.5 20" />
+      <path d="M15 15.5c2.2.3 4.5 1.8 4.5 4.5" />
+    </>
+  ),
   visitors: (
     <>
       <circle cx="12" cy="8" r="3" />
@@ -180,6 +195,47 @@ const paths: Record<IconName, ReactElement> = {
   ),
   plus: <path d="M12 5v14M5 12h14" strokeLinecap="round" />,
   back: <path d="m15 18-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />,
+  settings: (
+    <>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 3v2.5M12 18.5V21M4.9 6.3l1.8 1.8M17.3 15.9l1.8 1.8M3 12h2.5M18.5 12H21M4.9 17.7l1.8-1.8M17.3 8.1l1.8-1.8" />
+    </>
+  ),
+  toggle: (
+    <>
+      <rect x="3" y="8" width="18" height="8" rx="4" />
+      <circle cx="15" cy="12" r="2.5" />
+    </>
+  ),
+  subscription: (
+    <>
+      <rect x="4" y="5" width="16" height="14" rx="2" />
+      <path d="M8 9h8M8 13h5" strokeLinecap="round" />
+      <path d="M16 16.5 17.5 18 20 15" strokeLinecap="round" />
+    </>
+  ),
+  discount: (
+    <>
+      <path d="M4 12 12 4h6v6l-8 8-6-6Z" />
+      <circle cx="15.5" cy="8.5" r="1.2" />
+    </>
+  ),
+  integrations: (
+    <>
+      <circle cx="7" cy="7" r="2.5" />
+      <circle cx="17" cy="7" r="2.5" />
+      <circle cx="7" cy="17" r="2.5" />
+      <circle cx="17" cy="17" r="2.5" />
+      <path d="M9.5 7h5M7 9.5v5M9.5 17h5M17 9.5v5" />
+    </>
+  ),
+  support: (
+    <>
+      <path d="M5 11a7 7 0 0 1 14 0v2a3 3 0 0 1-3 3h-1" />
+      <path d="M9 18h6" strokeLinecap="round" />
+      <path d="M8 11v3M16 11v3" strokeLinecap="round" />
+    </>
+  ),
 };
 
 export function Icon({

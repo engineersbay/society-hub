@@ -1,87 +1,158 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import type { ComplaintDto, DashboardStatsDto } from "@society-hub/types";
+import type { SocietyDto } from "@society-hub/types";
 import { useAuth } from "../auth";
+import { MANAGE_NAV } from "../manage-nav";
+import { Icon } from "../components/icons";
 
-function rupees(paise: number) {
-  return `₹${(paise / 100).toLocaleString("en-IN")}`;
-}
+const APP_URL =
+  import.meta.env.VITE_APP_ORIGIN ??
+  import.meta.env.VITE_WEB_URL ??
+  "http://app.localhost:5173";
 
 export function DashboardPage() {
   const { client, user } = useAuth();
-  const [stats, setStats] = useState<DashboardStatsDto | null>(null);
-  const [recent, setRecent] = useState<ComplaintDto[]>([]);
+  const [societies, setSocieties] = useState<SocietyDto[] | null>(null);
 
   useEffect(() => {
-    client.getDashboardStats().then(setStats).catch(() => undefined);
     client
-      .listComplaints(1, 5)
-      .then((res) => setRecent(res.items))
-      .catch(() => undefined);
+      .listSocieties()
+      .then(setSocieties)
+      .catch(() => setSocieties([]));
   }, [client]);
 
-  const cards = [
-    { label: "Open complaints", value: stats?.openComplaints ?? "—", to: "/complaints" },
-    { label: "Total complaints", value: stats?.totalComplaints ?? "—", to: "/complaints" },
-    {
-      label: "Dues outstanding",
-      value: stats ? rupees(stats.duesOutstandingPaise) : "—",
-      to: "/bills",
-    },
-    { label: "Upcoming bookings", value: stats?.upcomingBookings ?? "—", to: "/bookings" },
-    { label: "Published notices", value: stats?.publishedNotices ?? "—", to: "/notices" },
-  ];
+  const live = MANAGE_NAV.filter((n) => n.status === "live");
+  const soon = MANAGE_NAV.filter((n) => n.status === "soon");
+  const count = societies?.length ?? null;
 
   return (
-    <div>
+    <div data-testid="manage-dashboard">
       <div className="mb-6">
         <h1 className="font-display text-2xl">
-          Welcome back{user?.name ? `, ${user.name.split(" ")[0]}` : ""}
+          Welcome{user?.name ? `, ${user.name.split(" ")[0]}` : ""}
         </h1>
-        <p className="mt-1 text-sm text-black/55">A quick look at operations and finance.</p>
+        <p className="mt-1 text-sm text-black/55">
+          Platform control center for SocietyHub employees.
+        </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        {cards.map((c) => (
-          <Link key={c.label} to={c.to} className="kpi-card block transition-transform hover:-translate-y-0.5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-black/45">{c.label}</p>
-            <p className="mt-2 font-display text-3xl text-[var(--leaf-dark)]">{c.value}</p>
-          </Link>
-        ))}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <Link
+          to="/societies"
+          className="kpi-card block transition-transform hover:-translate-y-0.5"
+          data-testid="dashboard-kpi-societies"
+        >
+          <p className="text-xs font-semibold uppercase tracking-wide text-black/45">
+            Societies
+          </p>
+          <p className="mt-2 font-display text-3xl text-[var(--leaf-dark)]">
+            {count === null ? "—" : count}
+          </p>
+        </Link>
+        <div className="kpi-card">
+          <p className="text-xs font-semibold uppercase tracking-wide text-black/45">
+            Live Manage tools
+          </p>
+          <p className="mt-2 font-display text-3xl text-[var(--leaf-dark)]">{live.length}</p>
+        </div>
+        <div className="kpi-card">
+          <p className="text-xs font-semibold uppercase tracking-wide text-black/45">
+            Roadmap items
+          </p>
+          <p className="mt-2 font-display text-3xl text-[var(--leaf-dark)]">{soon.length}</p>
+        </div>
       </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         <div className="card p-5">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-semibold">Recent complaints</h2>
-            <Link to="/complaints" className="text-sm text-[var(--leaf)]">
-              View all
+          <h2 className="mb-3 font-semibold">Important actions</h2>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Link to="/societies" className="btn btn-primary text-sm" data-testid="dashboard-new-society">
+              Manage societies
+            </Link>
+            <a
+              className="btn btn-ghost text-sm"
+              href={APP_URL}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Open Client App
+            </a>
+            <Link to="/users" className="btn btn-ghost text-sm">
+              User management
+            </Link>
+            <Link to="/subscriptions" className="btn btn-ghost text-sm">
+              Subscriptions
+            </Link>
+            <Link to="/feature-flags" className="btn btn-ghost text-sm">
+              Feature flags
+            </Link>
+            <Link to="/payments" className="btn btn-ghost text-sm">
+              View payments
             </Link>
           </div>
-          {recent.length === 0 ? (
-            <p className="text-sm text-black/50">No complaints yet.</p>
+          <p className="mt-4 text-xs text-black/45">
+            Buttons that are not live yet open a Coming soon screen.
+          </p>
+        </div>
+
+        <div className="card p-5">
+          <h2 className="mb-3 font-semibold">Recent societies</h2>
+          {societies === null ? (
+            <p className="text-sm text-black/50">Loading…</p>
+          ) : societies.length === 0 ? (
+            <p className="text-sm text-black/50">No societies yet — create one to get started.</p>
           ) : (
             <ul className="divide-y divide-[var(--sand)]">
-              {recent.map((c) => (
-                <li key={c.id} className="py-3">
-                  <Link to={`/complaints/${c.id}`} className="flex items-center justify-between gap-2">
-                    <span className="truncate text-sm font-medium">{c.title}</span>
-                    <span className="badge shrink-0">{c.status.replace("_", " ")}</span>
+              {societies.slice(0, 5).map((s) => (
+                <li key={s.id} className="py-3">
+                  <Link
+                    to={`/societies/${s.id}`}
+                    className="flex items-center justify-between gap-2"
+                  >
+                    <span className="truncate text-sm font-medium">{s.name}</span>
+                    <span className="shrink-0 text-xs text-black/40">
+                      {[s.city, s.pincode].filter(Boolean).join(" · ") || "Open"}
+                    </span>
                   </Link>
                 </li>
               ))}
             </ul>
           )}
+          {societies && societies.length > 5 && (
+            <Link to="/societies" className="mt-3 inline-block text-sm text-[var(--leaf)]">
+              View all societies
+            </Link>
+          )}
         </div>
+      </div>
 
-        <div className="card p-5">
-          <h2 className="mb-3 font-semibold">Quick actions</h2>
-          <div className="grid grid-cols-2 gap-2">
-            <Link to="/onboard" className="btn btn-ghost text-sm">Onboard resident</Link>
-            <Link to="/invites" className="btn btn-ghost text-sm">Send invite</Link>
-            <Link to="/bills" className="btn btn-ghost text-sm">Generate bills</Link>
-            <Link to="/notices" className="btn btn-ghost text-sm">New notice</Link>
-          </div>
+      <div className="mt-8">
+        <h2 className="mb-3 font-semibold">Platform roadmap</h2>
+        <p className="mb-4 text-sm text-black/55">
+          Planned Manage capabilities. Each item is visible so the team can align on scope —
+          none of these mutate data yet.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {soon.map((item) => (
+            <Link
+              key={item.to}
+              to={item.to}
+              className="card block p-4 transition-transform hover:-translate-y-0.5"
+              data-testid={`roadmap-${item.to.slice(1)}`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Icon name={item.icon} className="h-4 w-4 text-[var(--leaf)]" />
+                  <span className="text-sm font-semibold">{item.label}</span>
+                </div>
+                <span className="shrink-0 rounded-full bg-[var(--sand)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-black/50">
+                  Soon
+                </span>
+              </div>
+              <p className="mt-2 text-xs leading-relaxed text-black/50">{item.blurb}</p>
+            </Link>
+          ))}
         </div>
       </div>
     </div>
