@@ -121,6 +121,14 @@ describe("validation schemas", () => {
       }).type,
     ).toBe("plumbing");
     expect(
+      createComplaintSchema.parse({
+        title: "Leak",
+        type: "plumbing",
+        description: "Kitchen sink drip",
+        flatId: "66666666-6666-6666-6666-666666666666",
+      }).flatId,
+    ).toBe("66666666-6666-6666-6666-666666666666");
+    expect(
       updateComplaintStatusSchema.parse({ status: "resolved" }).status,
     ).toBe("resolved");
   });

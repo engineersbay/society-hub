@@ -463,4 +463,40 @@ describe("api integration", () => {
       true,
     );
   });
+
+  test("superadmin can raise complaint by selecting a flat", async () => {
+    const session = await passwordLogin(
+      "superadmin@societyhub.local",
+      process.env.SUPERADMIN_PASSWORD ?? "Test@1234",
+    );
+    const flatsRes = await fetch(`${base}/v1/admin/flats`, {
+      headers: { Authorization: `Bearer ${session.tokens.accessToken}` },
+    });
+    expect(flatsRes.ok).toBe(true);
+    const flats = (await flatsRes.json()) as { id: string; number: string }[];
+    expect(flats.length).toBeGreaterThan(0);
+
+    const create = await fetch(`${base}/v1/complaints`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.tokens.accessToken}`,
+      },
+      body: JSON.stringify({
+        title: "Superadmin raised issue",
+        type: "other",
+        typeOtherText: "inspection",
+        description: "Raised while previewing the resident app",
+        flatId: flats[0]!.id,
+      }),
+    });
+    expect(create.ok).toBe(true);
+    const complaint = (await create.json()) as {
+      id: string;
+      flatId: string;
+      flatNumber: string;
+    };
+    expect(complaint.flatId).toBe(flats[0]!.id);
+    expect(complaint.flatNumber).toBe(flats[0]!.number);
+  });
 });

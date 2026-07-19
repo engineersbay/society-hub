@@ -208,6 +208,7 @@ export function createSocietyHubClient(opts: SocietyHubClientOptions) {
       type: string;
       typeOtherText?: string | null;
       description: string;
+      flatId?: string | null;
     }) =>
       request<ComplaintDto>("/v1/complaints", {
         method: "POST",

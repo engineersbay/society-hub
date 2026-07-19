@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import type { ComplaintType } from "@society-hub/types";
+import type { ComplaintType, FlatDto } from "@society-hub/types";
 import { ApiClientError } from "@society-hub/sdk";
 import { useAuth } from "../auth";
 
@@ -34,6 +34,9 @@ export function NewComplaintPage() {
   const [listening, setListening] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [flats, setFlats] = useState<FlatDto[]>([]);
+  const [flatId, setFlatId] = useState(user?.flatId ?? "");
+  const needsFlatPicker = !user?.flatId;
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
 
   useEffect(() => {
@@ -41,6 +44,26 @@ export function NewComplaintPage() {
       recognitionRef.current?.stop();
     };
   }, []);
+
+  useEffect(() => {
+    if (!needsFlatPicker) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const rows = await client.listFlats();
+        if (cancelled) return;
+        setFlats(rows);
+        setFlatId((current) => current || rows[0]?.id || "");
+      } catch {
+        if (!cancelled) {
+          setError("Could not load flats for this society. Select a society first.");
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [client, needsFlatPicker]);
 
   function toggleMic() {
     const SR =
@@ -79,11 +102,17 @@ export function NewComplaintPage() {
     setBusy(true);
     setError(null);
     try {
+      if (needsFlatPicker && !flatId) {
+        setError("Select a flat to raise this complaint");
+        setBusy(false);
+        return;
+      }
       const created = await client.createComplaint({
         title,
         type,
         typeOtherText: type === "other" ? typeOtherText : null,
         description,
+        flatId: needsFlatPicker ? flatId : undefined,
       });
       for (const file of files) {
         await client.uploadAttachment(created.id, file);
@@ -100,11 +129,39 @@ export function NewComplaintPage() {
     <div className="max-w-xl">
       <h1 className="font-display text-2xl">Raise complaint</h1>
       <p className="mt-1 text-sm text-black/55">
-        Flat is set from your profile
-        {user?.flatNumber ? `: ${user.flatNumber}` : ""}.
+        {user?.flatNumber
+          ? `Flat is set from your profile: ${user.flatNumber}.`
+          : needsFlatPicker
+            ? "Choose which flat this complaint is for (staff accounts are not linked to a flat)."
+            : "Flat is set from your profile."}
       </p>
 
-      <form className="mt-6 space-y-4" onSubmit={onSubmit}>
+      <form className="mt-6 space-y-4" onSubmit={onSubmit} data-testid="new-complaint-form">
+        {needsFlatPicker && (
+          <div>
+            <label className="label" htmlFor="flat">
+              Flat
+            </label>
+            <select
+              id="flat"
+              className="input"
+              data-testid="complaint-flat"
+              value={flatId}
+              onChange={(e) => setFlatId(e.target.value)}
+              required
+            >
+              <option value="" disabled>
+                Select flat
+              </option>
+              {flats.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.number}
+                  {f.wingName ? ` · Wing ${f.wingName}` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <div>
           <label className="label" htmlFor="title">
             Title
@@ -112,6 +169,7 @@ export function NewComplaintPage() {
           <input
             id="title"
             className="input"
+            data-testid="complaint-title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             required

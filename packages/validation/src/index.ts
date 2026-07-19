@@ -69,6 +69,8 @@ export const createComplaintSchema = z.object({
   ]),
   typeOtherText: z.string().max(120).optional().nullable(),
   description: z.string().min(3).max(5000),
+  /** Required for staff/superadmin without a resident flat link. */
+  flatId: z.string().uuid().optional().nullable(),
 });
 
 export const updateComplaintStatusSchema = z.object({

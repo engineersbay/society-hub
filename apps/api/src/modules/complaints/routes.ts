@@ -173,13 +173,34 @@ export const complaintRoutes = new Elysia({ prefix: "/v1/complaints" })
     requireRole(claims, ["resident", "admin", "superadmin"]);
     const parsed = createComplaintSchema.parse(body);
 
-    let flatId = claims.flatId;
+    // Residents use their linked flat; staff/superadmin may pick a flat in-body.
+    let flatId = claims.flatId ?? parsed.flatId ?? null;
     if (!flatId) {
       throw new AppError(
         400,
         "no_flat",
-        "User is not linked to a flat; cannot raise complaint",
+        isStaffRole(claims.role)
+          ? "Select a flat to raise this complaint"
+          : "User is not linked to a flat; cannot raise complaint",
       );
+    }
+
+    const [flat] = await db
+      .select()
+      .from(flats)
+      .where(
+        and(
+          eq(flats.id, flatId),
+          eq(flats.tenantId, claims.tenantId),
+          eq(flats.isDeleted, false),
+        ),
+      )
+      .limit(1);
+    if (!flat) throw new AppError(404, "flat_not_found", "Flat not found");
+
+    // Residents may only raise against their own linked flat.
+    if (!isStaffRole(claims.role) && claims.flatId && flatId !== claims.flatId) {
+      throw new AppError(403, "forbidden", "Cannot raise complaint for another flat");
     }
 
     const [society] = await db
