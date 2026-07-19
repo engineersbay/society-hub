@@ -423,7 +423,10 @@ export function createSocietyHubClient(opts: SocietyHubClientOptions) {
         method: "POST",
       }),
 
-    getDashboardStats: () => request<DashboardStatsDto>("/v1/dashboard/stats"),
+    getDashboardStats: (opts?: { mine?: boolean }) =>
+      request<DashboardStatsDto>(
+        `/v1/dashboard/stats${opts?.mine ? "?mine=1" : ""}`,
+      ),
 
     listAuditLogs: (search?: string) => {
       const query = search ? `?q=${encodeURIComponent(search)}` : "";
