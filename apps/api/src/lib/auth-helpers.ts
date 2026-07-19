@@ -39,15 +39,15 @@ export function isResidentLikeRole(role: Role) {
 }
 
 /**
- * Society day-to-day staff (Client Admin). Does NOT include platform superadmin
- * unless they also hold a society staff membership (JWT role would be staff).
+ * Client Admin capability: society staff OR Manage platform employees.
+ * Platform admins may operate any society in Client Admin mode by default.
  */
 export function isStaffRole(role: Role) {
-  return isSocietyStaffRole(role);
+  return isSocietyStaffRole(role) || isPlatformRole(role);
 }
 
 export function canUseAdminMode(role: Role) {
-  return isSocietyStaffRole(role);
+  return isSocietyStaffRole(role) || isPlatformRole(role);
 }
 
 export function requireAuth(auth: AccessClaims | null): AccessClaims {
@@ -62,7 +62,7 @@ export function requireRole(auth: AccessClaims, roles: Role[]) {
 }
 
 export function requireSocietyStaff(auth: AccessClaims) {
-  if (!isSocietyStaffRole(auth.role)) {
+  if (!isSocietyStaffRole(auth.role) && !isPlatformRole(auth.role)) {
     throw new AppError(403, "forbidden", "Society staff role required");
   }
 }

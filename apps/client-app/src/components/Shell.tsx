@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../auth";
-import { canUseAdminMode, useAppMode } from "../app-mode";
+import { canUseAdminMode, isPlatformRole, useAppMode } from "../app-mode";
 import { Icon, type IconName } from "./icons";
 import { SocietySwitcher } from "./SocietySwitcher";
 
@@ -229,9 +229,14 @@ export function Shell() {
   const { mode, setMode } = useAppMode();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // Pure residents never see the Admin toggle — force resident mode.
+  // Pure residents → resident mode. Manage platform team → Admin mode by default.
   useEffect(() => {
-    if (user && !canUseAdminMode(user.role) && mode !== "resident") {
+    if (!user) return;
+    if (isPlatformRole(user.role) && mode !== "admin") {
+      setMode("admin");
+      return;
+    }
+    if (!canUseAdminMode(user.role) && mode !== "resident") {
       setMode("resident");
     }
   }, [user, mode, setMode]);

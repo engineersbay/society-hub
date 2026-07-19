@@ -134,6 +134,22 @@ export async function listMemberships(userId: string) {
         eq(societies.isDeleted, false),
       ),
     );
+
+  const platformMembership = rows.find((r) => isPlatformRole(r.role as Role));
+  if (platformMembership) {
+    const platformRole = normalizeRole(platformMembership.role as Role);
+    const allSocieties = await db
+      .select({ id: societies.id, name: societies.name })
+      .from(societies)
+      .where(eq(societies.isDeleted, false));
+    return allSocieties.map((s) => ({
+      tenantId: s.id,
+      societyName: s.name,
+      role: platformRole,
+      canUseAdminMode: true,
+    }));
+  }
+
   return rows.map((r) => {
     const role = normalizeRole(r.role as Role);
     return {

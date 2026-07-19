@@ -274,8 +274,11 @@ describe("api integration", () => {
     const list = (await memberships.json()) as {
       tenantId: string;
       role: string;
+      canUseAdminMode: boolean;
     }[];
     expect(list.length).toBeGreaterThan(0);
+    expect(list.every((m) => m.canUseAdminMode === true)).toBe(true);
+    expect(list.every((m) => m.role === "superadmin")).toBe(true);
 
     const select = await fetch(`${base}/v1/auth/select-tenant`, {
       method: "POST",
@@ -324,12 +327,12 @@ describe("api integration", () => {
     });
     expect(getRes.ok).toBe(true);
 
-    // Structure CRUD is Client App Admin (society staff), not platform.
+    // Platform Manage team may use Client Admin APIs in any society.
     const buildingsAsPlatform = await fetch(
       `${base}/v1/societies/${society.id}/buildings`,
       { headers: { Authorization: `Bearer ${session.tokens.accessToken}` } },
     );
-    expect(buildingsAsPlatform.status).toBe(403);
+    expect(buildingsAsPlatform.status).toBe(200);
   });
 
   test("admin can generate bills and resident can pay a bill (mock)", async () => {

@@ -17,8 +17,19 @@ export const SOCIETY_STAFF_ROLES: Role[] = [
   "committee",
 ];
 
+/** Manage portal platform employees — also get Client Admin by default. */
+export const PLATFORM_ROLES: Role[] = ["superadmin"];
+
+export function isPlatformRole(role: Role | null | undefined) {
+  return !!role && (PLATFORM_ROLES as string[]).includes(role);
+}
+
 export function canUseAdminMode(role: Role | null | undefined) {
-  return !!role && (SOCIETY_STAFF_ROLES as string[]).includes(role);
+  return (
+    !!role &&
+    ((SOCIETY_STAFF_ROLES as string[]).includes(role) ||
+      (PLATFORM_ROLES as string[]).includes(role))
+  );
 }
 
 export type AppMode = "admin" | "resident";

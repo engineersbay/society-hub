@@ -27,10 +27,11 @@ describe("auth-helpers", () => {
     expect(isSocietyStaffRole("superadmin")).toBe(false);
     expect(isSocietyStaffRole("resident")).toBe(false);
     expect(isStaffRole("chairperson")).toBe(true);
-    expect(isStaffRole("superadmin")).toBe(false);
+    expect(isStaffRole("superadmin")).toBe(true);
     expect(isPlatformRole("superadmin")).toBe(true);
     expect(isResidentLikeRole("tenant")).toBe(true);
     expect(canUseAdminMode("treasurer")).toBe(true);
+    expect(canUseAdminMode("superadmin")).toBe(true);
     expect(canUseAdminMode("resident")).toBe(false);
     expect(normalizeRole("admin")).toBe("chairperson");
   });
@@ -73,7 +74,7 @@ describe("auth-helpers", () => {
       typ: "access",
     };
     expect(() => requireSocietyStaff(chair)).not.toThrow();
-    expect(() => requireSocietyStaff(platform)).toThrow(AppError);
+    expect(() => requireSocietyStaff(platform)).not.toThrow();
     expect(() => requirePlatform(platform)).not.toThrow();
     expect(() => requirePlatform(chair)).toThrow(AppError);
   });

@@ -28,6 +28,7 @@ Requires a **local MySQL 8 server** (Workbench GUI is optional). Default:
 - Database `societyhub`
 
 **Manage (platform):** `superadmin@societyhub.local` / `Test@1234` → http://manage.localhost:5174  
+**Same platform account on Client Admin:** `superadmin@societyhub.local` / `Test@1234` → http://app.localhost:5173 (Admin mode)  
 **Client App Chairperson OTP (dev):** phone `9999999999` · code `123456` → http://app.localhost:5173 (Admin mode)  
 **Resident OTP (dev):** phone `8888888888` · code `123456` → http://app.localhost:5173  
 OpenAPI: http://localhost:3000/docs

@@ -35,7 +35,7 @@ export function LoginPage() {
       try {
         setSession(res.user, res.tokens);
       } catch {
-        setError(`SocietyHub platform team members use Manage instead: ${MANAGE_URL}`);
+        setError("This account cannot use the Client App.");
       }
     } catch (err) {
       setError(err instanceof ApiClientError ? err.body.message : "Failed");
@@ -267,7 +267,7 @@ export function LoginPage() {
           </p>
         )}
         <p className="mt-6 text-center text-sm text-black/50">
-          SocietyHub platform team?{" "}
+          Platform ops (societies, platform team)?{" "}
           <a className="text-[var(--leaf)]" href={MANAGE_URL}>
             Open Manage
           </a>

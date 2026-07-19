@@ -108,15 +108,16 @@ Use Swagger for live schemas. This Markdown guide is the **narrative + inventory
 | Portal | Host (local) | Who | JWT roles |
 |--------|--------------|-----|-----------|
 | **Manage** | `manage.localhost:5174` | SocietyHub platform employees | `superadmin` only |
-| **Client App — Admin mode** | `app.localhost:5173` | Society day-to-day staff | `chairperson`, `secretary`, `treasurer`, `cashier`, `committee` (`admin` = legacy alias of chairperson) |
+| **Client App — Admin mode** | `app.localhost:5173` | Society day-to-day staff **and** Manage platform team | `chairperson`, `secretary`, `treasurer`, `cashier`, `committee` (`admin` = legacy alias of chairperson), **`superadmin`** |
 | **Client App — Resident mode** | `app.localhost:5173` | Flat residents / tenants | `resident`, `tenant` |
 
 **Rules**
 
-1. Platform users manage societies and **add people to a society team** via Manage (`POST /v1/manage/societies/:id/team`). They do **not** run society day-to-day ops unless they also hold a society staff role.
-2. Society staff use **Client App Admin** for bills, notices, complaints triage, structure, etc.
-3. Residents use **Client App Resident** for their flat’s complaints, dues, notices, profile, visitors/bookings.
-4. Cross-tenant access is denied (`403 forbidden`) unless the caller is `superadmin` (platform routes) or has membership in that society.
+1. Platform users manage societies and **add people to a society team** via Manage (`POST /v1/manage/societies/:id/team`).
+2. Manage platform employees (`superadmin`) may also sign in to the **Client App** and use **Admin mode** on any society by default (same Client Admin APIs as society staff).
+3. Society staff use **Client App Admin** for bills, notices, complaints triage, structure, etc.
+4. Residents use **Client App Resident** for their flat’s complaints, dues, notices, profile, visitors/bookings.
+5. Cross-tenant access is denied (`403 forbidden`) unless the caller is `superadmin` (platform routes / Client Admin across societies) or has membership in that society.
 
 Allowed role enum values:
 
@@ -192,7 +193,7 @@ Audience enum: `all`, `wing`, `flat`
 
 | Actor | How |
 |-------|-----|
-| Platform | `superadmin@societyhub.local` / `Test@1234` |
+| Platform (Manage + Client Admin) | `superadmin@societyhub.local` / `Test@1234` |
 | Chairperson | phone `9999999999`, OTP `123456` when `DEV_AUTH=true` |
 | Resident | phone `8888888888`, OTP `123456` when `DEV_AUTH=true` |
 

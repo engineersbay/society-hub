@@ -10,8 +10,12 @@ import { createSocietyHubClient, type SocietyHubClient } from "@society-hub/sdk"
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 
-/** Society staff + residents may use the Client App. Platform-only superadmins may not. */
+/**
+ * Client App allows society staff, residents, and Manage platform employees.
+ * Platform roles (e.g. superadmin) land in Admin mode by default.
+ */
 const ALLOWED_ROLES: Role[] = [
+  "superadmin",
   "chairperson",
   "admin",
   "secretary",
@@ -36,9 +40,6 @@ const ACCESS_KEY = "sh_web_access";
 const REFRESH_KEY = "sh_web_refresh";
 const USER_KEY = "sh_web_user";
 
-// Society staff (chairperson/secretary/treasurer/cashier/committee) and
-// residents/tenants use the Client App. Platform-only superadmins (no
-// society staff membership) must use Manage instead.
 function isAllowed(user: UserDto) {
   return (ALLOWED_ROLES as string[]).includes(user.role);
 }
@@ -103,7 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!isAllowed(next)) {
       clearStorage();
       setUser(null);
-      throw new Error("PLATFORM_USE_MANAGE");
+      throw new Error("ROLE_NOT_ALLOWED");
     }
     localStorage.setItem(ACCESS_KEY, tokens.accessToken);
     localStorage.setItem(REFRESH_KEY, tokens.refreshToken);
