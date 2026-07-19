@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "@society-hub/ui/styles.css";
 
 :root {
   /*
@@ -46,9 +47,10 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  border-radius: 0.5rem;
-  padding: 0.65rem 1.1rem;
+  gap: 0.4rem;
+  border-radius: 0.45rem;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.875rem;
   font-weight: 600;
   border: none;
   cursor: pointer;
@@ -84,9 +86,11 @@ body {
   width: 100%;
   border: 1px solid var(--sand);
   background: #fffdfb;
-  border-radius: 0.5rem;
-  padding: 0.65rem 0.85rem;
+  border-radius: 0.45rem;
+  padding: 0.4rem 0.7rem;
   font: inherit;
+  font-size: 0.875rem;
+  line-height: 1.35;
 }
 
 .input:focus {
@@ -96,9 +100,9 @@ body {
 
 .label {
   display: block;
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   font-weight: 600;
-  margin-bottom: 0.35rem;
+  margin-bottom: 0.2rem;
 }
 
 .btn-sm {
