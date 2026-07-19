@@ -32,6 +32,7 @@ import {
   users,
 } from "../../db/schema";
 import { AppError } from "../../lib/errors";
+import { ActivityType, recordAudit } from "../../lib/audit";
 import {
   authPlugin,
   buildUserDto,
@@ -42,6 +43,22 @@ import {
   resolveMembership,
 } from "../../lib/auth-context";
 import { getProfileDto, upsertProfile } from "../profile/routes";
+
+function trackLogin(
+  userId: string,
+  tenantId: string,
+  action: string,
+  message: string,
+) {
+  return recordAudit({
+    tenantId,
+    actorUserId: userId,
+    action,
+    entityType: "user",
+    entityId: userId,
+    message,
+  });
+}
 
 function nowMysql() {
   return new Date().toISOString().replace("T", " ").replace("Z", "");
@@ -124,6 +141,12 @@ export const authRoutes = new Elysia({ prefix: "/v1/auth" })
       dto.flatId,
     );
     const memberships = await listMemberships(user.id);
+    await trackLogin(
+      user.id,
+      membership.tenantId,
+      ActivityType.USER_OTP_LOGIN,
+      "Signed in with OTP",
+    );
     return { user: dto, tokens, memberships };
   })
   .post("/google", async ({ body }) => {
@@ -166,6 +189,12 @@ export const authRoutes = new Elysia({ prefix: "/v1/auth" })
       dto.flatId,
     );
     const memberships = await listMemberships(user.id);
+    await trackLogin(
+      user.id,
+      membership.tenantId,
+      ActivityType.USER_GOOGLE_LOGIN,
+      "Signed in with Google (dev)",
+    );
     return { user: dto, tokens, memberships };
   })
   .post("/pin/login", async ({ body }) => {
@@ -190,6 +219,12 @@ export const authRoutes = new Elysia({ prefix: "/v1/auth" })
       dto.flatId,
     );
     const memberships = await listMemberships(user.id);
+    await trackLogin(
+      user.id,
+      membership.tenantId,
+      ActivityType.USER_PIN_LOGIN,
+      "Signed in with PIN",
+    );
     return { user: dto, tokens, memberships };
   })
   .post("/password/login", async ({ body }) => {
@@ -217,6 +252,12 @@ export const authRoutes = new Elysia({ prefix: "/v1/auth" })
       dto.flatId,
     );
     const memberships = await listMemberships(user.id);
+    await trackLogin(
+      user.id,
+      membership.tenantId,
+      ActivityType.USER_PASSWORD_LOGIN,
+      "Signed in with email and password",
+    );
     return { user: dto, tokens, memberships };
   })
   .post("/password/forgot", async ({ body }) => {

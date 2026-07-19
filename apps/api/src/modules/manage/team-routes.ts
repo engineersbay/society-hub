@@ -5,6 +5,7 @@ import { societyStaffRoleEnum } from "@society-hub/validation";
 import { db } from "../../db/client";
 import { societies, userRoles, users } from "../../db/schema";
 import { AppError } from "../../lib/errors";
+import { ActivityType, recordActivity } from "../../lib/audit";
 import {
   authPlugin,
   requireAuth,
@@ -104,6 +105,16 @@ export const manageTeamRoutes = new Elysia({
         .set({ isDeleted: false, updatedBy: claims.sub })
         .where(eq(userRoles.id, existingRole.id));
     }
+
+    recordActivity({
+      tenantId: params.id,
+      actorUserId: claims.sub,
+      action: ActivityType.SOCIETY_TEAM_MEMBER_ADDED,
+      entityType: "user",
+      entityId: userId,
+      message: `Added ${parsed.email ?? parsed.phone ?? userId} as ${role} on ${society.name}`,
+      meta: { role, societyId: params.id, targetUserId: userId },
+    });
 
     return {
       ok: true as const,

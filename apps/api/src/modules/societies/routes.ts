@@ -18,6 +18,7 @@ import {
   wings,
 } from "../../db/schema";
 import { AppError } from "../../lib/errors";
+import { ActivityType, recordActivity } from "../../lib/audit";
 import { softDelete } from "../../lib/soft-delete";
 import { assertTenantAccess } from "../../lib/tenant-scope";
 import {
@@ -169,6 +170,16 @@ export const societyRoutes = new Elysia({ prefix: "/v1/societies" })
         updatedBy: claims.sub,
       });
     }
+
+    recordActivity({
+      tenantId: societyId,
+      actorUserId: claims.sub,
+      action: ActivityType.SOCIETY_CREATED,
+      entityType: "society",
+      entityId: societyId,
+      message: `Created society "${parsed.name}"`,
+      meta: { name: parsed.name },
+    });
 
     return buildSocietyDto(societyId);
   })
