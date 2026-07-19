@@ -107,7 +107,7 @@ Use Swagger for live schemas. This Markdown guide is the **narrative + inventory
 
 | Portal | Host (local) | Who | JWT roles |
 |--------|--------------|-----|-----------|
-| **Manage** | `manage.localhost:5174` | SocietyHub platform employees | `superadmin` only |
+| **Manage** | `manage.localhost:5174` | SocietyHub platform employees | `superadmin` only. Live: Dashboard, Societies, **Users** (directory + activity), **Audit log**. Roadmap (Coming soon): Feature flags, Society settings, Subscriptions, Discounts, Generate bills, Payments, Announcements, Integrations, Support |
 | **Client App — Admin mode** | `app.localhost:5173` | Society day-to-day staff **and** Manage platform team | `chairperson`, `secretary`, `treasurer`, `cashier`, `committee` (`admin` = legacy alias of chairperson), **`superadmin`** |
 | **Client App — Resident mode** | `app.localhost:5173` | Flat residents / tenants | `resident`, `tenant` |
 
