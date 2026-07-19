@@ -27,7 +27,8 @@ export type IconName =
   | "externalLink"
   | "search"
   | "plus"
-  | "back";
+  | "back"
+  | "mic";
 
 const paths: Record<IconName, ReactElement> = {
   dashboard: (
@@ -180,6 +181,13 @@ const paths: Record<IconName, ReactElement> = {
   ),
   plus: <path d="M12 5v14M5 12h14" strokeLinecap="round" />,
   back: <path d="m15 18-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />,
+  mic: (
+    <>
+      <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z" />
+      <path d="M19 10v1a7 7 0 0 1-14 0v-1" strokeLinecap="round" />
+      <path d="M12 18v3M8 21h8" strokeLinecap="round" />
+    </>
+  ),
 };
 
 export function Icon({

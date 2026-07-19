@@ -24,8 +24,11 @@ const ACCESS_KEY = "sh_manage_access";
 const REFRESH_KEY = "sh_manage_refresh";
 const USER_KEY = "sh_manage_user";
 
-function isStaff(user: UserDto) {
-  return user.role === "admin" || user.role === "superadmin";
+// Manage is for SocietyHub platform employees only. Society staff
+// (chairperson/secretary/treasurer/cashier/committee) and residents must
+// use the Client App instead.
+function isPlatform(user: UserDto) {
+  return user.role === "superadmin";
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -48,7 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (raw && access) {
       try {
         const parsed = JSON.parse(raw) as UserDto;
-        if (!isStaff(parsed)) {
+        if (!isPlatform(parsed)) {
           clearStorage();
           setLoading(false);
           return;
@@ -57,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         client
           .me()
           .then((me) => {
-            if (!isStaff(me)) {
+            if (!isPlatform(me)) {
               clearStorage();
               setUser(null);
               return;
@@ -85,10 +88,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   function setSession(next: UserDto, tokens: AuthTokens) {
-    if (!isStaff(next)) {
+    if (!isPlatform(next)) {
       clearStorage();
       setUser(null);
-      throw new Error("RESIDENT_USE_WEB");
+      throw new Error("USE_CLIENT_APP");
     }
     localStorage.setItem(ACCESS_KEY, tokens.accessToken);
     localStorage.setItem(REFRESH_KEY, tokens.refreshToken);

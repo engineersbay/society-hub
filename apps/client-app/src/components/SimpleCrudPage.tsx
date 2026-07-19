@@ -80,10 +80,10 @@ export function SimpleCrudPage<T extends { id: string }>({
 
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h1 className="font-display text-2xl">{title}</h1>
-          <p className="mt-1 text-sm text-black/55">{description}</p>
+          <h1 className="font-display text-xl sm:text-2xl">{title}</h1>
+          <p className="mt-0.5 text-sm text-black/55">{description}</p>
         </div>
         {onCreate && (
           <button
@@ -99,7 +99,7 @@ export function SimpleCrudPage<T extends { id: string }>({
 
       {showForm && onCreate && (
         <form
-          className="card mb-6 grid gap-4 p-5 sm:grid-cols-2"
+          className="card sh-section mb-4 grid gap-2.5 sm:grid-cols-2"
           data-testid={`${testId}-form`}
           onSubmit={submit}
         >

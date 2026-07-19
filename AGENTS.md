@@ -20,7 +20,8 @@ Build SocietyHub per the Spec. **Docs are source of truth.** Never invent busine
 
 ## Hard rules
 
-- **MVP clients = two simple responsive React web apps** (phone browser + desktop): `apps/client-app` (residents) and `apps/manage` (Admin / Super Admin). Do not implement Flutter for MVP. Keep UI/UX simple: few screens, one primary action, no clutter.
+- **MVP clients = two simple responsive React web apps** (phone browser + desktop): `apps/client-app` (residents) and `apps/manage` (Admin / Super Admin). Keep UI/UX simple: few screens, one primary action, no clutter.
+- **Native mobile (in progress):** Flutter Client App under `apps/mobile/` — mirrors client-app UX; bulk CSV stays on web. Use `.cursor/skills/societyhub-flutter-future`.
 - **MVP product:** start with **Complaints** (auth + onboard + raise/track). Show other **planned** features in nav as **Coming soon** (PRD §5.2)—do not implement their APIs until Phase 2. Do not invent extra modules.
 - **Multi-tenant:** every query and blob path scoped by `tenant_id`.
 - **RBAC:** enforce Admin vs Resident on the server (MVP).
@@ -35,7 +36,7 @@ Build SocietyHub per the Spec. **Docs are source of truth.** Never invent busine
 | Bun runtime / workspaces | `.cursor/skills/societyhub-bun-typescript` |
 | Elysia routes / API | `.cursor/skills/societyhub-elysia` |
 | Schema / migrations / repos | `.cursor/skills/societyhub-drizzle-mysql` |
-| Web UI (resident + manage) | `.cursor/skills/societyhub-react-vite-tailwind` |
+| Web UI (resident + manage) | `.cursor/skills/societyhub-react-vite-tailwind` — shared chrome in `packages/ui` (`@society-hub/ui`) |
 | Monorepo layout / pipelines | `.cursor/skills/societyhub-turborepo` |
 | New domain module boundaries | `.cursor/skills/societyhub-modular-monolith` |
 | Queues / SLA jobs | `.cursor/skills/societyhub-redis-bullmq` |
@@ -44,8 +45,8 @@ Build SocietyHub per the Spec. **Docs are source of truth.** Never invent busine
 | Transactional email | `.cursor/skills/societyhub-resend-email` |
 | Web push | `.cursor/skills/societyhub-firebase-notifications` |
 | Payments / webhooks | `.cursor/skills/societyhub-razorpay-payments` |
-| Native mobile (future only) | `.cursor/skills/societyhub-flutter-future` |
+| Native mobile Android/iOS (future only) | `.cursor/skills/societyhub-flutter-future` |
 
 ## Out of scope unless Spec updated
 
-WhatsApp notifications, Flutter Phase 1 UI (placeholders only under `apps/mobile/`), microservices split, modules listed as future in the PRD.
+WhatsApp notifications, microservices split, modules listed as future in the PRD. Flutter Client App is under active build in `apps/mobile/` (bulk CSV remains web-only).

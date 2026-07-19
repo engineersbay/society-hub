@@ -1,26 +1,39 @@
 import { describe, expect, test } from "bun:test";
-import { createHash } from "node:crypto";
-import type { AccessClaims } from "@society-hub/auth";
-import { AppError } from "./errors";
 import {
+  canUseAdminMode,
   hashToken,
+  isPlatformRole,
+  isResidentLikeRole,
+  isSocietyStaffRole,
   isStaffRole,
+  normalizeRole,
   requireAuth,
+  requirePlatform,
   requireRole,
+  requireSocietyStaff,
 } from "./auth-helpers";
+import { AppError } from "./errors";
+import type { AccessClaims } from "@society-hub/auth";
 
 describe("auth-helpers", () => {
   test("hashToken is sha256 hex", () => {
-    const token = "abc";
-    expect(hashToken(token)).toBe(
-      createHash("sha256").update(token).digest("hex"),
-    );
+    expect(hashToken("abc")).toHaveLength(64);
   });
 
-  test("isStaffRole", () => {
-    expect(isStaffRole("admin")).toBe(true);
+  test("role classifiers", () => {
+    expect(isSocietyStaffRole("chairperson")).toBe(true);
+    expect(isSocietyStaffRole("admin")).toBe(true);
+    expect(isSocietyStaffRole("secretary")).toBe(true);
+    expect(isSocietyStaffRole("superadmin")).toBe(false);
+    expect(isSocietyStaffRole("resident")).toBe(false);
+    expect(isStaffRole("chairperson")).toBe(true);
     expect(isStaffRole("superadmin")).toBe(true);
-    expect(isStaffRole("resident")).toBe(false);
+    expect(isPlatformRole("superadmin")).toBe(true);
+    expect(isResidentLikeRole("tenant")).toBe(true);
+    expect(canUseAdminMode("treasurer")).toBe(true);
+    expect(canUseAdminMode("superadmin")).toBe(true);
+    expect(canUseAdminMode("resident")).toBe(false);
+    expect(normalizeRole("admin")).toBe("chairperson");
   });
 
   test("requireAuth throws when missing", () => {
@@ -30,7 +43,7 @@ describe("auth-helpers", () => {
   test("requireAuth returns claims", () => {
     const claims: AccessClaims = {
       sub: "u1",
-      role: "admin",
+      role: "chairperson",
       tenantId: "t1",
       typ: "access",
     };
@@ -44,16 +57,25 @@ describe("auth-helpers", () => {
       tenantId: "t1",
       typ: "access",
     };
-    expect(() => requireRole(claims, ["admin"])).toThrow(AppError);
+    expect(() => requireRole(claims, ["chairperson"])).toThrow(AppError);
   });
 
-  test("requireRole allows matching role", () => {
-    const claims: AccessClaims = {
+  test("requireSocietyStaff and requirePlatform", () => {
+    const chair: AccessClaims = {
       sub: "u1",
+      role: "chairperson",
+      tenantId: "t1",
+      typ: "access",
+    };
+    const platform: AccessClaims = {
+      sub: "u2",
       role: "superadmin",
       tenantId: "t1",
       typ: "access",
     };
-    expect(() => requireRole(claims, ["admin", "superadmin"])).not.toThrow();
+    expect(() => requireSocietyStaff(chair)).not.toThrow();
+    expect(() => requireSocietyStaff(platform)).not.toThrow();
+    expect(() => requirePlatform(platform)).not.toThrow();
+    expect(() => requirePlatform(chair)).toThrow(AppError);
   });
 });

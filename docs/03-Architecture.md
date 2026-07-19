@@ -9,7 +9,7 @@
 
 SocietyHub is implemented as a **modular monolith**: one deployable API with clear feature modules, shared packages, and strict tenant isolation. This optimizes MVP speed and operational simplicity while allowing future extraction of modules if needed.
 
-**MVP clients:** two **simple, responsive React web apps** — `apps/client-app` (residents) and `apps/manage` (Admin / Super Admin). Flutter is out of MVP. UI/UX stays minimal per PRD §5 — not a dense dashboard product in Phase 1.
+**MVP clients:** two **simple, responsive React web apps** — `apps/client-app` (society **Admin \| Resident**, like Fassport Raise \| Invest) and `apps/manage` (SocietyHub **platform employees** only). Flutter is out of MVP. UI/UX stays minimal per PRD §5 — not a dense dashboard product in Phase 1.
 
 **MVP product slice:** complaint portal (auth + onboard + raise/track complaints). Billing/payments/notices are Phase 2 — still designed for, not required to implement for MVP.
 
@@ -37,8 +37,8 @@ Canonical explanation: **[07-Tech-Stack.md](07-Tech-Stack.md)**. Summary:
 ```mermaid
 flowchart TB
   subgraph clients [Clients]
-    Web["apps/client-app resident"]
-    Manage["apps/manage admin"]
+    Web["apps/client-app Admin Resident"]
+    Manage["apps/manage platform"]
   end
 
   subgraph mono [Turborepo modular monolith]
@@ -162,6 +162,7 @@ Cross-cutting: notifications, audit, tenancy middleware.
 - Consistent error shape: `{ code, message, details? }`.
 - Pagination on list endpoints.
 - Idempotency keys where payments/webhooks require them.
+- Full HTTP reference: **[09-API.md](09-API.md)** (inventory, flows, examples). Live OpenAPI at `/docs`.
 
 ## 9. Async work and notifications
 

@@ -7,7 +7,14 @@ export const env = {
     process.env.JWT_SECRET ?? "dev-change-me-society-hub-jwt-secret-32chars",
   corsOrigin: (
     process.env.CORS_ORIGIN ??
-    "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174"
+    [
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+      "http://app.localhost:5173",
+      "http://localhost:5174",
+      "http://127.0.0.1:5174",
+      "http://manage.localhost:5174",
+    ].join(",")
   )
     .split(",")
     .map((s) => s.trim())

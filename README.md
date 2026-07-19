@@ -1,6 +1,6 @@
 # SocietyHub
 
-Multi-tenant SaaS for housing societies. **Phase 1** ships two responsive web apps — **`apps/client-app`** (residents) and **`apps/manage`** (admin) — for **auth, onboard, and complaints**, backed by a mobile-ready `/v1` JSON API. Other modules show as **Coming soon**. **Pilot:** Keshav Heights.
+Multi-tenant SaaS for housing societies. Two responsive web apps — **`apps/client-app`** (society **Admin \| Resident**, Fassport Raise/Invest style) and **`apps/manage`** (SocietyHub **platform employees** only) — plus a mobile-ready `/v1` JSON API. **Pilot:** Keshav Heights.
 
 ## Run locally (recommended)
 
@@ -10,10 +10,14 @@ Full guide: **[docs/08-Local-Development.md](docs/08-Local-Development.md)**
 # 1) Bun on PATH
 export PATH="$HOME/.bun/bin:$PATH"
 
-# 2) One-time setup (install + .env + MySQL migrate/seed)
+# 2) /etc/hosts (once)
+# 127.0.0.1 app.localhost
+# 127.0.0.1 manage.localhost
+
+# 3) One-time setup (install + .env + MySQL migrate/seed)
 bun run setup
 
-# 3) Start API (:3000) + web (:5173) + manage (:5174)
+# 4) Start API (:3000) + client-app (:5173) + manage (:5174)
 bun run dev
 ```
 
@@ -23,15 +27,17 @@ Requires a **local MySQL 8 server** (Workbench GUI is optional). Default:
 - User `root` / password `1900Summer@`
 - Database `societyhub`
 
-**Manage login:** `superadmin@societyhub.local` / `Test@1234` → http://localhost:5174  
-**Resident OTP (dev):** phone `8888888888` · code `123456` → http://localhost:5173  
+**Manage (platform):** `superadmin@societyhub.local` / `Test@1234` → http://manage.localhost:5174  
+**Same platform account on Client Admin:** `superadmin@societyhub.local` / `Test@1234` → http://app.localhost:5173 (Admin mode)  
+**Client App Chairperson OTP (dev):** phone `9999999999` · code `123456` → http://app.localhost:5173 (Admin mode)  
+**Resident OTP (dev):** phone `8888888888` · code `123456` → http://app.localhost:5173  
 OpenAPI: http://localhost:3000/docs
 
 | Path | Role |
 |------|------|
 | `apps/api` | Bun + Elysia + Drizzle/MySQL |
-| `apps/client-app` | Resident React + Vite + Tailwind |
-| `apps/manage` | Admin React + Vite + Tailwind |
+| `apps/client-app` | Society Admin \| Resident (React + Vite) |
+| `apps/manage` | SocietyHub platform employees only |
 | `apps/mobile` | Flutter placeholders (later) |
 | `packages/{sdk,validation,auth,types}` | Shared contract for web + manage + future mobile |
 
@@ -48,8 +54,17 @@ OpenAPI: http://localhost:3000/docs
 | [Tech Stack](docs/07-Tech-Stack.md) | Stack choices |
 | [Development Plan](docs/05-Development-Plan.md) | Delivery approach |
 | [Coding Standards](docs/06-Coding-Standards.md) | Conventions |
+| [API Guide](docs/09-API.md) | **REST `/v1` reference** (auth, roles, endpoint inventory, examples) |
 
 Agent guidance: [AGENTS.md](AGENTS.md) · DevOps: [`devops/`](devops/README.md)
+
+## Quality gates
+
+```bash
+bun run quality
+```
+
+Enforces: no direct `@mui` / `@material-ui` imports, zero TypeScript lint errors, clean build (zero warnings), unit coverage ≥90%, integration coverage ≥90% (in-process API).
 
 ## Stack (MVP)
 

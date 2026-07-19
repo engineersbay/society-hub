@@ -73,11 +73,24 @@ export const createComplaintSchema = z.object({
   flatId: z.string().uuid().optional().nullable(),
 });
 
-export const updateComplaintStatusSchema = z.object({
-  status: z.enum(["open", "assigned", "in_progress", "resolved", "closed"]),
-  assignedToUserId: z.string().uuid().optional().nullable(),
-  note: z.string().max(2000).optional().nullable(),
-});
+export const updateComplaintStatusSchema = z
+  .object({
+    status: z.enum(["open", "assigned", "in_progress", "resolved", "closed"]),
+    assignedToUserId: z.string().uuid().optional().nullable(),
+    note: z.string().max(2000).optional().nullable(),
+  })
+  .superRefine((val, ctx) => {
+    if (
+      (val.status === "resolved" || val.status === "closed") &&
+      !(val.note && val.note.trim().length >= 3)
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["note"],
+        message: "Add a short closing comment (at least 3 characters)",
+      });
+    }
+  });
 
 export const createComplaintCommentSchema = z.object({
   body: z.string().min(1).max(2000),
@@ -86,9 +99,36 @@ export const createComplaintCommentSchema = z.object({
 export const listQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
+  /** When true, staff/platform users only see rows they raised (Resident mode). */
+  mine: z
+    .preprocess(
+      (v) => v === true || v === "true" || v === "1" || v === 1,
+      z.boolean(),
+    )
+    .optional()
+    .default(false),
 });
 
-const roleEnum = z.enum(["admin", "resident", "superadmin"]);
+const roleEnum = z.enum([
+  "superadmin",
+  "chairperson",
+  "admin",
+  "secretary",
+  "treasurer",
+  "cashier",
+  "committee",
+  "resident",
+  "tenant",
+]);
+
+export const societyStaffRoleEnum = z.enum([
+  "chairperson",
+  "admin",
+  "secretary",
+  "treasurer",
+  "cashier",
+  "committee",
+]);
 
 export const createSocietySchema = z.object({
   name: z.string().min(1).max(200),
@@ -112,12 +152,45 @@ export const createWingSchema = z.object({
 
 export const createFlatSchema = z.object({
   number: z.string().min(1).max(32),
+  floor: z.number().int().min(0).max(200).optional().nullable(),
+  parkingSlot: z.string().max(32).optional().nullable(),
+  details: z.record(z.string(), z.string()).optional().nullable(),
+});
+
+export const residentImportRowSchema = z.object({
+  name: z.string().min(1).max(120),
+  phone: z.string().min(10).max(15),
+  email: z.string().email().max(200).optional().nullable(),
+  flatNumber: z.string().min(1).max(32),
+  wingName: z.string().min(1).max(120).optional().nullable(),
+  floor: z.coerce.number().int().min(0).max(200).optional().nullable(),
+  parkingSlot: z.string().max(32).optional().nullable(),
+  isOwner: z.boolean().optional().default(true),
+  emergencyContact: z.string().max(40).optional().nullable(),
+  vehicleNumber: z.string().max(32).optional().nullable(),
+  sendInvite: z.boolean().optional().default(false),
+});
+
+export const residentImportSchema = z.object({
+  rows: z.array(residentImportRowSchema).min(1).max(500),
+  /** Send invite for newly created residents (and forceInvite updates). */
+  sendInvites: z.boolean().optional().default(false),
+  /** Re-send invites even when the resident already exists. */
+  forceInvite: z.boolean().optional().default(false),
+  /** Update floor / parking on matched flats from CSV columns. */
+  updateFlats: z.boolean().optional().default(true),
+  /** Create flat under an existing wing when flatNumber is missing. */
+  createMissingFlats: z.boolean().optional().default(false),
 });
 
 export const createInvitationSchema = z.object({
   email: z.string().email().max(200).optional().nullable(),
   phone: z.string().max(15).optional().nullable(),
   role: roleEnum.default("resident"),
+  channels: z
+    .array(z.enum(["email", "whatsapp"]))
+    .optional()
+    .default(["email"]),
 });
 
 export const updateResidentProfileSchema = z.object({

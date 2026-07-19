@@ -29,6 +29,7 @@ describe("recordAudit", () => {
     expect(row.createdBy).toBe("u1");
     expect(row.updatedBy).toBe("u1");
     expect(row.meta).toBe(JSON.stringify({ from: "open", to: "assigned" }));
+    expect(row.message).toBeNull();
   });
 
   test("stores null meta when omitted", async () => {
@@ -38,8 +39,10 @@ describe("recordAudit", () => {
       action: "bill.void",
       entityType: "bill",
       entityId: "b1",
+      message: "Voided bill",
     });
     const row = inserted.at(-1) as Record<string, unknown>;
     expect(row.meta).toBeNull();
+    expect(row.message).toBe("Voided bill");
   });
 });

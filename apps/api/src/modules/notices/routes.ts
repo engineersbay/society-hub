@@ -11,7 +11,7 @@ import {
   authPlugin,
   isStaffRole,
   requireAuth,
-  requireRole,
+    requireSocietyStaff,
 } from "../../lib/auth-context";
 
 function nowMysql() {
@@ -65,7 +65,7 @@ export const noticeRoutes = new Elysia({ prefix: "/v1/notices" })
   })
   .post("/", async ({ auth, body }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     const parsed = createNoticeSchema.parse(body);
     const id = crypto.randomUUID();
     await db.insert(notices).values({
@@ -84,7 +84,7 @@ export const noticeRoutes = new Elysia({ prefix: "/v1/notices" })
   })
   .patch("/:id", async ({ auth, params, body }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     const parsed = updateNoticeSchema.parse(body);
     const [existing] = await db
       .select()
@@ -112,7 +112,7 @@ export const noticeRoutes = new Elysia({ prefix: "/v1/notices" })
   })
   .post("/:id/publish", async ({ auth, params }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     const [existing] = await db
       .select()
       .from(notices)
@@ -144,7 +144,7 @@ export const noticeRoutes = new Elysia({ prefix: "/v1/notices" })
   })
   .post("/:id/unpublish", async ({ auth, params }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     const [existing] = await db
       .select()
       .from(notices)
@@ -185,7 +185,7 @@ export const noticeRoutes = new Elysia({ prefix: "/v1/notices" })
   })
   .delete("/:id", async ({ auth, params }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     await softDelete(notices, params.id, claims.sub);
     return { ok: true as const };
   });

@@ -1,4 +1,14 @@
-export type Role = "admin" | "resident" | "superadmin";
+export type Role =
+  | "superadmin"
+  | "chairperson"
+  /** @deprecated Use chairperson — kept for DB/JWT backward compatibility */
+  | "admin"
+  | "secretary"
+  | "treasurer"
+  | "cashier"
+  | "committee"
+  | "resident"
+  | "tenant";
 
 export type ComplaintStatus =
   | "open"
@@ -49,6 +59,15 @@ export type ComplaintCommentDto = {
   createdAt: string;
 };
 
+export type ComplaintStatusEventDto = {
+  id: string;
+  fromStatus: ComplaintStatus | null;
+  toStatus: ComplaintStatus;
+  note: string | null;
+  actorName: string | null;
+  createdAt: string;
+};
+
 export type ComplaintDto = {
   id: string;
   ticketNumber: string;
@@ -64,8 +83,17 @@ export type ComplaintDto = {
   slaDueAt: string | null;
   createdAt: string;
   updatedAt: string;
+  /** 1-based position among open/acknowledged tickets (null when not in queue). */
+  queuePosition: number | null;
+  /** How many tickets are ahead in the open queue. */
+  openAheadCount: number | null;
+  /** Friendly wait hint for residents (e.g. "About 2 tickets ahead"). */
+  queueHint: string | null;
   attachments: ComplaintAttachmentDto[];
   comments: ComplaintCommentDto[];
+  statusEvents: ComplaintStatusEventDto[];
+  /** Latest resolve/close note from staff, if any. */
+  closingNote: string | null;
 };
 
 export type ComplaintAttachmentDto = {
@@ -81,6 +109,9 @@ export type FlatDto = {
   number: string;
   wingName: string | null;
   wingId?: string;
+  floor?: number | null;
+  parkingSlot?: string | null;
+  details?: Record<string, string> | null;
 };
 
 export type Paginated<T> = {
@@ -94,6 +125,7 @@ export type MembershipDto = {
   tenantId: string;
   societyName: string;
   role: Role;
+  canUseAdminMode: boolean;
 };
 
 export type SocietyDto = {
@@ -133,12 +165,26 @@ export type InvitationDto = {
   createdAt: string;
   /** Only present in DEV_AUTH so testers can accept without email/SMS delivery. */
   devToken?: string;
+  delivery?: {
+    email?: { ok: boolean; error?: string };
+    whatsapp?: { ok: boolean; error?: string };
+  };
 };
 
 export type ResidentProfileDto = {
   userId: string;
   emergencyContact: string | null;
   vehicleNumber: string | null;
+  societyName: string | null;
+  flat: {
+    id: string;
+    number: string;
+    wingName: string | null;
+    buildingName: string | null;
+    floor: number | null;
+    parkingSlot: string | null;
+    isOwner: boolean;
+  } | null;
 };
 
 export type BillStatus = "draft" | "issued" | "paid" | "void" | "corrected";
@@ -207,10 +253,57 @@ export type AuditLogDto = {
   actorUserId: string;
   actorName: string | null;
   action: string;
+  message?: string | null;
   entityType: string;
   entityId: string;
   meta: string | null;
   createdAt: string;
+};
+
+/** Fassport-style activity event (platform / entity history). */
+export type ActivityEventDto = {
+  id: string;
+  tenantId: string;
+  societyName: string | null;
+  actorUserId: string;
+  actorName: string | null;
+  action: string;
+  message: string | null;
+  entityType: string;
+  entityId: string;
+  meta: string | null;
+  createdAt: string;
+};
+
+export type PlatformUserMembershipDto = {
+  tenantId: string;
+  societyName: string;
+  role: Role;
+};
+
+export type PlatformUserDto = {
+  id: string;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  username: string | null;
+  memberships: PlatformUserMembershipDto[];
+  createdAt: string;
+  lastActivityAt: string | null;
+};
+
+export type ResidentImportRowError = {
+  row: number;
+  message: string;
+};
+
+export type ResidentImportResultDto = {
+  created: number;
+  updated: number;
+  invited: number;
+  skipped: number;
+  unchanged: number;
+  errors: ResidentImportRowError[];
 };
 
 export type TeamMemberDto = {

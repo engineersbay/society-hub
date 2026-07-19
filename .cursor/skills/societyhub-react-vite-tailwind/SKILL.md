@@ -17,6 +17,7 @@ description: >-
 - **apps/client-app:** login, raise/track own complaints, account, Coming soon. Reject staff roles (point to Manage).
 - **apps/manage:** login, onboard, all complaints + status, account, Coming soon. Reject resident roles (point to web).
 - Call APIs only via `packages/sdk`.
+- Shared layout/labels live in **`packages/ui`** (`@society-hub/ui`) — same pattern as Fassport’s `@fassport/ui`. Prefer `ShPage` / `ShSplit` / `ShFormGrid` for dense admin forms so primary actions stay above the fold.
 - Hide unauthorized actions per PRD; server still enforces RBAC.
 - Tailwind + accessible headless/Radix; avoid cards-for-decoration, gradients, badge clutter, and generic purple/cream AI looks.
 - Voice mic and media upload should be obvious but not overwhelm the form.

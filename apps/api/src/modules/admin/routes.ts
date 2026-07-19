@@ -1,24 +1,59 @@
 import { Elysia } from "elysia";
-import { and, eq, inArray, or } from "drizzle-orm";
-import { createInvitationSchema, onboardResidentSchema } from "@society-hub/validation";
-import type { TeamMemberDto } from "@society-hub/types";
+import { and, eq, inArray } from "drizzle-orm";
+import {
+  createInvitationSchema,
+  onboardResidentSchema,
+  residentImportSchema,
+} from "@society-hub/validation";
+import type { FlatDto, TeamMemberDto } from "@society-hub/types";
 import { db } from "../../db/client";
 import {
   buildings,
   flats,
-  residents,
   userRoles,
   users,
   wings,
 } from "../../db/schema";
-import { AppError } from "../../lib/errors";
 import { createInvitationForTenant } from "../invitations/routes";
 import {
   authPlugin,
-  buildUserDto,
   requireAuth,
-  requireRole,
+  requireSocietyStaff,
 } from "../../lib/auth-context";
+import { onboardResidentIntoTenant } from "./onboard-resident";
+import { importResidentsCsvRows } from "./import-residents";
+
+function parseDetails(raw: string | null): Record<string, string> | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Record<string, string>;
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function toFlatDto(
+  row: {
+    id: string;
+    number: string;
+    wingId: string;
+    floor: number | null;
+    parkingSlot: string | null;
+    detailsJson: string | null;
+  },
+  wingName: string | null,
+): FlatDto {
+  return {
+    id: row.id,
+    number: row.number,
+    wingId: row.wingId,
+    wingName,
+    floor: row.floor,
+    parkingSlot: row.parkingSlot,
+    details: parseDetails(row.detailsJson),
+  };
+}
 
 async function listTeamForTenant(tenantId: string): Promise<TeamMemberDto[]> {
   return db
@@ -34,7 +69,14 @@ async function listTeamForTenant(tenantId: string): Promise<TeamMemberDto[]> {
     .where(
       and(
         eq(userRoles.tenantId, tenantId),
-        inArray(userRoles.role, ["admin", "superadmin"]),
+        inArray(userRoles.role, [
+          "chairperson",
+          "admin",
+          "secretary",
+          "treasurer",
+          "cashier",
+          "committee",
+        ]),
         eq(userRoles.isDeleted, false),
         eq(users.isDeleted, false),
       ),
@@ -45,7 +87,7 @@ export const teamRoutes = new Elysia({ prefix: "/v1/team" })
   .use(authPlugin)
   .get("/", async ({ auth }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     return listTeamForTenant(claims.tenantId);
   });
 
@@ -53,12 +95,15 @@ export const adminRoutes = new Elysia({ prefix: "/v1/admin" })
   .use(authPlugin)
   .get("/flats", async ({ auth }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     const rows = await db
       .select({
         id: flats.id,
         number: flats.number,
         wingId: flats.wingId,
+        floor: flats.floor,
+        parkingSlot: flats.parkingSlot,
+        detailsJson: flats.detailsJson,
         wingName: wings.name,
       })
       .from(flats)
@@ -66,16 +111,23 @@ export const adminRoutes = new Elysia({ prefix: "/v1/admin" })
       .where(
         and(eq(flats.tenantId, claims.tenantId), eq(flats.isDeleted, false)),
       );
-    return rows.map((r) => ({
-      id: r.id,
-      number: r.number,
-      wingId: r.wingId,
-      wingName: r.wingName,
-    }));
+    return rows.map((r) =>
+      toFlatDto(
+        {
+          id: r.id,
+          number: r.number,
+          wingId: r.wingId,
+          floor: r.floor,
+          parkingSlot: r.parkingSlot,
+          detailsJson: r.detailsJson,
+        },
+        r.wingName,
+      ),
+    );
   })
   .get("/structure", async ({ auth }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
 
     const [buildingRows, wingRows, flatRows] = await Promise.all([
       db
@@ -106,120 +158,39 @@ export const adminRoutes = new Elysia({ prefix: "/v1/admin" })
             buildingId: w.buildingId,
             flats: flatRows
               .filter((f) => f.wingId === w.id)
-              .map((f) => ({ id: f.id, number: f.number, wingId: f.wingId, wingName: w.name })),
+              .map((f) => toFlatDto(f, w.name)),
           })),
       })),
     };
   })
   .get("/team", async ({ auth }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     return listTeamForTenant(claims.tenantId);
   })
   .post("/invites", async ({ auth, body }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     const parsed = createInvitationSchema.parse(body);
     return createInvitationForTenant(claims.tenantId, claims.sub, parsed);
   })
   .post("/residents", async ({ auth, body }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     const parsed = onboardResidentSchema.parse(body);
-
-    const [flat] = await db
-      .select()
-      .from(flats)
-      .where(
-        and(
-          eq(flats.id, parsed.flatId),
-          eq(flats.tenantId, claims.tenantId),
-          eq(flats.isDeleted, false),
-        ),
-      )
-      .limit(1);
-    if (!flat) throw new AppError(404, "flat_not_found", "Flat not found");
-
-    // Look up by phone OR email so a resident already onboarded elsewhere
-    // (multi-society) reuses their single user record.
-    const [existing] = await db
-      .select()
-      .from(users)
-      .where(or(eq(users.phone, parsed.phone), eq(users.email, parsed.email)))
-      .limit(1);
-
-    let userId = existing?.id;
-    if (!userId) {
-      userId = crypto.randomUUID();
-      await db.insert(users).values({
-        id: userId,
-        phone: parsed.phone,
-        name: parsed.name,
-        email: parsed.email,
-        createdBy: claims.sub,
-        updatedBy: claims.sub,
-      });
-    } else if (existing) {
-      await db
-        .update(users)
-        .set({
-          name: parsed.name,
-          email: parsed.email,
-          phone: existing.phone ?? parsed.phone,
-          updatedBy: claims.sub,
-        })
-        .where(eq(users.id, userId));
-    }
-
-    const [role] = await db
-      .select()
-      .from(userRoles)
-      .where(
-        and(
-          eq(userRoles.userId, userId),
-          eq(userRoles.tenantId, claims.tenantId),
-          eq(userRoles.role, "resident"),
-        ),
-      )
-      .limit(1);
-    if (!role) {
-      await db.insert(userRoles).values({
-        id: crypto.randomUUID(),
-        tenantId: claims.tenantId,
-        userId,
-        role: "resident",
-        createdBy: claims.sub,
-        updatedBy: claims.sub,
-      });
-    }
-
-    const [res] = await db
-      .select()
-      .from(residents)
-      .where(
-        and(
-          eq(residents.userId, userId),
-          eq(residents.tenantId, claims.tenantId),
-        ),
-      )
-      .limit(1);
-    if (!res) {
-      await db.insert(residents).values({
-        id: crypto.randomUUID(),
-        tenantId: claims.tenantId,
-        userId,
-        flatId: parsed.flatId,
-        isOwner: true,
-        createdBy: claims.sub,
-        updatedBy: claims.sub,
-      });
-    } else {
-      await db
-        .update(residents)
-        .set({ flatId: parsed.flatId, isDeleted: false, updatedBy: claims.sub })
-        .where(eq(residents.id, res.id));
-    }
-
-    const user = await buildUserDto(userId, claims.tenantId, "resident");
-    return { user };
+    return onboardResidentIntoTenant({
+      tenantId: claims.tenantId,
+      actorUserId: claims.sub,
+      name: parsed.name,
+      phone: parsed.phone,
+      email: parsed.email,
+      flatId: parsed.flatId,
+    });
+  })
+  .post("/residents/import", async ({ auth, body }) => {
+    const claims = requireAuth(auth);
+    requireSocietyStaff(claims);
+    // Validate early so bad payloads return 400 before import loop.
+    residentImportSchema.parse(body);
+    return importResidentsCsvRows(claims.tenantId, claims.sub, body);
   });

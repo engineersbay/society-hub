@@ -1,19 +1,18 @@
-describe("Manage onboard resident", () => {
+describe("Client App staff onboard resident (Admin mode)", () => {
   beforeEach(() => {
-    cy.loginAsAdmin();
+    cy.loginAsStaff();
     cy.intercept("GET", "**/v1/admin/flats", {
       statusCode: 200,
       body: [{ id: "flat-1", number: "101", wingName: "A" }],
     }).as("flats");
   });
 
-  it("requires an email and labels the current society as read-only", () => {
+  it("onboards a resident from the Client App Admin mode", () => {
     cy.visit("/onboard");
     cy.wait("@flats");
 
     cy.contains("h1", "Onboard resident").should("be.visible");
     cy.get('[data-testid="onboard-society-name"]').should("be.disabled");
-    cy.contains("Chairperson").should("be.visible");
 
     cy.get("#onboard-email:invalid").should("exist");
 

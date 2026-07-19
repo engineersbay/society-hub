@@ -1,0 +1,70 @@
+/* Shared SocietyHub UI density — imported by client-app / manage. */
+
+.sh-page {
+  width: 100%;
+  max-width: 42rem;
+}
+
+.sh-page-wide {
+  max-width: 64rem;
+}
+
+.sh-page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.sh-section {
+  padding: 0.85rem 1rem;
+}
+
+.sh-field {
+  min-width: 0;
+}
+
+.sh-form-grid {
+  display: grid;
+  gap: 0.65rem 0.85rem;
+}
+
+.sh-form-grid-1 {
+  grid-template-columns: 1fr;
+}
+
+.sh-form-grid-2 {
+  grid-template-columns: 1fr;
+}
+
+.sh-form-grid-3 {
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .sh-form-grid-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sh-form-grid-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.sh-split {
+  display: grid;
+  gap: 0.85rem;
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .sh-split {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.sh-span-2 {
+  grid-column: 1 / -1;
+}

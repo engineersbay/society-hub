@@ -68,6 +68,12 @@ export const flats = mysqlTable(
     tenantId: tenantId(),
     wingId: char("wing_id", { length: 36 }).notNull(),
     number: varchar("number", { length: 32 }).notNull(),
+    /** Floor within the wing (null = unset). */
+    floor: int("floor"),
+    /** Primary parking slot label linked to this flat (optional). */
+    parkingSlot: varchar("parking_slot", { length: 32 }),
+    /** Extensible JSON bag for society-specific flat attributes. */
+    detailsJson: text("details_json"),
     ...timestamps,
   },
   (t) => [
@@ -103,7 +109,17 @@ export const userRoles = mysqlTable(
     id: id(),
     tenantId: tenantId(),
     userId: char("user_id", { length: 36 }).notNull(),
-    role: mysqlEnum("role", ["admin", "resident", "superadmin"]).notNull(),
+    role: mysqlEnum("role", [
+      "superadmin",
+      "chairperson",
+      "admin",
+      "secretary",
+      "treasurer",
+      "cashier",
+      "committee",
+      "resident",
+      "tenant",
+    ]).notNull(),
     ...timestamps,
   },
   (t) => [
@@ -262,7 +278,17 @@ export const invitations = mysqlTable(
     tenantId: tenantId(),
     email: varchar("email", { length: 200 }),
     phone: varchar("phone", { length: 20 }),
-    role: mysqlEnum("role", ["admin", "resident", "superadmin"]).notNull(),
+    role: mysqlEnum("role", [
+      "superadmin",
+      "chairperson",
+      "admin",
+      "secretary",
+      "treasurer",
+      "cashier",
+      "committee",
+      "resident",
+      "tenant",
+    ]).notNull(),
     token: varchar("token", { length: 128 }).notNull(),
     status: mysqlEnum("status", ["pending", "accepted", "revoked"])
       .notNull()
@@ -426,6 +452,8 @@ export const auditLogs = mysqlTable(
     tenantId: tenantId(),
     actorUserId: char("actor_user_id", { length: 36 }).notNull(),
     action: varchar("action", { length: 80 }).notNull(),
+    /** Human-readable summary (Fassport-style Event.message). */
+    message: varchar("message", { length: 500 }),
     entityType: varchar("entity_type", { length: 80 }).notNull(),
     entityId: char("entity_id", { length: 36 }).notNull(),
     meta: text("meta"),
@@ -434,6 +462,7 @@ export const auditLogs = mysqlTable(
   (t) => [
     index("audit_logs_tenant_idx").on(t.tenantId),
     index("audit_logs_entity_idx").on(t.entityType, t.entityId),
+    index("audit_logs_actor_idx").on(t.actorUserId),
   ],
 );
 

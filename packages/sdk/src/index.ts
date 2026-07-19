@@ -15,6 +15,8 @@ import type {
   NoticeDto,
   NotificationDto,
   AuditLogDto,
+  ActivityEventDto,
+  PlatformUserDto,
   TeamMemberDto,
   VisitorDto,
   ParkingSlotDto,
@@ -22,6 +24,7 @@ import type {
   AssetDto,
   VendorDto,
   EventDto,
+  ResidentImportResultDto,
   DashboardStatsDto,
   ResidentProfileDto,
 } from "@society-hub/types";
@@ -197,9 +200,32 @@ export function createSocietyHubClient(opts: SocietyHubClientOptions) {
         method: "POST",
         body: JSON.stringify(body),
       }),
-    listComplaints: (page = 1, limit = 20) =>
+    importResidents: (body: {
+      rows: Array<{
+        name: string;
+        phone: string;
+        email?: string | null;
+        flatNumber: string;
+        wingName?: string | null;
+        floor?: number | null;
+        parkingSlot?: string | null;
+        isOwner?: boolean;
+        emergencyContact?: string | null;
+        vehicleNumber?: string | null;
+        sendInvite?: boolean;
+      }>;
+      sendInvites?: boolean;
+      forceInvite?: boolean;
+      updateFlats?: boolean;
+      createMissingFlats?: boolean;
+    }) =>
+      request<ResidentImportResultDto>("/v1/admin/residents/import", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    listComplaints: (page = 1, limit = 20, opts?: { mine?: boolean }) =>
       request<Paginated<ComplaintDto>>(
-        `/v1/complaints?page=${page}&limit=${limit}`,
+        `/v1/complaints?page=${page}&limit=${limit}${opts?.mine ? "&mine=1" : ""}`,
       ),
     getComplaint: (id: string) =>
       request<ComplaintDto>(`/v1/complaints/${id}`),
@@ -214,10 +240,18 @@ export function createSocietyHubClient(opts: SocietyHubClientOptions) {
         method: "POST",
         body: JSON.stringify(body),
       }),
-    updateComplaintStatus: (id: string, status: string) =>
+    updateComplaintStatus: (
+      id: string,
+      status: string,
+      opts?: { note?: string | null; assignedToUserId?: string | null },
+    ) =>
       request<ComplaintDto>(`/v1/complaints/${id}/status`, {
         method: "PATCH",
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({
+          status,
+          note: opts?.note ?? null,
+          assignedToUserId: opts?.assignedToUserId ?? null,
+        }),
       }),
     uploadAttachment: async (complaintId: string, file: File) => {
       const form = new FormData();
@@ -243,6 +277,42 @@ export function createSocietyHubClient(opts: SocietyHubClientOptions) {
         body: JSON.stringify(body),
       }),
     getSociety: (id: string) => request<SocietyDto>(`/v1/societies/${id}`),
+    addSocietyTeamMember: (
+      societyId: string,
+      body: {
+        email?: string;
+        phone?: string;
+        name?: string;
+        role?:
+          | "chairperson"
+          | "admin"
+          | "secretary"
+          | "treasurer"
+          | "cashier"
+          | "committee";
+      },
+    ) =>
+      request<{
+        ok: true;
+        userId: string;
+        tenantId: string;
+        role: string;
+        societyName: string;
+      }>(`/v1/manage/societies/${societyId}/team`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+
+    listPlatformUsers: (q?: string) => {
+      const query = q?.trim() ? `?q=${encodeURIComponent(q.trim())}` : "";
+      return request<PlatformUserDto[]>(`/v1/manage/users${query}`);
+    },
+    getPlatformUser: (id: string) =>
+      request<PlatformUserDto>(`/v1/manage/users/${id}`),
+    listUserActivity: (userId: string) =>
+      request<ActivityEventDto[]>(`/v1/manage/users/${userId}/activity`),
+    listPlatformActivity: () =>
+      request<ActivityEventDto[]>("/v1/manage/activity"),
 
     listBuildings: (societyId: string) =>
       request<BuildingDto[]>(`/v1/societies/${societyId}/buildings`),
@@ -260,10 +330,20 @@ export function createSocietyHubClient(opts: SocietyHubClientOptions) {
       }),
     listFlatsForWing: (wingId: string) =>
       request<FlatDto[]>(`/v1/wings/${wingId}/flats`),
-    createFlat: (wingId: string, number: string) =>
+    createFlat: (
+      wingId: string,
+      body: {
+        number: string;
+        floor?: number | null;
+        parkingSlot?: string | null;
+        details?: Record<string, string> | null;
+      } | string,
+    ) =>
       request<FlatDto>(`/v1/wings/${wingId}/flats`, {
         method: "POST",
-        body: JSON.stringify({ number }),
+        body: JSON.stringify(
+          typeof body === "string" ? { number: body } : body,
+        ),
       }),
 
     listInvitations: () => request<InvitationDto[]>("/v1/invitations"),
@@ -271,6 +351,7 @@ export function createSocietyHubClient(opts: SocietyHubClientOptions) {
       email?: string | null;
       phone?: string | null;
       role: string;
+      channels?: Array<"email" | "whatsapp">;
     }) =>
       request<InvitationDto>("/v1/invitations", {
         method: "POST",
@@ -342,7 +423,10 @@ export function createSocietyHubClient(opts: SocietyHubClientOptions) {
         method: "POST",
       }),
 
-    getDashboardStats: () => request<DashboardStatsDto>("/v1/dashboard/stats"),
+    getDashboardStats: (opts?: { mine?: boolean }) =>
+      request<DashboardStatsDto>(
+        `/v1/dashboard/stats${opts?.mine ? "?mine=1" : ""}`,
+      ),
 
     listAuditLogs: (search?: string) => {
       const query = search ? `?q=${encodeURIComponent(search)}` : "";

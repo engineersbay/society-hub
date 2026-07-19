@@ -4,26 +4,15 @@ import { Shell } from "./components/Shell";
 import { LoginPage } from "./pages/LoginPage";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
-import { ComplaintsPage } from "./pages/ComplaintsPage";
-import { ComplaintDetailPage } from "./pages/ComplaintDetailPage";
-import { OnboardPage } from "./pages/OnboardPage";
 import { AccountPage } from "./pages/AccountPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { SocietiesPage } from "./pages/SocietiesPage";
 import { SocietyDetailPage } from "./pages/SocietyDetailPage";
-import { InvitesPage } from "./pages/InvitesPage";
-import { BillsPage } from "./pages/BillsPage";
-import { PaymentsPage } from "./pages/PaymentsPage";
-import { NoticesPage } from "./pages/NoticesPage";
-import { NotificationsPage } from "./pages/NotificationsPage";
+import { UsersPage } from "./pages/UsersPage";
+import { UserDetailPage } from "./pages/UserDetailPage";
 import { AuditPage } from "./pages/AuditPage";
-import { TeamPage } from "./pages/TeamPage";
-import { VisitorsPage } from "./pages/VisitorsPage";
-import { ParkingPage } from "./pages/ParkingPage";
-import { BookingsPage } from "./pages/BookingsPage";
-import { AssetsPage } from "./pages/AssetsPage";
-import { VendorsPage } from "./pages/VendorsPage";
-import { EventsPage } from "./pages/EventsPage";
+import { ComingSoonPage } from "./pages/ComingSoonPage";
+import { MANAGE_NAV } from "./manage-nav";
 
 function Protected({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -31,6 +20,8 @@ function Protected({ children }: { children: React.ReactNode }) {
   if (!user) return <Navigate to="/login" replace />;
   return children;
 }
+
+const soonRoutes = MANAGE_NAV.filter((n) => n.status === "soon");
 
 export function App() {
   return (
@@ -48,27 +39,22 @@ export function App() {
       >
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
-        <Route path="complaints" element={<ComplaintsPage />} />
-        <Route path="complaints/:id" element={<ComplaintDetailPage />} />
-        <Route path="onboard" element={<OnboardPage />} />
-        <Route path="invites" element={<InvitesPage />} />
         <Route path="societies" element={<SocietiesPage />} />
         <Route path="societies/:id" element={<SocietyDetailPage />} />
-        <Route path="bills" element={<BillsPage />} />
-        <Route path="payments" element={<PaymentsPage />} />
-        <Route path="notices" element={<NoticesPage />} />
-        <Route path="notifications" element={<NotificationsPage />} />
+        <Route path="users" element={<UsersPage />} />
+        <Route path="users/:id" element={<UserDetailPage />} />
         <Route path="audit" element={<AuditPage />} />
-        <Route path="team" element={<TeamPage />} />
-        <Route path="visitors" element={<VisitorsPage />} />
-        <Route path="parking" element={<ParkingPage />} />
-        <Route path="bookings" element={<BookingsPage />} />
-        <Route path="assets" element={<AssetsPage />} />
-        <Route path="vendors" element={<VendorsPage />} />
-        <Route path="events" element={<EventsPage />} />
         <Route path="account" element={<AccountPage />} />
-        <Route path="pin" element={<Navigate to="/account" replace />} />
+        {soonRoutes.map((item) => (
+          <Route
+            key={item.to}
+            path={item.to.replace(/^\//, "")}
+            element={<ComingSoonPage />}
+          />
+        ))}
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
 }

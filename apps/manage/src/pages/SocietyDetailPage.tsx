@@ -1,120 +1,119 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
-import type { BuildingDto, FlatDto, SocietyDto, WingDto } from "@society-hub/types";
+import type { SocietyDto } from "@society-hub/types";
 import { ApiClientError } from "@society-hub/sdk";
 import { useAuth } from "../auth";
 import { Icon } from "../components/icons";
+import { SOCIETY_COMING_SOON } from "../manage-nav";
 
-function BuildingBlock({ building }: { building: BuildingDto }) {
+const APP_URL =
+  import.meta.env.VITE_APP_ORIGIN ??
+  import.meta.env.VITE_WEB_URL ??
+  "http://app.localhost:5173";
+
+const TEAM_ROLES = [
+  { value: "chairperson", label: "Chairperson" },
+  { value: "secretary", label: "Secretary" },
+  { value: "treasurer", label: "Treasurer" },
+  { value: "cashier", label: "Cashier" },
+  { value: "committee", label: "Committee member" },
+] as const;
+
+function AddTeamMemberForm({ societyId }: { societyId: string }) {
   const { client } = useAuth();
-  const [wings, setWings] = useState<WingDto[]>([]);
-  const [flatsByWing, setFlatsByWing] = useState<Record<string, FlatDto[]>>({});
-  const [newWing, setNewWing] = useState("");
-  const [newFlat, setNewFlat] = useState<Record<string, string>>({});
-  const [open, setOpen] = useState(false);
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [role, setRole] = useState<(typeof TEAM_ROLES)[number]["value"]>("chairperson");
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
-  function loadWings() {
-    client
-      .listWings(building.id)
-      .then((rows) => setWings(rows))
-      .catch(() => setWings([]));
-  }
-
-  useEffect(() => {
-    if (open) loadWings();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
-
-  function loadFlats(wingId: string) {
-    client
-      .listFlatsForWing(wingId)
-      .then((rows) => setFlatsByWing((m) => ({ ...m, [wingId]: rows })))
-      .catch(() => setFlatsByWing((m) => ({ ...m, [wingId]: [] })));
-  }
-
-  async function addWing(e: FormEvent) {
+  async function submit(e: FormEvent) {
     e.preventDefault();
-    if (!newWing.trim()) return;
+    setBusy(true);
+    setError(null);
+    setMessage(null);
     try {
-      await client.createWing(building.id, newWing.trim());
-      setNewWing("");
-      loadWings();
-    } catch {
-      // best effort
-    }
-  }
-
-  async function addFlat(wingId: string, e: FormEvent) {
-    e.preventDefault();
-    const value = newFlat[wingId]?.trim();
-    if (!value) return;
-    try {
-      await client.createFlat(wingId, value);
-      setNewFlat((m) => ({ ...m, [wingId]: "" }));
-      loadFlats(wingId);
-    } catch {
-      // best effort
+      const res = await client.addSocietyTeamMember(societyId, {
+        email: email || undefined,
+        name: name || undefined,
+        role,
+      });
+      setMessage(
+        `Added as ${res.role} on ${res.societyName}. They can sign in at ${APP_URL} in Admin mode.`,
+      );
+      setEmail("");
+      setName("");
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.body.message : "Failed to add team member");
+    } finally {
+      setBusy(false);
     }
   }
 
   return (
-    <div className="card p-5">
-      <button
-        type="button"
-        className="flex w-full items-center justify-between text-left"
-        onClick={() => setOpen((o) => !o)}
-        data-testid="structure-building-toggle"
-      >
-        <span className="font-semibold">{building.name}</span>
-        <Icon name="chevronDown" className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
-      </button>
-
-      {open && (
-        <div className="mt-4 space-y-4">
-          {wings.map((w) => (
-            <div key={w.id} className="rounded-lg border border-[var(--sand)] p-3">
-              <button
-                type="button"
-                className="flex w-full items-center justify-between text-left text-sm font-medium"
-                onClick={() => loadFlats(w.id)}
-              >
-                <span>Wing {w.name}</span>
-                <span className="text-xs text-black/40">View flats</span>
-              </button>
-              {flatsByWing[w.id] && (
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {flatsByWing[w.id]!.length === 0 && (
-                    <p className="text-xs text-black/40">No flats yet.</p>
-                  )}
-                  {flatsByWing[w.id]!.map((f) => (
-                    <span key={f.id} className="badge">{f.number}</span>
-                  ))}
-                </div>
-              )}
-              <form className="mt-2 flex gap-2" onSubmit={(e) => addFlat(w.id, e)}>
-                <input
-                  className="input !py-1.5 text-sm"
-                  placeholder="Flat number"
-                  value={newFlat[w.id] ?? ""}
-                  onChange={(e) => setNewFlat((m) => ({ ...m, [w.id]: e.target.value }))}
-                />
-                <button className="btn btn-ghost btn-sm" type="submit">Add flat</button>
-              </form>
-            </div>
+    <form
+      className="card grid gap-4 p-5 sm:grid-cols-2"
+      data-testid="add-team-form"
+      onSubmit={submit}
+    >
+      <div>
+        <label className="label" htmlFor="team-email">
+          Email
+        </label>
+        <input
+          id="team-email"
+          data-testid="add-team-email"
+          className="input"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+      </div>
+      <div>
+        <label className="label" htmlFor="team-name">
+          Name (optional)
+        </label>
+        <input
+          id="team-name"
+          data-testid="add-team-name"
+          className="input"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+      </div>
+      <div>
+        <label className="label" htmlFor="team-role">
+          Role
+        </label>
+        <select
+          id="team-role"
+          data-testid="add-team-role"
+          className="input"
+          value={role}
+          onChange={(e) => setRole(e.target.value as (typeof TEAM_ROLES)[number]["value"])}
+        >
+          {TEAM_ROLES.map((r) => (
+            <option key={r.value} value={r.value}>
+              {r.label}
+            </option>
           ))}
-          <form className="flex gap-2" onSubmit={addWing}>
-            <input
-              className="input text-sm"
-              placeholder="New wing name (e.g. B)"
-              value={newWing}
-              onChange={(e) => setNewWing(e.target.value)}
-              data-testid="structure-new-wing"
-            />
-            <button className="btn btn-ghost btn-sm" type="submit">Add wing</button>
-          </form>
-        </div>
-      )}
-    </div>
+        </select>
+      </div>
+      <div className="flex items-end">
+        <button
+          className="btn btn-primary"
+          data-testid="add-team-submit"
+          disabled={busy}
+          type="submit"
+        >
+          Add to society team
+        </button>
+      </div>
+      {message && <p className="sm:col-span-2 text-sm text-[var(--leaf)]">{message}</p>}
+      {error && <p className="sm:col-span-2 text-sm text-[var(--danger)]">{error}</p>}
+    </form>
   );
 }
 
@@ -122,37 +121,16 @@ export function SocietyDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { client, user } = useAuth();
   const [society, setSociety] = useState<SocietyDto | null>(null);
-  const [buildings, setBuildings] = useState<BuildingDto[]>([]);
-  const [newBuilding, setNewBuilding] = useState("");
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
     client.getSociety(id).then(setSociety).catch(() => undefined);
-    client
-      .listBuildings(id)
-      .then(setBuildings)
-      .catch(() => setBuildings([]));
   }, [client, id]);
 
-  if (user?.role !== "superadmin" && user?.tenantId !== id) {
-    return <Navigate to="/dashboard" replace />;
+  if (user?.role !== "superadmin") {
+    return <Navigate to="/login" replace />;
   }
   if (!id) return null;
-  const societyId = id;
-
-  async function addBuilding(e: FormEvent) {
-    e.preventDefault();
-    if (!newBuilding.trim()) return;
-    setError(null);
-    try {
-      await client.createBuilding(societyId, newBuilding.trim());
-      setNewBuilding("");
-      client.listBuildings(societyId).then(setBuildings).catch(() => undefined);
-    } catch (err) {
-      setError(err instanceof ApiClientError ? err.body.message : "Failed to add building");
-    }
-  }
 
   return (
     <div>
@@ -161,47 +139,79 @@ export function SocietyDetailPage() {
         All societies
       </Link>
 
-      <div className="mb-6">
-        <h1 className="font-display text-2xl">{society?.name ?? "Society"}</h1>
-        <p className="mt-1 text-sm text-black/55">
-          {[society?.city, society?.pincode].filter(Boolean).join(" · ") || society?.address || ""}
-        </p>
-        {society?.chairpersonName && (
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="font-display text-2xl">{society?.name ?? "Society"}</h1>
           <p className="mt-1 text-sm text-black/55">
-            Chairperson: {society.chairpersonName}
-            {society.chairpersonPhone ? ` · ${society.chairpersonPhone}` : ""}
-            {society.chairpersonEmail ? ` · ${society.chairpersonEmail}` : ""}
+            {[society?.city, society?.pincode].filter(Boolean).join(" · ") ||
+              society?.address ||
+              ""}
           </p>
-        )}
-      </div>
-
-      <h2 className="mb-3 font-semibold">Structure</h2>
-      <div className="space-y-4">
-        {buildings.map((b) => (
-          <BuildingBlock key={b.id} building={b} />
-        ))}
-        {buildings.length === 0 && (
-          <div className="empty-state" data-testid="structure-empty">No buildings added yet.</div>
-        )}
-      </div>
-
-      <form className="card mt-4 flex flex-wrap items-end gap-2 p-4" onSubmit={addBuilding}>
-        <div className="flex-1">
-          <label className="label" htmlFor="new-building">Add building</label>
-          <input
-            id="new-building"
-            className="input"
-            placeholder="e.g. Tower B"
-            value={newBuilding}
-            onChange={(e) => setNewBuilding(e.target.value)}
-            data-testid="structure-new-building"
-          />
+          {society?.chairpersonName && (
+            <p className="mt-1 text-sm text-black/55">
+              Chairperson: {society.chairpersonName}
+              {society.chairpersonPhone ? ` · ${society.chairpersonPhone}` : ""}
+              {society.chairpersonEmail ? ` · ${society.chairpersonEmail}` : ""}
+            </p>
+          )}
         </div>
-        <button className="btn btn-primary" type="submit" data-testid="structure-add-building">
-          Add building
-        </button>
-      </form>
-      {error && <p className="mt-3 text-sm text-[var(--danger)]">{error}</p>}
+        <a className="btn btn-ghost text-sm" href={APP_URL} target="_blank" rel="noreferrer">
+          Open Client App
+        </a>
+      </div>
+
+      <h2 className="mb-3 font-semibold">Add to society team</h2>
+      <p className="mb-3 text-sm text-black/55">
+        SocietyHub employees who need Client App Admin access must be added here. Day-to-day
+        society management (residents, complaints, bills) happens in the Client App.
+      </p>
+      <AddTeamMemberForm societyId={id} />
+
+      <div className="mt-10" data-testid="society-planned-controls">
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <h2 className="font-semibold">Platform controls for this society</h2>
+          <span className="rounded-full bg-[var(--sand)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-black/50">
+            Coming soon
+          </span>
+        </div>
+        <p className="mb-4 text-sm text-black/55">
+          Planned per-society controls. Shown for roadmap visibility — toggles are disabled
+          and do not save.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {SOCIETY_COMING_SOON.map((row) => (
+            <div
+              key={row.title}
+              className="card flex items-start justify-between gap-3 p-4 opacity-80"
+            >
+              <div>
+                <p className="text-sm font-medium">{row.title}</p>
+                <p className="mt-1 text-xs text-black/50">{row.detail}</p>
+              </div>
+              <button
+                type="button"
+                className="relative h-6 w-11 shrink-0 rounded-full bg-black/15"
+                disabled
+                aria-disabled="true"
+                title="Coming soon"
+              >
+                <span className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow" />
+              </button>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Link to="/feature-flags" className="btn btn-ghost text-sm">
+            Global feature flags
+          </Link>
+          <Link to="/subscriptions" className="btn btn-ghost text-sm">
+            Subscriptions
+          </Link>
+          <Link to="/payments" className="btn btn-ghost text-sm">
+            Payments
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }

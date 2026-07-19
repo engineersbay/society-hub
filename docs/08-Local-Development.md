@@ -13,10 +13,28 @@ This guide is the **source of truth for local run**. Prefer a **native MySQL** (
 
 | Service | URL | Notes |
 |---------|-----|--------|
-| Web app | http://localhost:5173 | React + Vite |
+| Client App | http://app.localhost:5173 | Society Admin \| Resident (Fassport Raise/Invest style) |
+| Manage | http://manage.localhost:5174 | SocietyHub **platform employees only** |
 | API | http://localhost:3000 | Elysia `/v1` |
 | OpenAPI | http://localhost:3000/docs | Swagger UI |
+| API guide | [09-API.md](09-API.md) | Narrative REST reference (Fassport-style) |
 | MySQL | `127.0.0.1:3306` | Local server (Workbench) |
+
+Add once to `/etc/hosts` (requires sudo):
+
+```text
+127.0.0.1 app.localhost
+127.0.0.1 manage.localhost
+```
+
+If `app.localhost` is missing, Client App links and CORS still work via `localhost:5173`, but prefer the `*.localhost` hosts so cookies/CORS match production-style subdomains.
+
+After `bun run dev`, Vite also prints:
+
+- `➜  Client App: http://app.localhost:5173/`
+- `➜  Manage: http://manage.localhost:5174/`
+
+Ports are fixed (`strictPort: true`): Client App **5173**, Manage **5174**. If a port is busy, stop the old process (`lsof -i :5173`) instead of letting Vite hop to 5175.
 
 ---
 
@@ -135,6 +153,14 @@ CREATE DATABASE IF NOT EXISTS societyhub
 ```bash
 bun run db:migrate   # creates tables via Drizzle migrations
 bun run db:seed      # Keshav Heights + superadmin
+bun run db:cleanup-test  # soft-delete extra societies from API integration tests (keeps Keshav Heights)
+```
+
+Cypress E2E mocks the API and does **not** write societies to MySQL. Extra names like `Coverage Society …` / `Other Soc …` come from `bun run test:integration`. Cleanup keeps pilot **Keshav Heights** (`11111111-1111-1111-1111-111111111111`) by default:
+
+```bash
+DRY_RUN=1 bun run db:cleanup-test
+KEEP_SOCIETY_NAMES="Keshav Heights" bun run db:cleanup-test
 ```
 
 In Workbench: open `societyhub` → Tables (should list `users`, `complaints`, etc.).
@@ -151,7 +177,7 @@ DEV_AUTH=true
 DEV_OTP_CODE=123456
 JWT_SECRET=dev-change-me-society-hub-jwt-secret-32chars
 DATABASE_URL=mysql://root:1900Summer%40@127.0.0.1:3306/societyhub
-CORS_ORIGIN=http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174
+CORS_ORIGIN=http://localhost:5173,http://127.0.0.1:5173,http://app.localhost:5173,http://localhost:5174,http://127.0.0.1:5174,http://manage.localhost:5174
 PUBLIC_API_URL=http://localhost:3000
 PORT=3000
 UPLOAD_DIR=./uploads
@@ -163,18 +189,21 @@ Notes:
 - `DEV_AUTH=true` returns OTP / password-reset codes in API responses (local only)
 - Superadmin login password defaults to `Test@1234` (override with `SUPERADMIN_PASSWORD`)
 
-### Web (residents) — `apps/client-app/.env`
+### Client App — `apps/client-app/.env`
 
 ```env
 VITE_API_URL=http://localhost:3000
-VITE_MANAGE_URL=http://localhost:5174
+VITE_MANAGE_URL=http://manage.localhost:5174
+VITE_APP_ORIGIN=http://app.localhost:5173
 ```
 
-### Manage (admin) — `apps/manage/.env`
+### Manage (platform) — `apps/manage/.env`
 
 ```env
 VITE_API_URL=http://localhost:3000
-VITE_WEB_URL=http://localhost:5173
+VITE_WEB_URL=http://app.localhost:5173
+VITE_APP_ORIGIN=http://app.localhost:5173
+VITE_MANAGE_ORIGIN=http://manage.localhost:5174
 ```
 
 ---
@@ -193,8 +222,8 @@ bun run dev
 This starts:
 
 - API → http://localhost:3000  
-- Web (residents) → http://localhost:5173  
-- Manage (admin) → http://localhost:5174  
+- Client App → http://app.localhost:5173 (also http://localhost:5173)  
+- Manage (platform) → http://manage.localhost:5174 (also http://localhost:5174)  
 
 Run separately if needed:
 
@@ -216,10 +245,10 @@ curl http://127.0.0.1:3000/health
 
 | Method | Credentials |
 |--------|-------------|
-| Email / password | Manage: `superadmin@societyhub.local` / `Test@1234` |
-| OTP (mobile) | Manage admin `9999999999` · Web resident `8888888888` · code `123456` |
+| Email / password | Manage (platform): `superadmin@societyhub.local` / `Test@1234` |
+| OTP (mobile) | Client App Chairperson `9999999999` · Resident `8888888888` · code `123456` |
 
-Use **Manage** (`:5174`) for Admin / Super Admin. Use **Web** (`:5173`) for residents.
+Use **Manage** (`manage.localhost:5174`) for SocietyHub platform employees (create societies, add staff to a society team). Use **Client App** (`app.localhost:5173`) for society **Admin \| Resident** modes.
 
 ---
 

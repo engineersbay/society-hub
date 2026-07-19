@@ -22,6 +22,20 @@
       "when": 1784395825159,
       "tag": "0002_magenta_juggernaut",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1784438000000,
+      "tag": "0005_activity_message",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1784470000000,
+      "tag": "0006_flat_floor_parking",
+      "breakpoints": true
     }
   ]
 }

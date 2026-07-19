@@ -2,7 +2,7 @@
 
 Functional and technical specification for SocietyHub.
 
-**How to read:** follow `00` → `08`. Product behavior is in the PRD; stack overview in Tech Stack; system design in Architecture; schemas in Database. **Local run:** [08-Local-Development](08-Local-Development.md). Agents treat this folder as source of truth ([prompts/cursor-system.md](prompts/cursor-system.md), root [AGENTS.md](../AGENTS.md)).
+**How to read:** follow `00` → `09`. Product behavior is in the PRD; stack overview in Tech Stack; system design in Architecture; schemas in Database; **HTTP API** in [09-API](09-API.md). **Local run:** [08-Local-Development](08-Local-Development.md). Agents treat this folder as source of truth ([prompts/cursor-system.md](prompts/cursor-system.md), root [AGENTS.md](../AGENTS.md)).
 
 **Pilot:** Keshav Heights Society  
 **Phase 1:** two responsive web apps — **`apps/client-app`** (residents) + **`apps/manage`** (admin) — working **Complaints** + auth/onboard; other planned modules shown as **Coming soon**.  
@@ -22,6 +22,7 @@ Functional and technical specification for SocietyHub.
 | [06-Coding-Standards](06-Coding-Standards.md) | TypeScript, modules, tests, commits |
 | [07-Tech-Stack](07-Tech-Stack.md) | **Full tech stack explanation** (what & why) |
 | [08-Local-Development](08-Local-Development.md) | **Install, MySQL Workbench, run API + web + manage locally** |
+| [09-API](09-API.md) | **REST `/v1` developer guide** (auth, roles, inventory, examples — Fassport-style) |
 | [prompts/agents.md](prompts/agents.md) | Agent operating rules (docs mirror) |
 | [prompts/skills.md](prompts/skills.md) | Index of Cursor skills per stack item |
 | [prompts/cursor-system.md](prompts/cursor-system.md) | Short system prompt for codegen agents |

@@ -4,11 +4,15 @@ import { createInvitationSchema } from "@society-hub/validation";
 import type { InvitationDto } from "@society-hub/types";
 import { env } from "../../config";
 import { db } from "../../db/client";
-import { invitations } from "../../db/schema";
+import { invitations, societies } from "../../db/schema";
 import { AppError } from "../../lib/errors";
-import { authPlugin, requireAuth, requireRole } from "../../lib/auth-context";
+import { deliverResidentInvite } from "../../lib/messaging/invite-delivery";
+import { authPlugin, requireAuth, requireSocietyStaff } from "../../lib/auth-context";
 
-function toDto(row: typeof invitations.$inferSelect): InvitationDto {
+function toDto(
+  row: typeof invitations.$inferSelect,
+  delivery?: InvitationDto["delivery"],
+): InvitationDto {
   return {
     id: row.id,
     email: row.email,
@@ -16,6 +20,7 @@ function toDto(row: typeof invitations.$inferSelect): InvitationDto {
     role: row.role,
     status: row.status,
     createdAt: row.createdAt,
+    ...(delivery ? { delivery } : {}),
     ...(env.devAuth ? { devToken: row.token } : {}),
   };
 }
@@ -23,7 +28,13 @@ function toDto(row: typeof invitations.$inferSelect): InvitationDto {
 export async function createInvitationForTenant(
   tenantId: string,
   invitedBy: string,
-  parsed: { email?: string | null; phone?: string | null; role: InvitationDto["role"] },
+  parsed: {
+    email?: string | null;
+    phone?: string | null;
+    role: InvitationDto["role"];
+    channels?: Array<"email" | "whatsapp">;
+    societyName?: string;
+  },
 ): Promise<InvitationDto> {
   if (!parsed.email && !parsed.phone) {
     throw new AppError(400, "email_or_phone_required", "Provide an email or phone");
@@ -44,17 +55,40 @@ export async function createInvitationForTenant(
     updatedBy: invitedBy,
   });
 
-  // Email/SMS delivery (Resend/MSG91) is wired up in the notifications
-  // worker for Phase 2; DEV_AUTH surfaces the raw token for local testing.
+  let societyName = parsed.societyName;
+  if (!societyName) {
+    const [society] = await db
+      .select({ name: societies.name })
+      .from(societies)
+      .where(eq(societies.id, tenantId))
+      .limit(1);
+    societyName = society?.name ?? "your society";
+  }
+
+  const channels = parsed.channels?.length
+    ? parsed.channels
+    : [
+        ...(parsed.email ? (["email"] as const) : []),
+        ...(parsed.phone ? (["whatsapp"] as const) : []),
+      ];
+
+  const delivery = await deliverResidentInvite({
+    societyName,
+    inviteToken: token,
+    email: parsed.email,
+    phone: parsed.phone,
+    channels,
+  });
+
   const [row] = await db.select().from(invitations).where(eq(invitations.id, id)).limit(1);
-  return toDto(row!);
+  return toDto(row!, delivery);
 }
 
 export const invitationRoutes = new Elysia({ prefix: "/v1/invitations" })
   .use(authPlugin)
   .get("/", async ({ auth }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     const rows = await db
       .select()
       .from(invitations)
@@ -65,17 +99,17 @@ export const invitationRoutes = new Elysia({ prefix: "/v1/invitations" })
         ),
       )
       .orderBy(desc(invitations.createdAt));
-    return rows.map(toDto);
+    return rows.map((r) => toDto(r));
   })
   .post("/", async ({ auth, body }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     const parsed = createInvitationSchema.parse(body);
     return createInvitationForTenant(claims.tenantId, claims.sub, parsed);
   })
   .post("/:id/revoke", async ({ auth, params }) => {
     const claims = requireAuth(auth);
-    requireRole(claims, ["admin", "superadmin"]);
+    requireSocietyStaff(claims);
     const [row] = await db
       .select()
       .from(invitations)
@@ -102,8 +136,6 @@ export const invitationRoutes = new Elysia({ prefix: "/v1/invitations" })
     return toDto(updated!);
   });
 
-// Not exported via SDK yet, but useful for accepting invites once
-// email/SMS delivery is wired: looks up a pending invite by its token.
 export async function findPendingInvitationByToken(token: string) {
   const [row] = await db
     .select()

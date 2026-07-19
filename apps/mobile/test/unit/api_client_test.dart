@@ -1,0 +1,223 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:http_mock_adapter/http_mock_adapter.dart';
+import 'package:societyhub_mobile/api/models.dart';
+
+import '../helpers/test_harness.dart';
+
+void main() {
+  late MockApiBundle bundle;
+
+  setUp(() {
+    bundle = MockApiBundle();
+  });
+
+  group('SocietyHubApi auth', () {
+    test('loginPassword returns user and tokens', () async {
+      bundle.adapter.onPost(
+        '/v1/auth/password/login',
+        (server) => server.reply(200, loginJson(fixtureUser())),
+        data: Matchers.any,
+      );
+
+      final res = await bundle.api.loginPassword('a@b.com', 'secret');
+      expect(res.user.role, 'chairperson');
+      expect(res.tokens.accessToken, 'access-token');
+    });
+
+    test('requestOtp surfaces optional devCode', () async {
+      bundle.adapter.onPost(
+        '/v1/auth/otp/request',
+        (server) => server.reply(200, {'ok': true, 'devCode': '123456'}),
+        data: Matchers.any,
+      );
+
+      final res = await bundle.api.requestOtp('8888888888');
+      expect(res.devCode, '123456');
+    });
+
+    test('verifyOtp parses login payload', () async {
+      bundle.adapter.onPost(
+        '/v1/auth/otp/verify',
+        (server) => server.reply(
+          200,
+          loginJson(fixtureUser(role: 'resident', phone: '8888888888')),
+        ),
+        data: Matchers.any,
+      );
+
+      final res = await bundle.api.verifyOtp('8888888888', '123456');
+      expect(res.user.role, 'resident');
+    });
+
+    test('maps API error envelope to ApiException', () async {
+      bundle.adapter.onPost(
+        '/v1/auth/password/login',
+        (server) => server.reply(401, {
+          'code': 'invalid_credentials',
+          'message': 'Invalid email or password',
+        }),
+        data: Matchers.any,
+      );
+
+      expect(
+        () => bundle.api.loginPassword('a@b.com', 'bad'),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.code, 'code', 'invalid_credentials')
+              .having((e) => e.message, 'message', 'Invalid email or password')
+              .having((e) => e.statusCode, 'status', 401),
+        ),
+      );
+    });
+  });
+
+  group('SocietyHubApi refresh', () {
+    test('refreshTokens returns new pair', () async {
+      bundle.adapter.onPost(
+        '/v1/auth/refresh',
+        (server) => server.reply(
+          200,
+          tokensJson(fixtureTokens(access: 'new-a', refresh: 'new-r')),
+        ),
+        data: Matchers.any,
+      );
+
+      final tokens = await bundle.api.refreshTokens('old-r');
+      expect(tokens.accessToken, 'new-a');
+      expect(tokens.refreshToken, 'new-r');
+    });
+
+    test('clears session when authenticated call gets 401 and refresh fails', () async {
+      bundle.adapter
+        ..onGet(
+          '/v1/auth/me',
+          (server) => server.reply(401, {
+            'code': 'unauthorized',
+            'message': 'expired',
+          }),
+        )
+        ..onPost(
+          '/v1/auth/refresh',
+          (server) => server.reply(401, {
+            'code': 'unauthorized',
+            'message': 'bad refresh',
+          }),
+          data: Matchers.any,
+        );
+
+      await expectLater(bundle.api.me(), throwsA(isA<ApiException>()));
+      expect(bundle.sessionCleared, isTrue);
+    });
+  });
+
+  group('SocietyHubApi complaints + onboard', () {
+    test('listComplaints parses page', () async {
+      bundle.adapter.onGet(
+        RegExp(r'/v1/complaints.*'),
+        (server) => server.reply(200, {
+          'items': [
+            {
+              'id': 'c1',
+              'ticketNumber': 'C-1',
+              'title': 'Leak',
+              'type': 'plumbing',
+              'description': 'x',
+              'status': 'open',
+              'flatId': 'f1',
+              'flatNumber': '101',
+              'residentName': null,
+              'createdAt': '2026-07-19T00:00:00.000Z',
+            },
+          ],
+          'page': 1,
+          'limit': 20,
+          'total': 1,
+        }),
+      );
+
+      final page = await bundle.api.listComplaints();
+      expect(page.items.first.title, 'Leak');
+    });
+
+    test('onboardResident reads nested user', () async {
+      bundle.adapter.onPost(
+        '/v1/admin/residents',
+        (server) => server.reply(200, {
+          'user': userJson(
+            fixtureUser(role: 'resident', name: 'New Resident', phone: '777'),
+          ),
+        }),
+        data: Matchers.any,
+      );
+
+      final user = await bundle.api.onboardResident(
+        name: 'New Resident',
+        phone: '777',
+        flatId: 'f1',
+      );
+      expect(user.name, 'New Resident');
+      expect(user.role, 'resident');
+    });
+
+    test('createComplaint posts body', () async {
+      bundle.adapter.onPost(
+        '/v1/complaints',
+        (server) => server.reply(200, complaintJson(id: 'c9', title: 'Lift')),
+        data: Matchers.any,
+      );
+
+      final c = await bundle.api.createComplaint(
+        title: 'Lift',
+        type: 'lift',
+        description: 'Stuck',
+      );
+      expect(c.id, 'c9');
+    });
+
+    test('updateComplaintStatus sends note', () async {
+      bundle.adapter.onPatch(
+        '/v1/complaints/c1/status',
+        (server) => server.reply(
+          200,
+          complaintJson(status: 'closed', closingNote: 'Fixed'),
+        ),
+        data: Matchers.any,
+      );
+
+      final c = await bundle.api.updateComplaintStatus(
+        'c1',
+        'closed',
+        note: 'Fixed',
+      );
+      expect(c.status, 'closed');
+      expect(c.closingNote, 'Fixed');
+    });
+
+    test('getProfile parses flat', () async {
+      bundle.adapter.onGet(
+        '/v1/profile',
+        (server) => server.reply(200, profileJson()),
+      );
+
+      final profile = await bundle.api.getProfile();
+      expect(profile.societyName, 'Keshav Heights');
+      expect(profile.flat!.number, '101');
+      expect(profile.flat!.parkingSlot, 'P-12');
+    });
+
+    test('listComplaints mine query is accepted', () async {
+      bundle.adapter.onGet(
+        RegExp(r'/v1/complaints\?page=1&limit=20&mine=1'),
+        (server) => server.reply(200, {
+          'items': [complaintJson()],
+          'page': 1,
+          'limit': 20,
+          'total': 1,
+        }),
+      );
+
+      final page = await bundle.api.listComplaints(mine: true);
+      expect(page.items.first.queueHint, isNotNull);
+    });
+  });
+}

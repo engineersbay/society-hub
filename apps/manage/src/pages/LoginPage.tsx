@@ -5,7 +5,10 @@ import { useAuth } from "../auth";
 
 type Mode = "password" | "otp" | "pin" | "google";
 
-const WEB_URL = import.meta.env.VITE_WEB_URL ?? "http://localhost:5173";
+const WEB_URL =
+  import.meta.env.VITE_APP_ORIGIN ??
+  import.meta.env.VITE_WEB_URL ??
+  "http://app.localhost:5173";
 
 export function LoginPage() {
   const { user, client, setSession } = useAuth();
@@ -32,7 +35,7 @@ export function LoginPage() {
       try {
         setSession(res.user, res.tokens);
       } catch {
-        setError(`Residents use the society app instead: ${WEB_URL}`);
+        setError(`Society staff and residents use the Client App instead: ${WEB_URL}`);
       }
     } catch (err) {
       setError(err instanceof ApiClientError ? err.body.message : "Failed");
@@ -100,7 +103,7 @@ export function LoginPage() {
           </div>
         </div>
         <p className="mt-4 text-center text-sm text-black/60">
-          Sign in to manage your society&rsquo;s operations.
+          SocietyHub platform team sign-in. Manage societies and platform team access.
         </p>
 
         <div className="mt-6 flex flex-wrap justify-center gap-2">
@@ -264,9 +267,9 @@ export function LoginPage() {
           </p>
         )}
         <p className="mt-6 text-center text-sm text-black/50">
-          Resident?{" "}
+          Society staff or resident?{" "}
           <a className="text-[var(--leaf)]" href={WEB_URL}>
-            Open society app
+            Open Client App
           </a>
         </p>
       </div>

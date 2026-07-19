@@ -29,7 +29,10 @@ export function SocietySwitcher() {
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
-  if (memberships.length <= 1) {
+  const showSwitcher =
+    memberships.length > 1 || user?.role === "superadmin";
+
+  if (!showSwitcher) {
     if (!currentName && user?.flatNumber == null) return null;
     return (
       <div className="truncate rounded-lg bg-[var(--mist)]/60 px-3 py-2 text-sm font-medium text-[var(--leaf-dark)]">

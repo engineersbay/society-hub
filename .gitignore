@@ -19,3 +19,6 @@ apps/*/cypress/downloads
 .tmp
 coverage
 *.code-workspace
+
+# Local complaint media uploads (runtime)
+uploads/

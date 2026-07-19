@@ -36,6 +36,7 @@
       "dependencies": {
         "@society-hub/sdk": "workspace:*",
         "@society-hub/types": "workspace:*",
+        "@society-hub/ui": "workspace:*",
         "react": "^19.1.0",
         "react-dom": "^19.1.0",
         "react-router-dom": "^7.6.2",
@@ -59,6 +60,7 @@
       "dependencies": {
         "@society-hub/sdk": "workspace:*",
         "@society-hub/types": "workspace:*",
+        "@society-hub/ui": "workspace:*",
         "react": "^19.1.0",
         "react-dom": "^19.1.0",
         "react-router-dom": "^7.6.2",
@@ -94,6 +96,24 @@
     "packages/types": {
       "name": "@society-hub/types",
       "version": "0.0.1",
+    },
+    "packages/ui": {
+      "name": "@society-hub/ui",
+      "version": "0.0.1",
+      "dependencies": {
+        "@society-hub/types": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/react": "^19.1.8",
+        "@types/react-dom": "^19.1.6",
+        "react": "^19.1.0",
+        "react-dom": "^19.1.0",
+        "typescript": "^5.8.3",
+      },
+      "peerDependencies": {
+        "react": "^19.0.0",
+        "react-dom": "^19.0.0",
+      },
     },
     "packages/validation": {
       "name": "@society-hub/validation",
@@ -305,6 +325,8 @@
     "@society-hub/sdk": ["@society-hub/sdk@workspace:packages/sdk"],
 
     "@society-hub/types": ["@society-hub/types@workspace:packages/types"],
+
+    "@society-hub/ui": ["@society-hub/ui@workspace:packages/ui"],
 
     "@society-hub/validation": ["@society-hub/validation@workspace:packages/validation"],
 

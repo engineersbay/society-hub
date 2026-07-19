@@ -1,20 +1,43 @@
-import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { FormEvent, useEffect, useRef, useState } from "react";
+import { Link, useLocation, useParams } from "react-router-dom";
 import type { ComplaintDto, ComplaintStatus } from "@society-hub/types";
+import { ApiClientError } from "@society-hub/sdk";
 import { useAuth } from "../auth";
+import { canUseAdminMode, useAppMode } from "../app-mode";
+import { Icon } from "../components/icons";
+import { STATUS_LABELS, TYPE_LABELS, statusBadgeClass } from "@society-hub/ui";
 
-const STATUSES: ComplaintStatus[] = [
-  "open",
-  "in_progress",
-  "resolved",
-  "closed",
-];
+type SpeechRecognitionLike = {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  start: () => void;
+  stop: () => void;
+  onresult: ((ev: { results: ArrayLike<{ 0: { transcript: string } }> }) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+};
+
+function accessToken() {
+  return localStorage.getItem("sh_web_access") ?? "";
+}
 
 export function ComplaintDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
+  const justCreated = Boolean(
+    (location.state as { justCreated?: boolean } | null)?.justCreated,
+  );
   const { client, user } = useAuth();
+  const { mode } = useAppMode();
+  const showStaffControls = canUseAdminMode(user?.role) && mode === "admin";
   const [complaint, setComplaint] = useState<ComplaintDto | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [note, setNote] = useState("");
+  const [evidence, setEvidence] = useState<File[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [listening, setListening] = useState(false);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -24,73 +47,299 @@ export function ComplaintDetailPage() {
       .catch((err) => setError(err.message));
   }, [client, id]);
 
-  async function updateStatus(status: ComplaintStatus) {
-    if (!id) return;
+  useEffect(() => {
+    return () => {
+      recognitionRef.current?.stop();
+    };
+  }, []);
+
+  function toggleMic() {
+    const SR =
+      (window as unknown as { SpeechRecognition?: new () => SpeechRecognitionLike })
+        .SpeechRecognition ||
+      (window as unknown as { webkitSpeechRecognition?: new () => SpeechRecognitionLike })
+        .webkitSpeechRecognition;
+    if (!SR) {
+      setError("Speech recognition is not supported in this browser");
+      return;
+    }
+    if (listening) {
+      recognitionRef.current?.stop();
+      setListening(false);
+      return;
+    }
+    const rec = new SR();
+    recognitionRef.current = rec;
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.lang = "en-IN";
+    rec.onresult = (ev) => {
+      let text = "";
+      for (let i = 0; i < ev.results.length; i++) {
+        text += ev.results[i]![0]!.transcript;
+      }
+      setNote(text);
+    };
+    rec.onerror = () => setListening(false);
+    rec.onend = () => setListening(false);
+    rec.start();
+    setListening(true);
+    setError(null);
+  }
+
+  async function applyStatus(status: ComplaintStatus) {
+    if (!id || !complaint) return;
+    if ((status === "resolved" || status === "closed") && note.trim().length < 3) {
+      setError("Add a short closing comment before resolving or closing.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
     try {
-      const updated = await client.updateComplaintStatus(id, status);
+      for (const file of evidence) {
+        await client.uploadAttachment(id, file);
+      }
+      const updated = await client.updateComplaintStatus(id, status, {
+        note: note.trim() || null,
+      });
       setComplaint(updated);
+      setNote("");
+      setEvidence([]);
+      recognitionRef.current?.stop();
+      setListening(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed");
+      setError(err instanceof ApiClientError ? err.body.message : "Failed");
+    } finally {
+      setBusy(false);
     }
   }
 
-  if (error) return <p className="text-[var(--danger)]">{error}</p>;
+  async function onEvidenceChange(e: FormEvent<HTMLInputElement>) {
+    const input = e.currentTarget;
+    setEvidence(Array.from(input.files ?? []));
+  }
+
+  if (error && !complaint) return <p className="text-[var(--danger)]">{error}</p>;
   if (!complaint) return <p>Loading…</p>;
 
+  const typeLabel =
+    complaint.type === "other" && complaint.typeOtherText
+      ? complaint.typeOtherText
+      : TYPE_LABELS[complaint.type];
+
   return (
-    <div className="max-w-2xl">
+    <div className="mx-auto max-w-2xl space-y-6">
       <Link to="/complaints" className="text-sm text-[var(--leaf)]">
-        ← Back
+        ← Back to complaints
       </Link>
-      <h1 className="font-display mt-3 text-2xl">{complaint.title}</h1>
-      <p className="mt-1 text-sm text-black/55">
-        {complaint.ticketNumber} · Flat {complaint.flatNumber} · {complaint.type}
-        {complaint.residentName ? ` · ${complaint.residentName}` : ""}
-      </p>
-      <p className="mt-4 whitespace-pre-wrap">{complaint.description}</p>
 
-      <p className="mt-4 text-sm">
-        Status:{" "}
-        <strong className="uppercase tracking-wide">
-          {complaint.status.replace("_", " ")}
-        </strong>
-      </p>
-
-      {user?.role === "admin" || user?.role === "superadmin" ? (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {STATUSES.map((s) => (
-            <button
-              key={s}
-              type="button"
-              className={`btn text-sm ${
-                complaint.status === s ? "btn-primary" : "btn-ghost"
-              }`}
-              onClick={() => updateStatus(s)}
-            >
-              {s.replace("_", " ")}
-            </button>
-          ))}
+      {justCreated && (
+        <div
+          className="rounded-xl border border-[var(--leaf)]/30 bg-[var(--mist)]/40 p-4"
+          data-testid="complaint-created-banner"
+        >
+          <p className="font-display text-lg text-[var(--leaf-dark)]">Complaint submitted</p>
+          <p className="mt-1 text-sm text-black/70">
+            Your ticket number is{" "}
+            <strong data-testid="complaint-ticket-number">{complaint.ticketNumber}</strong>.
+            The society office was notified by email and WhatsApp.
+          </p>
+          {complaint.queueHint && (
+            <p className="mt-2 text-sm text-black/60" data-testid="complaint-queue-hint">
+              {complaint.queueHint}
+              {complaint.queuePosition != null
+                ? ` (position #${complaint.queuePosition})`
+                : ""}
+            </p>
+          )}
         </div>
-      ) : null}
+      )}
+
+      <div>
+        <div className="flex flex-wrap items-center gap-2">
+          <h1 className="font-display text-2xl">{complaint.title}</h1>
+          <span className={statusBadgeClass(complaint.status)}>
+            {STATUS_LABELS[complaint.status]}
+          </span>
+        </div>
+        <p className="mt-1 text-sm text-black/55">
+          {complaint.ticketNumber} · Flat {complaint.flatNumber} · {typeLabel}
+          {complaint.residentName ? ` · ${complaint.residentName}` : ""}
+        </p>
+      </div>
+
+      {!showStaffControls && complaint.queueHint && complaint.status === "open" && (
+        <p className="rounded-lg bg-[var(--mist)]/50 px-3 py-2 text-sm text-black/65">
+          {complaint.queueHint} Admins may acknowledge when ready — your ticket stays safe in the
+          queue until then.
+        </p>
+      )}
+
+      <p className="whitespace-pre-wrap text-[15px] leading-relaxed">{complaint.description}</p>
+
+      {complaint.closingNote && (
+        <div className="rounded-lg border border-[var(--sand)] bg-white p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-black/40">
+            Closing note from office
+          </p>
+          <p className="mt-1 text-sm" data-testid="complaint-closing-note">
+            {complaint.closingNote}
+          </p>
+        </div>
+      )}
 
       {complaint.attachments.length > 0 && (
-        <div className="mt-6">
-          <h2 className="font-semibold">Attachments</h2>
-          <ul className="mt-2 space-y-2">
+        <section>
+          <h2 className="font-semibold">Photos & evidence</h2>
+          <ul className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
             {complaint.attachments.map((a) => (
               <li key={a.id}>
                 <a
-                  className="text-[var(--leaf)] underline"
-                  href={`${a.url}?access_token=${localStorage.getItem("sh_access") ?? ""}`}
+                  className="block overflow-hidden rounded-lg border border-[var(--sand)]"
+                  href={`${a.url}?access_token=${accessToken()}`}
                   target="_blank"
                   rel="noreferrer"
                 >
-                  {a.contentKind} ({Math.round(a.byteSize / 1024)} KB)
+                  {a.contentKind === "image" ? (
+                    <img
+                      src={`${a.url}?access_token=${accessToken()}`}
+                      alt=""
+                      className="h-28 w-full object-cover"
+                    />
+                  ) : (
+                    <p className="p-3 text-xs text-[var(--leaf)]">
+                      Video · {Math.round(a.byteSize / 1024)} KB
+                    </p>
+                  )}
                 </a>
               </li>
             ))}
           </ul>
-        </div>
+        </section>
+      )}
+
+      {complaint.statusEvents.length > 0 && (
+        <section>
+          <h2 className="font-semibold">Activity</h2>
+          <ol className="mt-2 space-y-2 border-l border-[var(--sand)] pl-4">
+            {complaint.statusEvents.map((ev) => (
+              <li key={ev.id} className="text-sm">
+                <p className="font-medium text-[var(--leaf-dark)]">
+                  {STATUS_LABELS[ev.toStatus]}
+                  {ev.actorName ? ` · ${ev.actorName}` : ""}
+                </p>
+                {ev.note && <p className="text-black/60">{ev.note}</p>}
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+
+      {showStaffControls && (
+        <section
+          className="card sh-section"
+          data-testid="complaint-staff-actions"
+        >
+          <h2 className="text-sm font-semibold">Office actions</h2>
+          <p className="mt-0.5 text-xs text-black/55">
+            Leave in queue if busy. Acknowledge when seen. Start when work begins. Resolve/close
+            with a short note.
+          </p>
+
+          <div className="mt-3">
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <label className="label mb-0" htmlFor="staff-note">
+                Note / closing comment
+              </label>
+              <button
+                type="button"
+                className={[
+                  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                  listening
+                    ? "border-[var(--danger)] bg-[var(--danger)]/10 text-[var(--danger)]"
+                    : "border-[var(--sand)] bg-white text-[var(--leaf-dark)] hover:border-[var(--leaf)]",
+                ].join(" ")}
+                data-testid="complaint-staff-note-mic"
+                aria-pressed={listening}
+                aria-label={listening ? "Stop recording" : "Record note with microphone"}
+                onClick={toggleMic}
+              >
+                <Icon name="mic" className="h-4 w-4" />
+                {listening ? "Stop" : "Record"}
+              </button>
+            </div>
+            <textarea
+              id="staff-note"
+              data-testid="complaint-staff-note"
+              className="input min-h-20"
+              placeholder="Required when resolving or closing — or tap Record"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+            />
+          </div>
+
+          <div className="mt-3">
+            <label className="label" htmlFor="staff-evidence">
+              Evidence photos (optional)
+            </label>
+            <input
+              id="staff-evidence"
+              data-testid="complaint-staff-evidence"
+              type="file"
+              accept="image/*,video/*"
+              multiple
+              onChange={onEvidenceChange}
+            />
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            {complaint.status === "open" && (
+              <button
+                type="button"
+                className="btn btn-ghost"
+                disabled={busy}
+                data-testid="complaint-ack"
+                onClick={() => void applyStatus("assigned")}
+              >
+                Acknowledge
+              </button>
+            )}
+            {(complaint.status === "open" || complaint.status === "assigned") && (
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={busy}
+                data-testid="complaint-start"
+                onClick={() => void applyStatus("in_progress")}
+              >
+                Start work
+              </button>
+            )}
+            {complaint.status !== "resolved" && complaint.status !== "closed" && (
+              <button
+                type="button"
+                className="btn btn-ghost"
+                disabled={busy}
+                data-testid="complaint-resolve"
+                onClick={() => void applyStatus("resolved")}
+              >
+                Mark resolved
+              </button>
+            )}
+            {complaint.status !== "closed" && (
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={busy}
+                data-testid="complaint-close"
+                onClick={() => void applyStatus("closed")}
+              >
+                Close ticket
+              </button>
+            )}
+          </div>
+          {error && <p className="mt-2 text-sm text-[var(--danger)]">{error}</p>}
+        </section>
       )}
     </div>
   );

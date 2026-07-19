@@ -19,13 +19,23 @@ import {
   users,
 } from "../db/schema";
 import { AppError } from "./errors";
-import { hashToken } from "./auth-helpers";
+import { hashToken, canUseAdminMode, isSocietyStaffRole, isResidentLikeRole, isPlatformRole, normalizeRole } from "./auth-helpers";
 
 export {
   hashToken,
   isStaffRole,
+  isSocietyStaffRole,
+  isPlatformRole,
+  isResidentLikeRole,
+  canUseAdminMode,
+  normalizeRole,
   requireAuth,
   requireRole,
+  requireSocietyStaff,
+  requirePlatform,
+  SOCIETY_STAFF_ROLES,
+  RESIDENT_ROLES,
+  PLATFORM_ROLES,
 } from "./auth-helpers";
 
 export async function buildUserDto(
@@ -42,25 +52,25 @@ export async function buildUserDto(
 
   let flatId: string | null = null;
   let flatNumber: string | null = null;
-  if (role === "resident") {
-    const [res] = await db
-      .select({
-        flatId: residents.flatId,
-        number: flats.number,
-      })
-      .from(residents)
-      .innerJoin(flats, eq(flats.id, residents.flatId))
-      .where(
-        and(
-          eq(residents.userId, userId),
-          eq(residents.tenantId, tenantId),
-          eq(residents.isDeleted, false),
-        ),
-      )
-      .limit(1);
-    flatId = res?.flatId ?? null;
-    flatNumber = res?.number ?? null;
-  }
+  // Staff (e.g. chairperson/president) may also live in a flat — attach it whenever present.
+  const [res] = await db
+    .select({
+      flatId: residents.flatId,
+      number: flats.number,
+    })
+    .from(residents)
+    .innerJoin(flats, eq(flats.id, residents.flatId))
+    .where(
+      and(
+        eq(residents.userId, userId),
+        eq(residents.tenantId, tenantId),
+        eq(residents.isDeleted, false),
+        eq(flats.isDeleted, false),
+      ),
+    )
+    .limit(1);
+  flatId = res?.flatId ?? null;
+  flatNumber = res?.number ?? null;
 
   return {
     id: user.id,
@@ -68,7 +78,7 @@ export async function buildUserDto(
     email: user.email,
     name: user.name,
     username: user.username,
-    role,
+    role: role === "admin" ? "chairperson" : role,
     tenantId,
     flatId,
     flatNumber,
@@ -124,25 +134,51 @@ export async function listMemberships(userId: string) {
         eq(societies.isDeleted, false),
       ),
     );
-  return rows;
+
+  const platformMembership = rows.find((r) => isPlatformRole(r.role as Role));
+  if (platformMembership) {
+    const platformRole = normalizeRole(platformMembership.role as Role);
+    const allSocieties = await db
+      .select({ id: societies.id, name: societies.name })
+      .from(societies)
+      .where(eq(societies.isDeleted, false));
+    return allSocieties.map((s) => ({
+      tenantId: s.id,
+      societyName: s.name,
+      role: platformRole,
+      canUseAdminMode: true,
+    }));
+  }
+
+  return rows.map((r) => {
+    const role = normalizeRole(r.role as Role);
+    return {
+      tenantId: r.tenantId,
+      societyName: r.societyName,
+      role,
+      canUseAdminMode: canUseAdminMode(role),
+    };
+  });
 }
 
 export async function resolveMembership(userId: string) {
-  const [roleRow] = await db
+  const rows = await db
     .select()
     .from(userRoles)
     .where(
       and(eq(userRoles.userId, userId), eq(userRoles.isDeleted, false)),
-    )
-    .limit(1);
-  if (!roleRow) {
+    );
+  if (!rows.length) {
     throw new AppError(
       403,
       "not_onboarded",
       "Phone is not onboarded to any society",
     );
   }
-  return roleRow;
+  const staff = rows.find((r) => isSocietyStaffRole(r.role as Role));
+  const resident = rows.find((r) => isResidentLikeRole(r.role as Role));
+  const platform = rows.find((r) => isPlatformRole(r.role as Role));
+  return staff ?? resident ?? platform ?? rows[0]!;
 }
 
 export const authPlugin = new Elysia({ name: "auth" }).derive(

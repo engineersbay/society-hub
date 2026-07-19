@@ -5,10 +5,26 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { AuthTokens, UserDto } from "@society-hub/types";
+import type { AuthTokens, Role, UserDto } from "@society-hub/types";
 import { createSocietyHubClient, type SocietyHubClient } from "@society-hub/sdk";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
+
+/**
+ * Client App allows society staff, residents, and Manage platform employees.
+ * Platform roles (e.g. superadmin) land in Admin mode by default.
+ */
+const ALLOWED_ROLES: Role[] = [
+  "superadmin",
+  "chairperson",
+  "admin",
+  "secretary",
+  "treasurer",
+  "cashier",
+  "committee",
+  "resident",
+  "tenant",
+];
 
 type AuthState = {
   user: UserDto | null;
@@ -24,11 +40,8 @@ const ACCESS_KEY = "sh_web_access";
 const REFRESH_KEY = "sh_web_refresh";
 const USER_KEY = "sh_web_user";
 
-// Society admins manage exclusively from the Manage app; superadmins may
-// still sign in to the resident web app (e.g. to preview it) and get a
-// cross-link back to Manage from the shell.
-function isStaff(user: UserDto) {
-  return user.role === "admin";
+function isAllowed(user: UserDto) {
+  return (ALLOWED_ROLES as string[]).includes(user.role);
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -51,7 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (raw && access) {
       try {
         const parsed = JSON.parse(raw) as UserDto;
-        if (isStaff(parsed)) {
+        if (!isAllowed(parsed)) {
           clearStorage();
           setLoading(false);
           return;
@@ -60,7 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         client
           .me()
           .then((me) => {
-            if (isStaff(me)) {
+            if (!isAllowed(me)) {
               clearStorage();
               setUser(null);
               return;
@@ -88,10 +101,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   function setSession(next: UserDto, tokens: AuthTokens) {
-    if (isStaff(next)) {
+    if (!isAllowed(next)) {
       clearStorage();
       setUser(null);
-      throw new Error("STAFF_USE_MANAGE");
+      throw new Error("ROLE_NOT_ALLOWED");
     }
     localStorage.setItem(ACCESS_KEY, tokens.accessToken);
     localStorage.setItem(REFRESH_KEY, tokens.refreshToken);
