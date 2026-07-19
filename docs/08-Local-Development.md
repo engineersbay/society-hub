@@ -153,6 +153,14 @@ CREATE DATABASE IF NOT EXISTS societyhub
 ```bash
 bun run db:migrate   # creates tables via Drizzle migrations
 bun run db:seed      # Keshav Heights + superadmin
+bun run db:cleanup-test  # soft-delete extra societies from API integration tests (keeps Keshav Heights)
+```
+
+Cypress E2E mocks the API and does **not** write societies to MySQL. Extra names like `Coverage Society …` / `Other Soc …` come from `bun run test:integration`. Cleanup keeps pilot **Keshav Heights** (`11111111-1111-1111-1111-111111111111`) by default:
+
+```bash
+DRY_RUN=1 bun run db:cleanup-test
+KEEP_SOCIETY_NAMES="Keshav Heights" bun run db:cleanup-test
 ```
 
 In Workbench: open `societyhub` → Tables (should list `users`, `complaints`, etc.).
