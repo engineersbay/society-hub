@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
+import type { ResidentProfileDto } from "@society-hub/types";
 import { ApiClientError } from "@society-hub/sdk";
 import { useAuth } from "../auth";
 
@@ -10,6 +11,7 @@ export function AccountPage() {
   const [confirm, setConfirm] = useState("");
   const [emergencyContact, setEmergencyContact] = useState("");
   const [vehicleNumber, setVehicleNumber] = useState("");
+  const [profile, setProfile] = useState<ResidentProfileDto | null>(null);
   const [profileMessage, setProfileMessage] = useState<string | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -18,9 +20,10 @@ export function AccountPage() {
   useEffect(() => {
     client
       .getProfile()
-      .then((profile) => {
-        setEmergencyContact(profile.emergencyContact ?? "");
-        setVehicleNumber(profile.vehicleNumber ?? "");
+      .then((next) => {
+        setProfile(next);
+        setEmergencyContact(next.emergencyContact ?? "");
+        setVehicleNumber(next.vehicleNumber ?? "");
       })
       .catch(() => undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -36,8 +39,8 @@ export function AccountPage() {
         setSession(
           { ...user, hasPin: true },
           {
-            accessToken: localStorage.getItem("sh_access")!,
-            refreshToken: localStorage.getItem("sh_refresh")!,
+            accessToken: localStorage.getItem("sh_web_access")!,
+            refreshToken: localStorage.getItem("sh_web_refresh")!,
             expiresIn: 900,
           },
         );
@@ -73,15 +76,23 @@ export function AccountPage() {
     setProfileError(null);
     setProfileMessage(null);
     try {
-      await client.updateProfile({
+      const next = await client.updateProfile({
         emergencyContact: emergencyContact || null,
         vehicleNumber: vehicleNumber || null,
       });
+      setProfile(next);
       setProfileMessage("Profile updated.");
     } catch (err) {
       setProfileError(err instanceof ApiClientError ? err.body.message : "Failed");
     }
   }
+
+  const flat = profile?.flat ?? null;
+  const flatLabel = flat
+    ? [flat.wingName ? `${flat.wingName}-` : "", flat.number].join("")
+    : user?.flatNumber
+      ? `Flat ${user.flatNumber}`
+      : null;
 
   return (
     <div className="max-w-md space-y-8">
@@ -89,9 +100,81 @@ export function AccountPage() {
         <h1 className="font-display text-2xl">Account</h1>
         <p className="mt-1 text-sm text-black/55">
           {user?.email ?? user?.phone ?? "No contact"} · {user?.role}
-          {user?.flatNumber ? ` · Flat ${user.flatNumber}` : ""}
+          {flatLabel ? ` · ${flatLabel.startsWith("Flat") ? flatLabel : `Flat ${flatLabel}`}` : ""}
         </p>
       </div>
+
+      <section className="card p-6" data-testid="account-flat-details">
+        <h2 className="font-semibold">My flat</h2>
+        <p className="mt-1 text-sm text-black/55">
+          Society home linked to your account in this society.
+        </p>
+        {flat ? (
+          <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-black/40">
+                Society
+              </dt>
+              <dd className="mt-0.5 font-medium" data-testid="account-society-name">
+                {profile?.societyName ?? "—"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-black/40">
+                Flat
+              </dt>
+              <dd className="mt-0.5 font-medium" data-testid="account-flat-number">
+                {flat.wingName ? `${flat.wingName}-${flat.number}` : flat.number}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-black/40">
+                Building
+              </dt>
+              <dd className="mt-0.5 font-medium" data-testid="account-building-name">
+                {flat.buildingName ?? "—"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-black/40">
+                Wing
+              </dt>
+              <dd className="mt-0.5 font-medium" data-testid="account-wing-name">
+                {flat.wingName ?? "—"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-black/40">
+                Floor
+              </dt>
+              <dd className="mt-0.5 font-medium" data-testid="account-floor">
+                {flat.floor != null ? flat.floor : "—"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-black/40">
+                Parking
+              </dt>
+              <dd className="mt-0.5 font-medium" data-testid="account-parking">
+                {flat.parkingSlot ?? "—"}
+              </dd>
+            </div>
+            <div className="col-span-2">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-black/40">
+                Occupancy
+              </dt>
+              <dd className="mt-0.5 font-medium" data-testid="account-occupancy">
+                {flat.isOwner ? "Owner" : "Tenant / occupant"}
+              </dd>
+            </div>
+          </dl>
+        ) : (
+          <p className="mt-4 text-sm text-black/55" data-testid="account-flat-empty">
+            No flat is linked to your account in this society yet. Ask a society admin to
+            onboard you under Structure / Onboard resident.
+          </p>
+        )}
+      </section>
 
       <section className="card p-6">
         <h2 className="font-semibold">Profile</h2>

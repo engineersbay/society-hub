@@ -17,4 +17,11 @@ describe("client app-mode", () => {
     expect(canUseAdminMode("tenant")).toBe(false);
     expect(canUseAdminMode(null)).toBe(false);
   });
+
+  it("documents that staff with Admin capability may also use Resident mode", () => {
+    // UI toggle is shown whenever canUseAdminMode is true; Shell no longer
+    // forces platform users back to Admin when they pick Resident.
+    expect(canUseAdminMode("chairperson")).toBe(true);
+    expect(canUseAdminMode("superadmin")).toBe(true);
+  });
 });

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../auth";
-import { canUseAdminMode, isPlatformRole, useAppMode } from "../app-mode";
+import { canUseAdminMode, useAppMode } from "../app-mode";
 import { Icon, type IconName } from "./icons";
 import { SocietySwitcher } from "./SocietySwitcher";
 
@@ -112,36 +112,41 @@ function NavRow({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }
 function ModeToggle() {
   const { mode, setMode } = useAppMode();
   return (
-    <div
-      className="mb-4 grid grid-cols-2 gap-1 rounded-lg bg-[var(--mist)]/60 p-1"
-      data-testid="app-mode-toggle"
-    >
-      <button
-        type="button"
-        data-testid="app-mode-admin"
-        className={[
-          "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-          mode === "admin"
-            ? "bg-white text-[var(--leaf-dark)] shadow-sm"
-            : "text-[var(--ink)]/60 hover:text-[var(--leaf-dark)]",
-        ].join(" ")}
-        onClick={() => setMode("admin")}
+    <div className="mb-4 space-y-1.5">
+      <div
+        className="grid grid-cols-2 gap-1 rounded-lg bg-[var(--mist)]/60 p-1"
+        data-testid="app-mode-toggle"
       >
-        Admin
-      </button>
-      <button
-        type="button"
-        data-testid="app-mode-resident"
-        className={[
-          "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-          mode === "resident"
-            ? "bg-white text-[var(--leaf-dark)] shadow-sm"
-            : "text-[var(--ink)]/60 hover:text-[var(--leaf-dark)]",
-        ].join(" ")}
-        onClick={() => setMode("resident")}
-      >
-        Resident
-      </button>
+        <button
+          type="button"
+          data-testid="app-mode-admin"
+          className={[
+            "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+            mode === "admin"
+              ? "bg-white text-[var(--leaf-dark)] shadow-sm"
+              : "text-[var(--ink)]/60 hover:text-[var(--leaf-dark)]",
+          ].join(" ")}
+          onClick={() => setMode("admin")}
+        >
+          Admin
+        </button>
+        <button
+          type="button"
+          data-testid="app-mode-resident"
+          className={[
+            "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+            mode === "resident"
+              ? "bg-white text-[var(--leaf-dark)] shadow-sm"
+              : "text-[var(--ink)]/60 hover:text-[var(--leaf-dark)]",
+          ].join(" ")}
+          onClick={() => setMode("resident")}
+        >
+          Resident
+        </button>
+      </div>
+      <p className="px-1 text-[10px] leading-snug text-black/40">
+        Use Resident for your own flat — society presidents are often residents too.
+      </p>
     </div>
   );
 }
@@ -229,13 +234,10 @@ export function Shell() {
   const { mode, setMode } = useAppMode();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // Pure residents → resident mode. Manage platform team → Admin mode by default.
+  // Pure residents cannot use Admin mode. Staff/platform may freely switch
+  // Admin ↔ Resident (presidents are often residents of a flat too).
   useEffect(() => {
     if (!user) return;
-    if (isPlatformRole(user.role) && mode !== "admin") {
-      setMode("admin");
-      return;
-    }
     if (!canUseAdminMode(user.role) && mode !== "resident") {
       setMode("resident");
     }

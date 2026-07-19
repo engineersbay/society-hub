@@ -1,8 +1,9 @@
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { ComplaintType, FlatDto } from "@society-hub/types";
 import { ApiClientError } from "@society-hub/sdk";
 import { useAuth } from "../auth";
+import { TYPE_LABELS } from "../lib/complaint-labels";
 
 const TYPES: ComplaintType[] = [
   "electric",
@@ -39,11 +40,22 @@ export function NewComplaintPage() {
   const needsFlatPicker = !user?.flatId;
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
 
+  const previews = useMemo(
+    () =>
+      files.map((f) => ({
+        name: f.name,
+        url: URL.createObjectURL(f),
+        isImage: f.type.startsWith("image/"),
+      })),
+    [files],
+  );
+
   useEffect(() => {
     return () => {
       recognitionRef.current?.stop();
+      previews.forEach((p) => URL.revokeObjectURL(p.url));
     };
-  }, []);
+  }, [previews]);
 
   useEffect(() => {
     if (!needsFlatPicker) return;
@@ -88,7 +100,7 @@ export function NewComplaintPage() {
     rec.onresult = (ev) => {
       let text = "";
       for (let i = 0; i < ev.results.length; i++) {
-        text += ev.results[i][0].transcript;
+        text += ev.results[i]![0]!.transcript;
       }
       setDescription(text);
     };
@@ -117,7 +129,9 @@ export function NewComplaintPage() {
       for (const file of files) {
         await client.uploadAttachment(created.id, file);
       }
-      navigate(`/complaints/${created.id}`);
+      navigate(`/complaints/${created.id}`, {
+        state: { justCreated: true },
+      });
     } catch (err) {
       setError(err instanceof ApiClientError ? err.body.message : "Failed");
     } finally {
@@ -126,21 +140,22 @@ export function NewComplaintPage() {
   }
 
   return (
-    <div className="max-w-xl">
-      <h1 className="font-display text-2xl">Raise complaint</h1>
+    <div className="mx-auto max-w-xl">
+      <h1 className="font-display text-2xl">Raise a complaint</h1>
       <p className="mt-1 text-sm text-black/55">
-        {user?.flatNumber
-          ? `Flat is set from your profile: ${user.flatNumber}.`
-          : needsFlatPicker
-            ? "Choose which flat this complaint is for (staff accounts are not linked to a flat)."
-            : "Flat is set from your profile."}
+        Tell us what is wrong — add photos if you can. You will get a ticket number right away.
       </p>
+      {user?.flatNumber && (
+        <p className="mt-2 rounded-lg bg-[var(--mist)]/50 px-3 py-2 text-sm text-[var(--leaf-dark)]">
+          Filing for flat <strong>{user.flatNumber}</strong>
+        </p>
+      )}
 
-      <form className="mt-6 space-y-4" onSubmit={onSubmit} data-testid="new-complaint-form">
+      <form className="mt-6 space-y-5" onSubmit={onSubmit} data-testid="new-complaint-form">
         {needsFlatPicker && (
           <div>
             <label className="label" htmlFor="flat">
-              Flat
+              Which flat?
             </label>
             <select
               id="flat"
@@ -155,47 +170,56 @@ export function NewComplaintPage() {
               </option>
               {flats.map((f) => (
                 <option key={f.id} value={f.id}>
+                  {f.wingName ? `${f.wingName}-` : ""}
                   {f.number}
-                  {f.wingName ? ` · Wing ${f.wingName}` : ""}
                 </option>
               ))}
             </select>
           </div>
         )}
+
         <div>
           <label className="label" htmlFor="title">
-            Title
+            Short title
           </label>
           <input
             id="title"
             className="input"
             data-testid="complaint-title"
+            placeholder="e.g. Water leakage in bathroom"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             required
+            minLength={3}
           />
         </div>
+
         <div>
-          <label className="label" htmlFor="type">
-            Type
-          </label>
-          <select
-            id="type"
-            className="input"
-            value={type}
-            onChange={(e) => setType(e.target.value as ComplaintType)}
-          >
+          <p className="label">Type</p>
+          <div className="mt-1 flex flex-wrap gap-2" data-testid="complaint-type-chips">
             {TYPES.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
+              <button
+                key={t}
+                type="button"
+                data-testid={`complaint-type-${t}`}
+                className={[
+                  "rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
+                  type === t
+                    ? "border-[var(--leaf)] bg-[var(--leaf)] text-white"
+                    : "border-[var(--sand)] bg-white text-[var(--ink)]/80 hover:border-[var(--leaf)]",
+                ].join(" ")}
+                onClick={() => setType(t)}
+              >
+                {TYPE_LABELS[t]}
+              </button>
             ))}
-          </select>
+          </div>
         </div>
+
         {type === "other" && (
           <div>
             <label className="label" htmlFor="other">
-              Specify
+              Tell us the type
             </label>
             <input
               id="other"
@@ -206,38 +230,66 @@ export function NewComplaintPage() {
             />
           </div>
         )}
+
         <div>
           <div className="mb-1 flex items-center justify-between">
             <label className="label mb-0" htmlFor="desc">
-              Description
+              What happened?
             </label>
             <button type="button" className="btn btn-ghost text-xs" onClick={toggleMic}>
-              {listening ? "Stop mic" : "Voice to text"}
+              {listening ? "Stop mic" : "Speak instead"}
             </button>
           </div>
           <textarea
             id="desc"
-            className="input min-h-28"
+            className="input min-h-32"
+            data-testid="complaint-description"
+            placeholder="A few sentences help the office understand and fix it faster."
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             required
+            minLength={3}
           />
         </div>
+
         <div>
           <label className="label" htmlFor="files">
-            Photos / videos
+            Photos or short video (optional)
           </label>
           <input
             id="files"
+            data-testid="complaint-files"
             type="file"
             accept="image/*,video/*"
             multiple
             onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
           />
+          {previews.length > 0 && (
+            <ul className="mt-3 grid grid-cols-3 gap-2">
+              {previews.map((p) => (
+                <li
+                  key={p.name}
+                  className="overflow-hidden rounded-lg border border-[var(--sand)] bg-[var(--mist)]/30"
+                >
+                  {p.isImage ? (
+                    <img src={p.url} alt="" className="h-20 w-full object-cover" />
+                  ) : (
+                    <p className="p-2 text-xs text-black/55">{p.name}</p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
+
         {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
-        <button className="btn btn-primary" disabled={busy} type="submit">
-          Submit
+        <button
+          className="btn btn-primary w-full sm:w-auto"
+          disabled={busy}
+          type="submit"
+          data-testid="complaint-submit"
+        >
+          {busy ? "Submitting…" : "Submit complaint"}
         </button>
       </form>
     </div>

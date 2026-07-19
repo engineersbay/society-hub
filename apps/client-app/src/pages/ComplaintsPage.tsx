@@ -4,12 +4,7 @@ import type { ComplaintDto } from "@society-hub/types";
 import { useAuth } from "../auth";
 import { canUseAdminMode, useAppMode } from "../app-mode";
 import { Icon } from "../components/icons";
-
-function statusBadgeClass(status: ComplaintDto["status"]) {
-  if (status === "resolved" || status === "closed") return "badge badge-success";
-  if (status === "open") return "badge badge-danger";
-  return "badge";
-}
+import { STATUS_LABELS, statusBadgeClass } from "../lib/complaint-labels";
 
 export function ComplaintsPage() {
   const { client, user } = useAuth();
@@ -21,10 +16,10 @@ export function ComplaintsPage() {
 
   useEffect(() => {
     client
-      .listComplaints()
+      .listComplaints(1, 20, { mine: !staffView })
       .then((res) => setItems(res.items))
       .catch((err) => setError(err.message));
-  }, [client]);
+  }, [client, staffView]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -41,9 +36,13 @@ export function ComplaintsPage() {
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl">Complaints</h1>
+          <h1 className="font-display text-2xl">
+            {staffView ? "Complaint queue" : "My complaints"}
+          </h1>
           <p className="text-sm text-black/55">
-            {staffView ? "All society complaints — update status from detail" : "Your raised complaints"}
+            {staffView
+              ? "Acknowledge when you can — leave untouched tickets in the queue."
+              : "Track ticket numbers and progress"}
           </p>
         </div>
         <Link to="/complaints/new" className="btn btn-primary" data-testid="new-complaint-link">
@@ -58,7 +57,7 @@ export function ComplaintsPage() {
         />
         <input
           className="input pl-9"
-          placeholder={staffView ? "Search ticket, title or flat…" : "Search your complaints…"}
+          placeholder={staffView ? "Search ticket, title or flat…" : "Search your tickets…"}
           data-testid="complaints-search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -83,9 +82,13 @@ export function ComplaintsPage() {
                 <p className="font-medium">{c.title}</p>
                 <p className="text-sm text-black/50">
                   {c.ticketNumber} · {c.type}
+                  {staffView ? ` · Flat ${c.flatNumber}` : ""}
+                  {c.queuePosition != null && c.status === "open"
+                    ? ` · Queue #${c.queuePosition}`
+                    : ""}
                 </p>
               </div>
-              <span className={statusBadgeClass(c.status)}>{c.status.replace("_", " ")}</span>
+              <span className={statusBadgeClass(c.status)}>{STATUS_LABELS[c.status]}</span>
             </Link>
           ))}
         </div>

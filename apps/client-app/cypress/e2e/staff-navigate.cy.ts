@@ -43,11 +43,17 @@ describe("Client App staff (Admin mode) navigation", () => {
     cy.get('[data-testid="bills-generate-toggle"]').should("be.visible");
   });
 
-  it("switches to Resident mode and shows the resident nav instead", () => {
+  it("switches to Resident mode and keeps the resident nav (no Admin force-back)", () => {
     cy.visit("/dashboard");
     cy.get('[data-testid="app-mode-resident"]').click();
+    cy.get('[data-testid="app-mode-resident"]').should("have.class", "bg-white");
+    cy.get('[data-testid="app-mode-admin"]').should("not.have.class", "bg-white");
 
     cy.get('nav a[href="/onboard"]').should("not.exist");
+    cy.contains('nav a[href="/complaints"]', "My complaints").should("be.visible");
+
+    cy.reload();
+    cy.get('[data-testid="app-mode-resident"]').should("have.class", "bg-white");
     cy.contains('nav a[href="/complaints"]', "My complaints").should("be.visible");
   });
 });

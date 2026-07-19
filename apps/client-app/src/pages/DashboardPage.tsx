@@ -18,10 +18,10 @@ export function DashboardPage() {
   useEffect(() => {
     client.getDashboardStats().then(setStats).catch(() => undefined);
     client
-      .listComplaints(1, 4)
+      .listComplaints(1, 4, { mine: !staffView })
       .then((res) => setRecent(res.items))
       .catch(() => undefined);
-  }, [client]);
+  }, [client, staffView]);
 
   return (
     <div>
