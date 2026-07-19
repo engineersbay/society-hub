@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import type { MembershipDto } from "@society-hub/types";
+import { ApiClientError } from "@society-hub/sdk";
 import { useAuth } from "../auth";
 
 export function SelectSocietyPage() {
   const { user, client, setSession } = useAuth();
+  const navigate = useNavigate();
   const [memberships, setMemberships] = useState<MembershipDto[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -29,8 +31,15 @@ export function SelectSocietyPage() {
     try {
       const res = await client.selectTenant(tenantId);
       setSession(res.user, res.tokens);
+      navigate("/dashboard", { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not switch society");
+      setError(
+        err instanceof ApiClientError
+          ? err.body.message
+          : err instanceof Error
+            ? err.message
+            : "Could not switch society",
+      );
     } finally {
       setBusy(null);
     }
@@ -57,7 +66,7 @@ export function SelectSocietyPage() {
               data-testid="select-society-option"
               disabled={busy !== null}
               className="flex w-full items-center justify-between px-5 py-4 text-left hover:bg-[var(--mist)]/50 disabled:opacity-60"
-              onClick={() => pick(m.tenantId)}
+              onClick={() => void pick(m.tenantId)}
             >
               <span>
                 <span className="block font-medium">{m.societyName}</span>
@@ -70,7 +79,14 @@ export function SelectSocietyPage() {
           ))}
         </div>
 
-        {error && <p className="mt-4 text-center text-sm text-[var(--danger)]">{error}</p>}
+        {error && (
+          <p
+            className="mt-4 text-center text-sm text-[var(--danger)]"
+            data-testid="select-society-error"
+          >
+            {error}
+          </p>
+        )}
       </div>
     </div>
   );
