@@ -131,12 +131,45 @@ export const createWingSchema = z.object({
 
 export const createFlatSchema = z.object({
   number: z.string().min(1).max(32),
+  floor: z.number().int().min(0).max(200).optional().nullable(),
+  parkingSlot: z.string().max(32).optional().nullable(),
+  details: z.record(z.string(), z.string()).optional().nullable(),
+});
+
+export const residentImportRowSchema = z.object({
+  name: z.string().min(1).max(120),
+  phone: z.string().min(10).max(15),
+  email: z.string().email().max(200).optional().nullable(),
+  flatNumber: z.string().min(1).max(32),
+  wingName: z.string().min(1).max(120).optional().nullable(),
+  floor: z.coerce.number().int().min(0).max(200).optional().nullable(),
+  parkingSlot: z.string().max(32).optional().nullable(),
+  isOwner: z.boolean().optional().default(true),
+  emergencyContact: z.string().max(40).optional().nullable(),
+  vehicleNumber: z.string().max(32).optional().nullable(),
+  sendInvite: z.boolean().optional().default(false),
+});
+
+export const residentImportSchema = z.object({
+  rows: z.array(residentImportRowSchema).min(1).max(500),
+  /** Send invite for newly created residents (and forceInvite updates). */
+  sendInvites: z.boolean().optional().default(false),
+  /** Re-send invites even when the resident already exists. */
+  forceInvite: z.boolean().optional().default(false),
+  /** Update floor / parking on matched flats from CSV columns. */
+  updateFlats: z.boolean().optional().default(true),
+  /** Create flat under an existing wing when flatNumber is missing. */
+  createMissingFlats: z.boolean().optional().default(false),
 });
 
 export const createInvitationSchema = z.object({
   email: z.string().email().max(200).optional().nullable(),
   phone: z.string().max(15).optional().nullable(),
   role: roleEnum.default("resident"),
+  channels: z
+    .array(z.enum(["email", "whatsapp"]))
+    .optional()
+    .default(["email"]),
 });
 
 export const updateResidentProfileSchema = z.object({

@@ -22,6 +22,7 @@ import {
   loginPasswordSchema,
   loginPinSchema,
   onboardResidentSchema,
+  residentImportSchema,
   razorpayWebhookSchema,
   recordPaymentSchema,
   refreshSchema,
@@ -166,9 +167,40 @@ describe("validation schemas", () => {
     ).toBe("resident");
     expect(createInvitationSchema.parse({}).role).toBe("resident");
     expect(
+      createInvitationSchema.parse({
+        phone: "9999999999",
+        channels: ["whatsapp"],
+      }).channels,
+    ).toEqual(["whatsapp"]);
+    expect(
       updateResidentProfileSchema.parse({ vehicleNumber: "MH12AB1234" })
         .vehicleNumber,
     ).toBe("MH12AB1234");
+  });
+
+  test("residentImportSchema validates bulk rows", () => {
+    const ok = residentImportSchema.parse({
+      rows: [
+        {
+          name: "Asha",
+          phone: "9999999999",
+          flatNumber: "101",
+          isOwner: false,
+          emergencyContact: "9111111111",
+        },
+      ],
+      sendInvites: true,
+      updateFlats: true,
+      createMissingFlats: false,
+      forceInvite: false,
+    });
+    expect(ok.rows).toHaveLength(1);
+    expect(ok.rows[0]!.isOwner).toBe(false);
+    expect(() =>
+      residentImportSchema.parse({
+        rows: [{ name: "X", phone: "1", flatNumber: "1" }],
+      }),
+    ).toThrow();
   });
 
   test("billing and payment schemas", () => {

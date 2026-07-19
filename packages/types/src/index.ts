@@ -91,6 +91,9 @@ export type FlatDto = {
   number: string;
   wingName: string | null;
   wingId?: string;
+  floor?: number | null;
+  parkingSlot?: string | null;
+  details?: Record<string, string> | null;
 };
 
 export type Paginated<T> = {
@@ -144,6 +147,10 @@ export type InvitationDto = {
   createdAt: string;
   /** Only present in DEV_AUTH so testers can accept without email/SMS delivery. */
   devToken?: string;
+  delivery?: {
+    email?: { ok: boolean; error?: string };
+    whatsapp?: { ok: boolean; error?: string };
+  };
 };
 
 export type ResidentProfileDto = {
@@ -255,6 +262,20 @@ export type PlatformUserDto = {
   memberships: PlatformUserMembershipDto[];
   createdAt: string;
   lastActivityAt: string | null;
+};
+
+export type ResidentImportRowError = {
+  row: number;
+  message: string;
+};
+
+export type ResidentImportResultDto = {
+  created: number;
+  updated: number;
+  invited: number;
+  skipped: number;
+  unchanged: number;
+  errors: ResidentImportRowError[];
 };
 
 export type TeamMemberDto = {

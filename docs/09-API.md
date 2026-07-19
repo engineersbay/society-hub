@@ -270,7 +270,10 @@ Body: `{ email? , phone?, name?, role }` — email **or** phone required. Role d
 | GET | `/v1/admin/structure` | Staff | Nested buildings→wings→flats |
 | GET | `/v1/admin/team` | Staff | Society team |
 | POST | `/v1/admin/invites` | Staff | Same as invitations create |
-| POST | `/v1/admin/residents` | Staff | Onboard resident to a flat |
+| GET | `/v1/admin/flats` | Staff | Flats with floor + parking |
+| POST | `/v1/admin/residents` | Staff | Onboard one resident |
+| POST | `/v1/admin/residents/import` | Staff | Bulk CSV rows (`name,phone,email,flatNumber,…`) with validation |
+| POST | `/v1/invitations` | Staff | Invite via email and/or WhatsApp (Gupshup adapter; stub without keys) |
 | GET | `/v1/team` | Staff | Alias team list |
 
 ### 6.7 Invitations — `/v1/invitations`

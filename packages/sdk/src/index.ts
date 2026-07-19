@@ -24,6 +24,7 @@ import type {
   AssetDto,
   VendorDto,
   EventDto,
+  ResidentImportResultDto,
   DashboardStatsDto,
   ResidentProfileDto,
 } from "@society-hub/types";
@@ -199,6 +200,29 @@ export function createSocietyHubClient(opts: SocietyHubClientOptions) {
         method: "POST",
         body: JSON.stringify(body),
       }),
+    importResidents: (body: {
+      rows: Array<{
+        name: string;
+        phone: string;
+        email?: string | null;
+        flatNumber: string;
+        wingName?: string | null;
+        floor?: number | null;
+        parkingSlot?: string | null;
+        isOwner?: boolean;
+        emergencyContact?: string | null;
+        vehicleNumber?: string | null;
+        sendInvite?: boolean;
+      }>;
+      sendInvites?: boolean;
+      forceInvite?: boolean;
+      updateFlats?: boolean;
+      createMissingFlats?: boolean;
+    }) =>
+      request<ResidentImportResultDto>("/v1/admin/residents/import", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
     listComplaints: (page = 1, limit = 20) =>
       request<Paginated<ComplaintDto>>(
         `/v1/complaints?page=${page}&limit=${limit}`,
@@ -298,10 +322,20 @@ export function createSocietyHubClient(opts: SocietyHubClientOptions) {
       }),
     listFlatsForWing: (wingId: string) =>
       request<FlatDto[]>(`/v1/wings/${wingId}/flats`),
-    createFlat: (wingId: string, number: string) =>
+    createFlat: (
+      wingId: string,
+      body: {
+        number: string;
+        floor?: number | null;
+        parkingSlot?: string | null;
+        details?: Record<string, string> | null;
+      } | string,
+    ) =>
       request<FlatDto>(`/v1/wings/${wingId}/flats`, {
         method: "POST",
-        body: JSON.stringify({ number }),
+        body: JSON.stringify(
+          typeof body === "string" ? { number: body } : body,
+        ),
       }),
 
     listInvitations: () => request<InvitationDto[]>("/v1/invitations"),
@@ -309,6 +343,7 @@ export function createSocietyHubClient(opts: SocietyHubClientOptions) {
       email?: string | null;
       phone?: string | null;
       role: string;
+      channels?: Array<"email" | "whatsapp">;
     }) =>
       request<InvitationDto>("/v1/invitations", {
         method: "POST",
