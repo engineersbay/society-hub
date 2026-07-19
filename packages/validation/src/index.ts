@@ -73,11 +73,24 @@ export const createComplaintSchema = z.object({
   flatId: z.string().uuid().optional().nullable(),
 });
 
-export const updateComplaintStatusSchema = z.object({
-  status: z.enum(["open", "assigned", "in_progress", "resolved", "closed"]),
-  assignedToUserId: z.string().uuid().optional().nullable(),
-  note: z.string().max(2000).optional().nullable(),
-});
+export const updateComplaintStatusSchema = z
+  .object({
+    status: z.enum(["open", "assigned", "in_progress", "resolved", "closed"]),
+    assignedToUserId: z.string().uuid().optional().nullable(),
+    note: z.string().max(2000).optional().nullable(),
+  })
+  .superRefine((val, ctx) => {
+    if (
+      (val.status === "resolved" || val.status === "closed") &&
+      !(val.note && val.note.trim().length >= 3)
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["note"],
+        message: "Add a short closing comment (at least 3 characters)",
+      });
+    }
+  });
 
 export const createComplaintCommentSchema = z.object({
   body: z.string().min(1).max(2000),
@@ -86,6 +99,14 @@ export const createComplaintCommentSchema = z.object({
 export const listQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
+  /** When true, staff/platform users only see rows they raised (Resident mode). */
+  mine: z
+    .preprocess(
+      (v) => v === true || v === "true" || v === "1" || v === 1,
+      z.boolean(),
+    )
+    .optional()
+    .default(false),
 });
 
 const roleEnum = z.enum([

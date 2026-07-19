@@ -59,6 +59,15 @@ export type ComplaintCommentDto = {
   createdAt: string;
 };
 
+export type ComplaintStatusEventDto = {
+  id: string;
+  fromStatus: ComplaintStatus | null;
+  toStatus: ComplaintStatus;
+  note: string | null;
+  actorName: string | null;
+  createdAt: string;
+};
+
 export type ComplaintDto = {
   id: string;
   ticketNumber: string;
@@ -74,8 +83,17 @@ export type ComplaintDto = {
   slaDueAt: string | null;
   createdAt: string;
   updatedAt: string;
+  /** 1-based position among open/acknowledged tickets (null when not in queue). */
+  queuePosition: number | null;
+  /** How many tickets are ahead in the open queue. */
+  openAheadCount: number | null;
+  /** Friendly wait hint for residents (e.g. "About 2 tickets ahead"). */
+  queueHint: string | null;
   attachments: ComplaintAttachmentDto[];
   comments: ComplaintCommentDto[];
+  statusEvents: ComplaintStatusEventDto[];
+  /** Latest resolve/close note from staff, if any. */
+  closingNote: string | null;
 };
 
 export type ComplaintAttachmentDto = {
@@ -157,6 +175,16 @@ export type ResidentProfileDto = {
   userId: string;
   emergencyContact: string | null;
   vehicleNumber: string | null;
+  societyName: string | null;
+  flat: {
+    id: string;
+    number: string;
+    wingName: string | null;
+    buildingName: string | null;
+    floor: number | null;
+    parkingSlot: string | null;
+    isOwner: boolean;
+  } | null;
 };
 
 export type BillStatus = "draft" | "issued" | "paid" | "void" | "corrected";

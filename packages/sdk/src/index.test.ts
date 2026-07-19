@@ -96,7 +96,9 @@ describe("sdk client", () => {
       type: "plumbing",
       description: "drip drip drip",
     });
-    await client.updateComplaintStatus("c1", "resolved");
+    await client.updateComplaintStatus("c1", "resolved", {
+      note: "Fixed",
+    });
     expect(paths.length).toBeGreaterThan(8);
   });
 

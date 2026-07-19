@@ -223,9 +223,9 @@ export function createSocietyHubClient(opts: SocietyHubClientOptions) {
         method: "POST",
         body: JSON.stringify(body),
       }),
-    listComplaints: (page = 1, limit = 20) =>
+    listComplaints: (page = 1, limit = 20, opts?: { mine?: boolean }) =>
       request<Paginated<ComplaintDto>>(
-        `/v1/complaints?page=${page}&limit=${limit}`,
+        `/v1/complaints?page=${page}&limit=${limit}${opts?.mine ? "&mine=1" : ""}`,
       ),
     getComplaint: (id: string) =>
       request<ComplaintDto>(`/v1/complaints/${id}`),
@@ -240,10 +240,18 @@ export function createSocietyHubClient(opts: SocietyHubClientOptions) {
         method: "POST",
         body: JSON.stringify(body),
       }),
-    updateComplaintStatus: (id: string, status: string) =>
+    updateComplaintStatus: (
+      id: string,
+      status: string,
+      opts?: { note?: string | null; assignedToUserId?: string | null },
+    ) =>
       request<ComplaintDto>(`/v1/complaints/${id}/status`, {
         method: "PATCH",
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({
+          status,
+          note: opts?.note ?? null,
+          assignedToUserId: opts?.assignedToUserId ?? null,
+        }),
       }),
     uploadAttachment: async (complaintId: string, file: File) => {
       const form = new FormData();

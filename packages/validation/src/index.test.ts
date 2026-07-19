@@ -130,16 +130,24 @@ describe("validation schemas", () => {
       }).flatId,
     ).toBe("66666666-6666-6666-6666-666666666666");
     expect(
-      updateComplaintStatusSchema.parse({ status: "resolved" }).status,
+      updateComplaintStatusSchema.parse({
+        status: "resolved",
+        note: "Fixed the pipe joint",
+      }).status,
     ).toBe("resolved");
+    expect(() =>
+      updateComplaintStatusSchema.parse({ status: "closed" }),
+    ).toThrow();
   });
 
   test("listQuerySchema coerces page/limit", () => {
     expect(listQuerySchema.parse({ page: "2", limit: "10" })).toEqual({
       page: 2,
       limit: 10,
+      mine: false,
     });
-    expect(listQuerySchema.parse({})).toEqual({ page: 1, limit: 20 });
+    expect(listQuerySchema.parse({})).toEqual({ page: 1, limit: 20, mine: false });
+    expect(listQuerySchema.parse({ mine: "1" }).mine).toBe(true);
   });
 
   test("selectTenantSchema and complaint comment schema", () => {
