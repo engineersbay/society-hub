@@ -36,7 +36,7 @@ Build SocietyHub per the Spec. **Docs are source of truth.** Never invent busine
 | Bun runtime / workspaces | `.cursor/skills/societyhub-bun-typescript` |
 | Elysia routes / API | `.cursor/skills/societyhub-elysia` |
 | Schema / migrations / repos | `.cursor/skills/societyhub-drizzle-mysql` |
-| Web UI (resident + manage) | `.cursor/skills/societyhub-react-vite-tailwind` |
+| Web UI (resident + manage) | `.cursor/skills/societyhub-react-vite-tailwind` — shared chrome in `packages/ui` (`@society-hub/ui`) |
 | Monorepo layout / pipelines | `.cursor/skills/societyhub-turborepo` |
 | New domain module boundaries | `.cursor/skills/societyhub-modular-monolith` |
 | Queues / SLA jobs | `.cursor/skills/societyhub-redis-bullmq` |
