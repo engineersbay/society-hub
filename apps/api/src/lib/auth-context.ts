@@ -52,25 +52,25 @@ export async function buildUserDto(
 
   let flatId: string | null = null;
   let flatNumber: string | null = null;
-  if (role === "resident" || role === "tenant") {
-    const [res] = await db
-      .select({
-        flatId: residents.flatId,
-        number: flats.number,
-      })
-      .from(residents)
-      .innerJoin(flats, eq(flats.id, residents.flatId))
-      .where(
-        and(
-          eq(residents.userId, userId),
-          eq(residents.tenantId, tenantId),
-          eq(residents.isDeleted, false),
-        ),
-      )
-      .limit(1);
-    flatId = res?.flatId ?? null;
-    flatNumber = res?.number ?? null;
-  }
+  // Staff (e.g. chairperson/president) may also live in a flat — attach it whenever present.
+  const [res] = await db
+    .select({
+      flatId: residents.flatId,
+      number: flats.number,
+    })
+    .from(residents)
+    .innerJoin(flats, eq(flats.id, residents.flatId))
+    .where(
+      and(
+        eq(residents.userId, userId),
+        eq(residents.tenantId, tenantId),
+        eq(residents.isDeleted, false),
+        eq(flats.isDeleted, false),
+      ),
+    )
+    .limit(1);
+  flatId = res?.flatId ?? null;
+  flatNumber = res?.number ?? null;
 
   return {
     id: user.id,

@@ -3,7 +3,14 @@ import { and, eq } from "drizzle-orm";
 import type { ResidentProfileDto } from "@society-hub/types";
 import { updateResidentProfileSchema } from "@society-hub/validation";
 import { db } from "../../db/client";
-import { residentProfiles } from "../../db/schema";
+import {
+  buildings,
+  flats,
+  residentProfiles,
+  residents,
+  societies,
+  wings,
+} from "../../db/schema";
 import { authPlugin, requireAuth } from "../../lib/auth-context";
 import { upsertProfile } from "./upsert-profile";
 
@@ -25,10 +32,53 @@ export async function getProfileDto(
       ),
     )
     .limit(1);
+
+  const [society] = await db
+    .select({ name: societies.name })
+    .from(societies)
+    .where(and(eq(societies.id, tenantId), eq(societies.isDeleted, false)))
+    .limit(1);
+
+  const [flatRow] = await db
+    .select({
+      id: flats.id,
+      number: flats.number,
+      floor: flats.floor,
+      parkingSlot: flats.parkingSlot,
+      wingName: wings.name,
+      buildingName: buildings.name,
+      isOwner: residents.isOwner,
+    })
+    .from(residents)
+    .innerJoin(flats, eq(flats.id, residents.flatId))
+    .leftJoin(wings, eq(wings.id, flats.wingId))
+    .leftJoin(buildings, eq(buildings.id, wings.buildingId))
+    .where(
+      and(
+        eq(residents.tenantId, tenantId),
+        eq(residents.userId, userId),
+        eq(residents.isDeleted, false),
+        eq(flats.isDeleted, false),
+      ),
+    )
+    .limit(1);
+
   return {
     userId,
     emergencyContact: row?.emergencyContact ?? null,
     vehicleNumber: row?.vehicleNumber ?? null,
+    societyName: society?.name ?? null,
+    flat: flatRow
+      ? {
+          id: flatRow.id,
+          number: flatRow.number,
+          wingName: flatRow.wingName ?? null,
+          buildingName: flatRow.buildingName ?? null,
+          floor: flatRow.floor ?? null,
+          parkingSlot: flatRow.parkingSlot ?? null,
+          isOwner: Boolean(flatRow.isOwner),
+        }
+      : null,
   };
 }
 

@@ -1,6 +1,6 @@
 import { Elysia } from "elysia";
-import { and, count, desc, eq } from "drizzle-orm";
-import type { ComplaintDto } from "@society-hub/types";
+import { and, count, desc, eq, inArray, lt } from "drizzle-orm";
+import type { ComplaintDto, ComplaintStatus } from "@society-hub/types";
 import {
   createComplaintCommentSchema,
   createComplaintSchema,
@@ -24,6 +24,7 @@ import { AppError } from "../../lib/errors";
 import { recordAudit } from "../../lib/audit";
 import { notifyUser } from "../../lib/notify";
 import { softDelete } from "../../lib/soft-delete";
+import { notifyStaffNewComplaint } from "../../lib/messaging/notify-complaint-staff";
 import {
   authPlugin,
   isStaffRole,
@@ -37,6 +38,42 @@ function slaDueAt(days: number) {
     .toISOString()
     .replace("T", " ")
     .replace("Z", "");
+}
+
+const QUEUE_STATUSES: ComplaintStatus[] = ["open", "assigned"];
+
+async function queueMeta(
+  tenantId: string,
+  createdAt: string,
+  status: ComplaintStatus,
+): Promise<{
+  queuePosition: number | null;
+  openAheadCount: number | null;
+  queueHint: string | null;
+}> {
+  if (!QUEUE_STATUSES.includes(status)) {
+    return { queuePosition: null, openAheadCount: null, queueHint: null };
+  }
+  const [ahead] = await db
+    .select({ total: count() })
+    .from(complaints)
+    .where(
+      and(
+        eq(complaints.tenantId, tenantId),
+        eq(complaints.isDeleted, false),
+        inArray(complaints.status, QUEUE_STATUSES),
+        lt(complaints.createdAt, createdAt),
+      ),
+    );
+  const openAheadCount = Number(ahead?.total ?? 0);
+  const queuePosition = openAheadCount + 1;
+  const queueHint =
+    openAheadCount === 0
+      ? "You are next in the queue — the office will pick this up soon."
+      : openAheadCount === 1
+        ? "About 1 ticket ahead of yours in the queue."
+        : `About ${openAheadCount} tickets ahead of yours in the queue.`;
+  return { queuePosition, openAheadCount, queueHint };
 }
 
 async function toComplaintDto(complaintId: string, tenantId: string): Promise<ComplaintDto> {
@@ -89,6 +126,35 @@ async function toComplaintDto(complaintId: string, tenantId: string): Promise<Co
     )
     .orderBy(complaintComments.createdAt);
 
+  const events = await db
+    .select({
+      id: complaintStatusEvents.id,
+      fromStatus: complaintStatusEvents.fromStatus,
+      toStatus: complaintStatusEvents.toStatus,
+      note: complaintStatusEvents.note,
+      actorName: users.name,
+      createdAt: complaintStatusEvents.createdAt,
+    })
+    .from(complaintStatusEvents)
+    .leftJoin(users, eq(users.id, complaintStatusEvents.actorUserId))
+    .where(
+      and(
+        eq(complaintStatusEvents.complaintId, complaintId),
+        eq(complaintStatusEvents.isDeleted, false),
+      ),
+    )
+    .orderBy(complaintStatusEvents.createdAt);
+
+  const closing = [...events]
+    .reverse()
+    .find((e) => e.toStatus === "resolved" || e.toStatus === "closed");
+
+  const queue = await queueMeta(
+    tenantId,
+    row.complaint.createdAt,
+    row.complaint.status as ComplaintStatus,
+  );
+
   return {
     id: row.complaint.id,
     ticketNumber: row.complaint.ticketNumber,
@@ -104,6 +170,7 @@ async function toComplaintDto(complaintId: string, tenantId: string): Promise<Co
     slaDueAt: row.complaint.slaDueAt,
     createdAt: row.complaint.createdAt,
     updatedAt: row.complaint.updatedAt,
+    ...queue,
     attachments: attachments.map((a) => ({
       id: a.id,
       contentKind: a.contentKind,
@@ -112,6 +179,15 @@ async function toComplaintDto(complaintId: string, tenantId: string): Promise<Co
       byteSize: a.byteSize,
     })),
     comments,
+    statusEvents: events.map((e) => ({
+      id: e.id,
+      fromStatus: (e.fromStatus as ComplaintStatus | null) ?? null,
+      toStatus: e.toStatus as ComplaintStatus,
+      note: e.note,
+      actorName: e.actorName,
+      createdAt: e.createdAt,
+    })),
+    closingNote: closing?.note ?? null,
   };
 }
 
@@ -123,7 +199,7 @@ export const complaintRoutes = new Elysia({ prefix: "/v1/complaints" })
     const offset = (q.page - 1) * q.limit;
 
     const where =
-      isStaffRole(claims.role)
+      isStaffRole(claims.role) && !q.mine
         ? and(
             eq(complaints.tenantId, claims.tenantId),
             eq(complaints.isDeleted, false),
@@ -214,7 +290,7 @@ export const complaintRoutes = new Elysia({ prefix: "/v1/complaints" })
     }
 
     const [society] = await db
-      .select({ slaDays: societies.slaDays })
+      .select({ slaDays: societies.slaDays, name: societies.name })
       .from(societies)
       .where(eq(societies.id, claims.tenantId))
       .limit(1);
@@ -246,7 +322,19 @@ export const complaintRoutes = new Elysia({ prefix: "/v1/complaints" })
       meta: { ticketNumber },
     });
 
-    return toComplaintDto(id, claims.tenantId);
+    const dto = await toComplaintDto(id, claims.tenantId);
+    void notifyStaffNewComplaint({
+      tenantId: claims.tenantId,
+      societyName: society?.name ?? "your society",
+      ticketNumber,
+      title: parsed.title,
+      type: parsed.type,
+      flatNumber: dto.flatNumber,
+      raisedByName: dto.residentName,
+      complaintId: id,
+    });
+
+    return dto;
   })
   .patch("/:id/status", async ({ auth, params, body }) => {
     const claims = requireAuth(auth);

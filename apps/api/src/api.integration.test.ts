@@ -115,7 +115,15 @@ describe("api integration", () => {
         description: "Tower A lift not moving",
       }),
     });
-    const complaint = (await created.json()) as { id: string };
+    const complaint = (await created.json()) as {
+      id: string;
+      ticketNumber: string;
+      queuePosition: number | null;
+      queueHint: string | null;
+    };
+    expect(complaint.ticketNumber).toMatch(/^C-/);
+    expect(complaint.queuePosition).toBeGreaterThanOrEqual(1);
+    expect(complaint.queueHint).toBeTruthy();
 
     const admin = await otpLogin("9999999999");
     const patch = await fetch(`${base}/v1/complaints/${complaint.id}/status`, {
@@ -129,6 +137,25 @@ describe("api integration", () => {
     expect(patch.ok).toBe(true);
     const updated = (await patch.json()) as { status: string };
     expect(updated.status).toBe("in_progress");
+
+    const closed = await fetch(`${base}/v1/complaints/${complaint.id}/status`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${admin.tokens.accessToken}`,
+      },
+      body: JSON.stringify({
+        status: "closed",
+        note: "Lift motor reset and tested",
+      }),
+    });
+    expect(closed.ok).toBe(true);
+    const closedBody = (await closed.json()) as {
+      status: string;
+      closingNote: string | null;
+    };
+    expect(closedBody.status).toBe("closed");
+    expect(closedBody.closingNote).toBe("Lift motor reset and tested");
   });
 
   test("superadmin can login with email and password", async () => {

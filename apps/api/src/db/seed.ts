@@ -101,7 +101,48 @@ async function ensureSociety() {
     isOwner: true,
   });
 
+  // President/chairperson is also a resident of the society (dual Admin | Resident use).
+  await db.insert(residents).values({
+    id: id(),
+    tenantId: TENANT_ID,
+    userId: ADMIN_USER_ID,
+    flatId: FLAT_ID,
+    isOwner: true,
+  });
+
   return true;
+}
+
+/** Idempotent: ensure the seeded chairperson has a flat link for Resident mode. */
+async function ensureChairpersonResident() {
+  const [existing] = await db
+    .select()
+    .from(residents)
+    .where(
+      and(
+        eq(residents.tenantId, TENANT_ID),
+        eq(residents.userId, ADMIN_USER_ID),
+        eq(residents.isDeleted, false),
+      ),
+    )
+    .limit(1);
+  if (existing) return;
+
+  const [flat] = await db
+    .select()
+    .from(flats)
+    .where(and(eq(flats.id, FLAT_ID), eq(flats.isDeleted, false)))
+    .limit(1);
+  if (!flat) return;
+
+  await db.insert(residents).values({
+    id: id(),
+    tenantId: TENANT_ID,
+    userId: ADMIN_USER_ID,
+    flatId: FLAT_ID,
+    isOwner: true,
+  });
+  console.log("Linked chairperson (9999999999) to flat 101 for Resident mode");
 }
 
 async function ensureSuperadmin() {
@@ -164,10 +205,11 @@ async function ensureSuperadmin() {
 async function main() {
   const created = await ensureSociety();
   await ensureSuperadmin();
+  await ensureChairpersonResident();
 
   if (created) {
     console.log("Seeded Keshav Heights");
-    console.log("Admin phone: 9999999999");
+    console.log("Admin phone: 9999999999 (chairperson + resident of flat 101)");
     console.log("Resident phone: 8888888888");
     console.log("Dev OTP code: 123456 (when DEV_AUTH=true)");
   } else {
