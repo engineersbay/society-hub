@@ -215,7 +215,7 @@ Auth required unless noted. **Staff** = society staff roles. **Platform** = `sup
 |--------|------|------|-------|
 | POST | `/otp/request` | No | `{ phone }` → optional `devCode` |
 | POST | `/otp/verify` | No | `{ phone, code }` → tokens |
-| POST | `/google` | No | Dev: `{ idToken: "dev:<phone>" }` |
+| POST | `/google` | No | `{ idToken }` — Google ID token (`aud` must match `GOOGLE_CLIENT_ID`); or `dev:<phone>` when `DEV_AUTH=true` |
 | POST | `/password/login` | No | `{ email, password }` |
 | POST | `/password/forgot` | No | `{ email }` → optional `devCode` |
 | POST | `/password/reset` | No | `{ email, code, newPassword }` |
