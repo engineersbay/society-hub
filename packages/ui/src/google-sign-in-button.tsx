@@ -2,12 +2,6 @@ import { useEffect, useRef } from "react";
 
 const GIS_SRC = "https://accounts.google.com/gsi/client";
 
-export function googleSignInMode(
-  clientId: string | undefined,
-): "gis" | "dev" {
-  return clientId?.trim() ? "gis" : "dev";
-}
-
 declare global {
   interface Window {
     google?: {

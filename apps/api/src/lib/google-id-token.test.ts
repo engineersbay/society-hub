@@ -77,6 +77,21 @@ describe("verifyGoogleIdToken", () => {
     }
   });
 
+  test("rejects a tokeninfo payload that is not JSON", async () => {
+    try {
+      await verifyGoogleIdToken("plain.jwt", audience, async () =>
+        new Response("not-json", {
+          status: 200,
+          headers: { "Content-Type": "text/plain" },
+        }),
+      );
+      throw new Error("expected AppError");
+    } catch (err) {
+      expect(err).toBeInstanceOf(AppError);
+      expect((err as AppError).code).toBe("invalid_google_token");
+    }
+  });
+
   test("rejects unverified emails", async () => {
     try {
       await verifyGoogleIdToken("unverified.jwt", audience, async () =>

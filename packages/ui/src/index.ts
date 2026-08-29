@@ -14,4 +14,5 @@ export {
   statusBadgeClass,
 } from "./complaint-labels";
 
-export { GoogleSignInButton, googleSignInMode } from "./google-sign-in";
+export { googleSignInMode } from "./google-sign-in";
+export { GoogleSignInButton } from "./google-sign-in-button";
