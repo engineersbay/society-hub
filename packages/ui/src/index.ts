@@ -16,3 +16,4 @@ export {
 
 export { googleSignInMode } from "./google-sign-in";
 export { GoogleSignInButton } from "./google-sign-in-button";
+export { canUseManageApp } from "./manage-access";

@@ -25,6 +25,9 @@ const FLAT_ID = "66666666-6666-6666-6666-666666666666";
 
 const SUPERADMIN_USERNAME = "superadmin";
 const SUPERADMIN_PASSWORD = process.env.SUPERADMIN_PASSWORD ?? "Test@1234";
+const SUPERADMIN_EMAIL =
+  process.env.SUPERADMIN_EMAIL ?? "superadmin@societyhub.local";
+const SUPERADMIN_NAME = process.env.SUPERADMIN_NAME ?? "Platform Superadmin";
 
 async function ensureSociety() {
   const existing = await db
@@ -158,8 +161,8 @@ async function ensureSuperadmin() {
       .update(users)
       .set({
         passwordHash,
-        name: "Platform Superadmin",
-        email: "superadmin@societyhub.local",
+        name: SUPERADMIN_NAME,
+        email: SUPERADMIN_EMAIL,
         isDeleted: false,
       })
       .where(eq(users.id, existing.id));
@@ -190,8 +193,8 @@ async function ensureSuperadmin() {
     id: SUPERADMIN_USER_ID,
     username: SUPERADMIN_USERNAME,
     passwordHash,
-    name: "Platform Superadmin",
-    email: "superadmin@societyhub.local",
+    name: SUPERADMIN_NAME,
+    email: SUPERADMIN_EMAIL,
   });
 
   await db.insert(userRoles).values({
@@ -215,7 +218,7 @@ async function main() {
   } else {
     console.log("Keshav Heights already present");
   }
-  console.log(`Superadmin email: superadmin@societyhub.local`);
+  console.log(`Superadmin email: ${SUPERADMIN_EMAIL}`);
   console.log("Superadmin password: (from SUPERADMIN_PASSWORD or default seed)");
 }
 

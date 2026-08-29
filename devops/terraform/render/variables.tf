@@ -62,6 +62,17 @@ variable "superadmin_password" {
   description = "Used if you run db:seed once against the preview DB."
 }
 
+variable "superadmin_email" {
+  type        = string
+  default     = "superadmin@societyhub.local"
+  description = "Preview Super Admin email. Set to a Google test user for SSO."
+}
+
+variable "superadmin_name" {
+  type    = string
+  default = "Platform Superadmin"
+}
+
 variable "dev_auth" {
   type    = string
   default = "true"

@@ -10,6 +10,8 @@ declare global {
           initialize: (config: {
             client_id: string;
             callback: (response: { credential?: string }) => void;
+            cancel_on_tap_outside?: boolean;
+            use_fedcm_for_button?: boolean;
           }) => void;
           renderButton: (
             parent: HTMLElement,
@@ -31,20 +33,26 @@ export function GoogleSignInButton({
   onCredential: (idToken: string) => void;
 }) {
   const slot = useRef<HTMLDivElement>(null);
+  const onCredentialRef = useRef(onCredential);
+  const renderedFor = useRef("");
+  onCredentialRef.current = onCredential;
 
   useEffect(() => {
-    if (!clientId || disabled) return;
+    if (!clientId) return;
     let cancelled = false;
 
     function render() {
       const el = slot.current;
       const gis = window.google?.accounts.id;
       if (!el || !gis || cancelled) return;
+      if (renderedFor.current === clientId && el.childElementCount > 0) return;
       el.replaceChildren();
       gis.initialize({
         client_id: clientId,
+        cancel_on_tap_outside: true,
+        use_fedcm_for_button: true,
         callback: (response) => {
-          if (response.credential) onCredential(response.credential);
+          if (response.credential) onCredentialRef.current(response.credential);
         },
       });
       gis.renderButton(el, {
@@ -53,6 +61,7 @@ export function GoogleSignInButton({
         text: "continue_with",
         width: 320,
       });
+      renderedFor.current = clientId;
     }
 
     if (window.google?.accounts.id) {
@@ -81,12 +90,12 @@ export function GoogleSignInButton({
     return () => {
       cancelled = true;
     };
-  }, [clientId, disabled, onCredential]);
+  }, [clientId]);
 
   return (
     <div
       ref={slot}
-      className="flex justify-center"
+      className={disabled ? "pointer-events-none flex justify-center opacity-60" : "flex justify-center"}
       data-testid="google-gis-button"
     />
   );

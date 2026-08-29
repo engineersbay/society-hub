@@ -35,6 +35,8 @@ resource "render_web_service" "api" {
     DEV_AUTH             = { value = var.dev_auth }
     DEV_OTP_CODE         = { value = var.dev_otp_code }
     SUPERADMIN_PASSWORD  = { value = var.superadmin_password }
+    SUPERADMIN_EMAIL     = { value = var.superadmin_email }
+    SUPERADMIN_NAME      = { value = var.superadmin_name }
     UPLOAD_DIR           = { value = "/tmp/uploads" }
     NODE_ENV             = { value = "production" }
     GOOGLE_CLIENT_ID     = { value = var.google_client_id }
