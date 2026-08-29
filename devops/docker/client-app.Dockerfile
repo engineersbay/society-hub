@@ -13,6 +13,7 @@ COPY packages/types/package.json packages/types/
 COPY packages/validation/package.json packages/validation/
 COPY packages/auth/package.json packages/auth/
 COPY packages/sdk/package.json packages/sdk/
+COPY packages/ui/package.json packages/ui/
 RUN bun install --frozen-lockfile
 COPY apps/client-app apps/client-app
 COPY packages packages
