@@ -1565,8 +1565,8 @@ describe("api integration", () => {
     );
     expect(badTeam.status).toBe(400);
 
-    // Booking without flatId for staff without flat → flat_required
-    const bookingBad = await fetch(`${base}/v1/bookings`, {
+    // Booking without explicit flatId — chairperson's linked flat resolves from JWT claims
+    const bookingImplicitFlat = await fetch(`${base}/v1/bookings`, {
       method: "POST",
       headers: sAuth,
       body: JSON.stringify({
@@ -1575,7 +1575,18 @@ describe("api integration", () => {
         endAt: "2030-01-01 11:00:00",
       }),
     });
-    expect(bookingBad.status).toBe(400);
+    expect(bookingImplicitFlat.status).toBe(200);
+    const bookingBody = (await bookingImplicitFlat.json()) as {
+      id: string;
+      facilityName: string;
+      flatId: string;
+      status: string;
+    };
+    expect(bookingBody).toMatchObject({
+      facilityName: "Hall",
+      flatId: expect.any(String),
+      status: "confirmed",
+    });
   });
 
   test("auth error paths, fresh profile insert, and tenant scope guard", async () => {
@@ -1821,8 +1832,8 @@ describe("api integration", () => {
     );
     expect(mediaQs.ok).toBe(true);
 
-    // Complaint raise without flat for staff
-    const noFlat = await fetch(`${base}/v1/complaints`, {
+    // Complaint without explicit flatId — chairperson's linked flat resolved from JWT claims
+    const staffComplaint = await fetch(`${base}/v1/complaints`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${staff.tokens.accessToken}`,
@@ -1834,7 +1845,18 @@ describe("api integration", () => {
         description: "missing flatId",
       }),
     });
-    expect(noFlat.status).toBe(400);
+    expect(staffComplaint.status).toBe(200);
+    const staffComplaintBody = (await staffComplaint.json()) as {
+      id: string;
+      title: string;
+      type: string;
+      flatId: string;
+    };
+    expect(staffComplaintBody).toMatchObject({
+      title: "No flat",
+      type: "plumbing",
+      flatId: expect.any(String),
+    });
 
     // Onboard existing user (email/phone reuse) for admin update branch
     const existingPhone = phone;
