@@ -26,3 +26,7 @@ dev_otp_code        = "123456"
 # Leave empty unless Render assigned different slugs than societyhub-*.
 # api_public_url = "https://societyhub-api-xxxx.onrender.com"
 # cors_origin_override = "https://actual-client.onrender.com,https://actual-manage.onrender.com"
+
+# Google OAuth Web client (societyhub-web). Secret stays on the API only.
+# google_client_id     = "1234567890-xxxxx.apps.googleusercontent.com"
+# google_client_secret = "GOCSPX-xxxxx"

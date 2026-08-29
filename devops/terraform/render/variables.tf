@@ -83,3 +83,16 @@ variable "api_public_url" {
   default     = ""
   description = "Real API URL if Render assigned a suffix (e.g. https://societyhub-api-ece6.onrender.com)."
 }
+
+variable "google_client_id" {
+  type        = string
+  default     = ""
+  description = "Google OAuth Web client ID (GIS + API audience). Safe to set on static sites."
+}
+
+variable "google_client_secret" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "Google OAuth Web client secret. API only; never send to Vite."
+}

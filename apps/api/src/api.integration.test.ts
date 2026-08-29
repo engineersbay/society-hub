@@ -46,6 +46,11 @@ function uniquePeriodYm() {
 
 describe("api integration", () => {
   beforeAll(() => {
+    // Local `.env` may set GOOGLE_CLIENT_ID for GIS. Integration cases that
+    // assert the `dev:<phone>` contract need the client ID unset unless a
+    // test explicitly stubs tokeninfo.
+    delete process.env.GOOGLE_CLIENT_ID;
+    delete process.env.GOOGLE_TOKENINFO_URL;
     // Prefer an explicit API_URL (external server) for debugging; otherwise boot
     // in-process so `bun test --coverage` measures module coverage.
     if (process.env.API_URL) {
@@ -250,6 +255,69 @@ describe("api integration", () => {
       body: JSON.stringify({ idToken: "dev:8888888888" }),
     });
     expect(google.ok).toBe(true);
+  });
+
+  test("google SSO verifies id token for an onboarded email", async () => {
+    const prevId = process.env.GOOGLE_CLIENT_ID;
+    const prevUrl = process.env.GOOGLE_TOKENINFO_URL;
+    const audience = "test-client.apps.googleusercontent.com";
+    const mock = Bun.serve({
+      port: 0,
+      fetch(req) {
+        const token = new URL(req.url).searchParams.get("id_token");
+        if (token === "good-google-jwt") {
+          return Response.json({
+            aud: audience,
+            sub: "google-sub-admin",
+            email: "admin@keshav.local",
+            email_verified: "true",
+          });
+        }
+        if (token === "unknown-google-jwt") {
+          return Response.json({
+            aud: audience,
+            sub: "google-sub-unknown",
+            email: "nobody@example.com",
+            email_verified: true,
+          });
+        }
+        return new Response("invalid", { status: 400 });
+      },
+    });
+    process.env.GOOGLE_CLIENT_ID = audience;
+    process.env.GOOGLE_TOKENINFO_URL = `http://127.0.0.1:${mock.port}`;
+    try {
+      const ok = await fetch(`${base}/v1/auth/google`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken: "good-google-jwt" }),
+      });
+      expect(ok.status).toBe(200);
+      const body = (await ok.json()) as { user: { email: string | null } };
+      expect(body.user.email).toBe("admin@keshav.local");
+
+      const unknown = await fetch(`${base}/v1/auth/google`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken: "unknown-google-jwt" }),
+      });
+      expect(unknown.status).toBe(403);
+      const unknownBody = (await unknown.json()) as { code: string };
+      expect(unknownBody.code).toBe("not_onboarded");
+
+      const bad = await fetch(`${base}/v1/auth/google`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken: "bad-google-jwt" }),
+      });
+      expect(bad.status).toBe(401);
+    } finally {
+      mock.stop(true);
+      if (prevId === undefined) delete process.env.GOOGLE_CLIENT_ID;
+      else process.env.GOOGLE_CLIENT_ID = prevId;
+      if (prevUrl === undefined) delete process.env.GOOGLE_TOKENINFO_URL;
+      else process.env.GOOGLE_TOKENINFO_URL = prevUrl;
+    }
   });
 
   test("admin lists flats and onboards resident with email", async () => {
@@ -1497,8 +1565,8 @@ describe("api integration", () => {
     );
     expect(badTeam.status).toBe(400);
 
-    // Booking without flatId for staff without flat → flat_required
-    const bookingBad = await fetch(`${base}/v1/bookings`, {
+    // Booking without explicit flatId — chairperson's linked flat resolves from JWT claims
+    const bookingImplicitFlat = await fetch(`${base}/v1/bookings`, {
       method: "POST",
       headers: sAuth,
       body: JSON.stringify({
@@ -1507,7 +1575,18 @@ describe("api integration", () => {
         endAt: "2030-01-01 11:00:00",
       }),
     });
-    expect(bookingBad.status).toBe(400);
+    expect(bookingImplicitFlat.status).toBe(200);
+    const bookingBody = (await bookingImplicitFlat.json()) as {
+      id: string;
+      facilityName: string;
+      flatId: string;
+      status: string;
+    };
+    expect(bookingBody).toMatchObject({
+      facilityName: "Hall",
+      flatId: expect.any(String),
+      status: "confirmed",
+    });
   });
 
   test("auth error paths, fresh profile insert, and tenant scope guard", async () => {
@@ -1753,8 +1832,8 @@ describe("api integration", () => {
     );
     expect(mediaQs.ok).toBe(true);
 
-    // Complaint raise without flat for staff
-    const noFlat = await fetch(`${base}/v1/complaints`, {
+    // Complaint without explicit flatId — chairperson's linked flat resolved from JWT claims
+    const staffComplaint = await fetch(`${base}/v1/complaints`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${staff.tokens.accessToken}`,
@@ -1766,7 +1845,18 @@ describe("api integration", () => {
         description: "missing flatId",
       }),
     });
-    expect(noFlat.status).toBe(400);
+    expect(staffComplaint.status).toBe(200);
+    const staffComplaintBody = (await staffComplaint.json()) as {
+      id: string;
+      title: string;
+      type: string;
+      flatId: string;
+    };
+    expect(staffComplaintBody).toMatchObject({
+      title: "No flat",
+      type: "plumbing",
+      flatId: expect.any(String),
+    });
 
     // Onboard existing user (email/phone reuse) for admin update branch
     const existingPhone = phone;

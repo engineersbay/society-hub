@@ -58,4 +58,5 @@ Merge features to `staging`. When you want the preview updated, run **Promote pr
 - [ ] Client loads over HTTPS and can call the API
 - [ ] Manage loads over HTTPS
 - [ ] Login works
+- [ ] Google tab shows the GIS button (needs `VITE_GOOGLE_CLIENT_ID` + an onboarded email)
 - [ ] Create one complaint on client; it lists on manage

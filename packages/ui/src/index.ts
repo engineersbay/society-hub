@@ -13,3 +13,6 @@ export {
   STATUS_LABELS,
   statusBadgeClass,
 } from "./complaint-labels";
+
+export { googleSignInMode } from "./google-sign-in";
+export { GoogleSignInButton } from "./google-sign-in-button";
