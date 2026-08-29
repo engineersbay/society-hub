@@ -50,6 +50,14 @@ export function canUseAdminMode(role: Role) {
   return isSocietyStaffRole(role) || isPlatformRole(role);
 }
 
+/** Default login role: platform first so Super Admin can open Manage. */
+export function pickDefaultRole(roles: Role[]): Role | undefined {
+  const platform = roles.find((r) => isPlatformRole(r));
+  const staff = roles.find((r) => isSocietyStaffRole(r));
+  const resident = roles.find((r) => isResidentLikeRole(r));
+  return platform ?? staff ?? resident ?? roles[0];
+}
+
 export function requireAuth(auth: AccessClaims | null): AccessClaims {
   if (!auth) throw new AppError(401, "unauthorized", "Authentication required");
   return auth;

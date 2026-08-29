@@ -19,7 +19,7 @@ import {
   users,
 } from "../db/schema";
 import { AppError } from "./errors";
-import { hashToken, canUseAdminMode, isSocietyStaffRole, isResidentLikeRole, isPlatformRole, normalizeRole } from "./auth-helpers";
+import { hashToken, canUseAdminMode, isPlatformRole, normalizeRole, pickDefaultRole } from "./auth-helpers";
 
 export {
   hashToken,
@@ -175,10 +175,8 @@ export async function resolveMembership(userId: string) {
       "Phone is not onboarded to any society",
     );
   }
-  const staff = rows.find((r) => isSocietyStaffRole(r.role as Role));
-  const resident = rows.find((r) => isResidentLikeRole(r.role as Role));
-  const platform = rows.find((r) => isPlatformRole(r.role as Role));
-  return staff ?? resident ?? platform ?? rows[0]!;
+  const preferred = pickDefaultRole(rows.map((r) => r.role as Role));
+  return rows.find((r) => r.role === preferred) ?? rows[0]!;
 }
 
 export const authPlugin = new Elysia({ name: "auth" }).derive(
