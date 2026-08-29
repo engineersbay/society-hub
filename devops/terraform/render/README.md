@@ -8,8 +8,8 @@ Azure later: [`../azure/`](../../azure/).
 
 | Layer | What runs |
 |-------|-----------|
-| **CI** | `.github/workflows/ci.yml` on push/PR to `main` / `staging` |
-| **CD preview** | Render auto-deploy from this GitHub repo (no Azure secrets) |
+| **CI** | `.github/workflows/ci.yml` on push/PR to `staging` / `main` |
+| **CD preview** | Promote `staging` → `main` ([PIPELINE.md](../../PIPELINE.md)); Render auto-deploys `main` |
 | **CD Azure** | Manual `deploy-staging.yml` — idle until Azure exists |
 
 Connect **GitHub → Render** before `terraform apply`, or deploys cannot clone the repo.
@@ -50,7 +50,7 @@ Note outputs `api_url`, `client_url`, `manage_url`. If they differ from `https:/
 
 ## Day to day
 
-Push to `main` → Render rebuilds API and both static sites. Watch Billing → Monthly Included Usage.
+Merge features to `staging`. When you want the preview updated, run **Promote preview** (Actions). That updates `main`; Render rebuilds. Watch Billing → Monthly Included Usage.
 
 ## Smoke
 

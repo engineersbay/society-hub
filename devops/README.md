@@ -11,8 +11,8 @@ $0 Hobby workspace. Terraform in [`terraform/render/`](terraform/render/). Limit
 | API | Render free Docker web service (`devops/docker/api.Dockerfile`) |
 | Client + Manage | Render static sites (Vite `dist/`) |
 | Database | TiDB Serverless (MySQL protocol) — not Render Postgres |
-| CI | `.github/workflows/ci.yml` |
-| CD | Render auto-deploy from `engineersbay/society-hub` |
+| CI | `.github/workflows/ci.yml` on `staging` / `main` |
+| CD preview | Promote `staging` → `main` → Render auto-deploy ([PIPELINE.md](PIPELINE.md)) |
 
 **Do not** provision Azure until UAT. **Do not** add a Render card or pick Pro.
 
@@ -33,6 +33,7 @@ GitHub Actions are in [`.github/workflows/`](../.github/workflows/). Preview CD 
 ```text
 devops/
   README.md                 ← this file
+  PIPELINE.md               ← feature → staging → main → Render
   COST.md                   ← cost-saving principles and SKU choices
   render/
     LIMITATIONS.md          ← free-tier caveats vs Azure later

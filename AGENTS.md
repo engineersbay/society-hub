@@ -25,7 +25,7 @@ Build SocietyHub per the Spec. **Docs are source of truth.** Never invent busine
 - **MVP product:** start with **Complaints** (auth + onboard + raise/track). Show other **planned** features in nav as **Coming soon** (PRD §5.2)—do not implement their APIs until Phase 2. Do not invent extra modules.
 - **Multi-tenant:** every query and blob path scoped by `tenant_id`.
 - **RBAC:** enforce Admin vs Resident on the server (MVP).
-- **Deploy:** follow [`devops/`](devops/README.md). **Now:** Render Hobby preview (`devops/terraform/render/`). **Later:** cost-aware Azure. Dockerize API/client-app/manage. Do **not** provision Azure production until Phase 1 UAT.
+- **Deploy:** follow [`devops/PIPELINE.md`](devops/PIPELINE.md). Features PR into **`staging`**. Preview is **`main` → Render**. Promote with Actions → **Promote preview**. Azure later. Do **not** provision Azure production until Phase 1 UAT.
 - Prefer updating Spec + GitHub issue over guessing product behavior.
 - Conventional commits; strict TypeScript; Zod at boundaries; repository pattern.
 
