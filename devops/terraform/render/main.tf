@@ -27,16 +27,18 @@ resource "render_web_service" "api" {
   }
 
   env_vars = {
-    DATABASE_URL        = { value = var.database_url }
-    JWT_SECRET          = { value = var.jwt_secret }
-    CORS_ORIGIN         = { value = local.cors_origin }
-    PUBLIC_API_URL      = { value = local.api_url }
-    PUBLIC_APP_URL      = { value = local.client_url }
-    DEV_AUTH            = { value = var.dev_auth }
-    DEV_OTP_CODE        = { value = var.dev_otp_code }
-    SUPERADMIN_PASSWORD = { value = var.superadmin_password }
-    UPLOAD_DIR          = { value = "/tmp/uploads" }
-    NODE_ENV            = { value = "production" }
+    DATABASE_URL         = { value = var.database_url }
+    JWT_SECRET           = { value = var.jwt_secret }
+    CORS_ORIGIN          = { value = local.cors_origin }
+    PUBLIC_API_URL       = { value = local.api_url }
+    PUBLIC_APP_URL       = { value = local.client_url }
+    DEV_AUTH             = { value = var.dev_auth }
+    DEV_OTP_CODE         = { value = var.dev_otp_code }
+    SUPERADMIN_PASSWORD  = { value = var.superadmin_password }
+    UPLOAD_DIR           = { value = "/tmp/uploads" }
+    NODE_ENV             = { value = "production" }
+    GOOGLE_CLIENT_ID     = { value = var.google_client_id }
+    GOOGLE_CLIENT_SECRET = { value = var.google_client_secret }
   }
 }
 
@@ -49,9 +51,10 @@ resource "render_static_site" "client_app" {
   publish_path  = "apps/client-app/dist"
 
   env_vars = {
-    VITE_API_URL    = { value = local.api_url }
-    VITE_MANAGE_URL = { value = local.manage_url }
-    VITE_APP_ORIGIN = { value = local.client_url }
+    VITE_API_URL          = { value = local.api_url }
+    VITE_MANAGE_URL       = { value = local.manage_url }
+    VITE_APP_ORIGIN       = { value = local.client_url }
+    VITE_GOOGLE_CLIENT_ID = { value = var.google_client_id }
   }
 
   routes = [
@@ -72,10 +75,11 @@ resource "render_static_site" "manage" {
   publish_path  = "apps/manage/dist"
 
   env_vars = {
-    VITE_API_URL       = { value = local.api_url }
-    VITE_WEB_URL       = { value = local.client_url }
-    VITE_APP_ORIGIN    = { value = local.client_url }
-    VITE_MANAGE_ORIGIN = { value = local.manage_url }
+    VITE_API_URL          = { value = local.api_url }
+    VITE_WEB_URL          = { value = local.client_url }
+    VITE_APP_ORIGIN       = { value = local.client_url }
+    VITE_MANAGE_ORIGIN    = { value = local.manage_url }
+    VITE_GOOGLE_CLIENT_ID = { value = var.google_client_id }
   }
 
   routes = [

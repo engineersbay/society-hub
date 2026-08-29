@@ -1,12 +1,15 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useCallback, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { ApiClientError } from "@society-hub/sdk";
+import { GoogleSignInButton, googleSignInMode } from "@society-hub/ui";
 import { useAuth } from "../auth";
 import { LEGAL_LINKS } from "../lib/legal-links";
 
 type Mode = "password" | "otp" | "pin" | "google";
 
 const MANAGE_URL = import.meta.env.VITE_MANAGE_URL ?? "http://manage.localhost:5174";
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? "";
+const googleMode = googleSignInMode(GOOGLE_CLIENT_ID);
 
 export function LoginPage() {
   const { user, client, setSession } = useAuth();
@@ -79,6 +82,13 @@ export function LoginPage() {
     e.preventDefault();
     await applySession(() => client.loginGoogle(`dev:${phone}`));
   }
+
+  const onGoogleCredential = useCallback(
+    (idToken: string) => {
+      void applySession(() => client.loginGoogle(idToken));
+    },
+    [client],
+  );
 
   const modeLabel: Record<Mode, string> = {
     password: "Email",
@@ -237,7 +247,20 @@ export function LoginPage() {
           </form>
         )}
 
-        {mode === "google" && (
+        {mode === "google" && googleMode === "gis" && (
+          <div className="mt-6 space-y-4">
+            <p className="text-sm text-black/60">
+              Continue with the Google account that matches your onboarded email.
+            </p>
+            <GoogleSignInButton
+              clientId={GOOGLE_CLIENT_ID}
+              disabled={busy}
+              onCredential={onGoogleCredential}
+            />
+          </div>
+        )}
+
+        {mode === "google" && googleMode === "dev" && (
           <form className="mt-6 space-y-4" onSubmit={loginGoogle}>
             <p className="text-sm text-black/60">
               Dev Google SSO uses your onboarded phone as{" "}

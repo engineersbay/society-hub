@@ -97,29 +97,20 @@ Workspace does **not** turn on product SSO. Create OAuth clients in Google Cloud
 | **Android** | `societyhub-android` | Flutter Play / debug builds |
 | **iOS** | `societyhub-ios` | Flutter TestFlight / simulator |
 
-**Web client — authorized JavaScript origins**
+**Web client — authorized JavaScript origins and redirect URIs (same list)**
+
+Google rejects `*.localhost` hostnames. Use loopback + the live preview hosts:
 
 ```text
 http://localhost:5173
 http://localhost:5174
-http://app.localhost:5173
-http://manage.localhost:5174
-https://app.societyhub.in
-https://manage.societyhub.in
+http://127.0.0.1:5173
+http://127.0.0.1:5174
+https://societyhub-client.onrender.com
+https://societyhub-manage.onrender.com
 ```
 
-**Web client — authorized redirect URIs**
-
-```text
-http://localhost:5173
-http://localhost:5174
-http://app.localhost:5173
-http://manage.localhost:5174
-https://app.societyhub.in
-https://manage.societyhub.in
-```
-
-(When we add GIS, we may add `/auth/google/callback` on the API. Start with the origins above.)
+Add `https://app.societyhub.in` and `https://manage.societyhub.in` after the product domain exists. Do not add `onrender.com` as an OAuth authorized domain (you do not own it). Branding authorized domain is `engineersbay.in`.
 
 **Android client**
 
@@ -150,7 +141,9 @@ On mobile, set **server client ID** = the **Web** client ID. The API then checks
 
 Residents without Gmail keep **MSG91 OTP**.
 
-**Today in code:** Google login accepts `dev:<phone>` until `GOOGLE_CLIENT_ID` is set. After you paste the Web client ID into Azure Key Vault, we implement real token verify + the GIS / `google_sign_in` buttons (next coding task).
+**Today in code:** `POST /v1/auth/google` verifies a Google ID token against `GOOGLE_CLIENT_ID` (tokeninfo `aud` + verified email), then signs in only if that email or `google_sub` is already onboarded. `dev:<phone>` still works when `DEV_AUTH=true` or the client ID is unset. Client App and Manage show the GIS button when `VITE_GOOGLE_CLIENT_ID` is set.
+
+**Manage `@societyhub.in` lock** waits until the product domain exists. Preview accepts any onboarded email.
 
 ---
 
