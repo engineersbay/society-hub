@@ -20,6 +20,8 @@ jwt_secret = "replace-with-32-plus-random-chars"
 
 # Preview only
 superadmin_password = "Test@1234"
+# superadmin_email    = "sandesh@engineersbay.in"
+# superadmin_name     = "Sandesh"
 dev_auth            = "true"
 dev_otp_code        = "123456"
 

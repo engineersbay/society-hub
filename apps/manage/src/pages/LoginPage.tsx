@@ -1,5 +1,5 @@
 import { FormEvent, useCallback, useState } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { ApiClientError } from "@society-hub/sdk";
 import { GoogleSignInButton, googleSignInMode } from "@society-hub/ui";
 import { useAuth } from "../auth";
@@ -15,6 +15,7 @@ const googleMode = googleSignInMode(GOOGLE_CLIENT_ID);
 
 export function LoginPage() {
   const { user, client, setSession } = useAuth();
+  const navigate = useNavigate();
   const [mode, setMode] = useState<Mode>("password");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -37,8 +38,9 @@ export function LoginPage() {
       const res = await login();
       try {
         setSession(res.user, res.tokens);
+        navigate("/dashboard", { replace: true });
       } catch {
-        setError(`Society staff and residents use the Client App instead: ${WEB_URL}`);
+        setError(`Residents use the Client App instead: ${WEB_URL}`);
       }
     } catch (err) {
       setError(err instanceof ApiClientError ? err.body.message : "Failed");

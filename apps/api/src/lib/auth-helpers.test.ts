@@ -5,6 +5,7 @@ import {
   isPlatformRole,
   isResidentLikeRole,
   isSocietyStaffRole,
+  pickDefaultRole,
   isStaffRole,
   normalizeRole,
   requireAuth,
@@ -34,6 +35,9 @@ describe("auth-helpers", () => {
     expect(canUseAdminMode("superadmin")).toBe(true);
     expect(canUseAdminMode("resident")).toBe(false);
     expect(normalizeRole("admin")).toBe("chairperson");
+    expect(pickDefaultRole(["chairperson", "superadmin"])).toBe("superadmin");
+    expect(pickDefaultRole(["resident", "chairperson"])).toBe("chairperson");
+    expect(pickDefaultRole(["resident"])).toBe("resident");
   });
 
   test("requireAuth throws when missing", () => {
