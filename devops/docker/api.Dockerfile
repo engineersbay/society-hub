@@ -6,10 +6,13 @@ FROM oven/bun:1.2-alpine AS deps
 WORKDIR /app
 COPY package.json bun.lock turbo.json tsconfig.base.json ./
 COPY apps/api/package.json apps/api/
+COPY apps/client-app/package.json apps/client-app/
+COPY apps/manage/package.json apps/manage/
 COPY packages/types/package.json packages/types/
 COPY packages/validation/package.json packages/validation/
 COPY packages/auth/package.json packages/auth/
 COPY packages/sdk/package.json packages/sdk/
+COPY packages/ui/package.json packages/ui/
 RUN bun install --frozen-lockfile
 
 FROM oven/bun:1.2-alpine AS runtime

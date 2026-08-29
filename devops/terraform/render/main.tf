@@ -1,12 +1,12 @@
 locals {
-  api_url     = "https://${var.api_name}.onrender.com"
+  api_url     = var.api_public_url != "" ? var.api_public_url : "https://${var.api_name}.onrender.com"
   client_url  = "https://${var.client_name}.onrender.com"
   manage_url  = "https://${var.manage_name}.onrender.com"
   cors_origin = var.cors_origin_override != "" ? var.cors_origin_override : "${local.client_url},${local.manage_url}"
 
   # Render static builders are Node. Install Bun, then turbo-build one app.
-  client_build = "npm install -g bun && bun install --frozen-lockfile && bunx turbo run build --filter=@society-hub/client-app"
-  manage_build = "npm install -g bun && bun install --frozen-lockfile && bunx turbo run build --filter=@society-hub/manage"
+  client_build = "npm install bun turbo --no-save && ./node_modules/.bin/bun install --frozen-lockfile && ./node_modules/.bin/bunx turbo run build --filter=@society-hub/client-app"
+  manage_build = "npm install bun turbo --no-save && ./node_modules/.bin/bun install --frozen-lockfile && ./node_modules/.bin/bunx turbo run build --filter=@society-hub/manage"
 }
 
 resource "render_web_service" "api" {

@@ -77,3 +77,9 @@ variable "cors_origin_override" {
   default     = ""
   description = "If Render slugs differ from service names, set the real client,manage origins here."
 }
+
+variable "api_public_url" {
+  type        = string
+  default     = ""
+  description = "Real API URL if Render assigned a suffix (e.g. https://societyhub-api-ece6.onrender.com)."
+}
