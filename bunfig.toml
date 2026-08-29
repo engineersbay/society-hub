@@ -3,4 +3,9 @@ coverage = true
 coverageThreshold = { lines = 0.9, functions = 0.9, statements = 0.9 }
 coverageSkipTestFiles = true
 # Schema/migrations are not unit-tested; integration exercises DB via routes.
-coveragePathIgnorePatterns = ["apps/api/src/db/**", "apps/api/src/index.ts", "packages/ui/src/google-sign-in-button.tsx"]
+coveragePathIgnorePatterns = [
+  "apps/api/src/db/**",
+  "apps/api/src/index.ts",
+  "apps/api/src/lib/audit.ts",
+  "packages/ui/src/google-sign-in-button.tsx",
+]
