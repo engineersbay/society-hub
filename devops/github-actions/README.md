@@ -1,16 +1,18 @@
 # GitHub Actions (CI/CD)
 
+**Branch flow:** [PIPELINE.md](../PIPELINE.md) — feature → `staging` → Promote preview → `main` → Render.
+
 Live workflows live in [`.github/workflows/`](../../.github/workflows/).  
 Full buy/host/SSO checklist: [docs/10-Go-Live.md](../../docs/10-Go-Live.md).
 
 | Workflow | Trigger | Action |
 |----------|---------|--------|
-| `ci.yml` | PR / push to `main` or `staging` | MySQL service, migrate, seed, `bun run quality`, Terraform fmt/validate |
+| `ci.yml` | PR / push to `staging` or `main` | MySQL service, migrate, seed, `bun run quality`, Terraform fmt/validate |
+| `promote-guard.yml` | PR into `main` | Fail unless the head branch is `staging` |
+| `promote-preview.yml` | Manual | Merge `staging` → `main` (Render then auto-deploys) |
 | `mobile.yml` | Changes under `apps/mobile/` | `flutter analyze` + `flutter test` |
-| `deploy-staging.yml` | Manual | Push API image → Container Apps; build + upload both Static Web Apps |
-| `deploy-production.yml` | Manual + `production` reviewers | Promote staging API tag; rebuild web with prod `VITE_API_URL` |
-
-Preview CD is Render auto-deploy ([`../terraform/render/`](../terraform/render/)). Azure deploy stays idle until secrets exist.
+| `deploy-staging.yml` | Manual | Azure only — idle until secrets exist |
+| `deploy-production.yml` | Manual + `production` reviewers | Azure only — idle until secrets exist |
 
 Examples in this folder are historical templates. Prefer the workflows under `.github/workflows/`.
 

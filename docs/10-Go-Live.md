@@ -239,10 +239,14 @@ Workflows:
 
 | File | When | What |
 |------|------|------|
-| `.github/workflows/ci.yml` | PR + push to `main` / `staging` | MySQL service, migrate, seed, `bun run quality`, Terraform fmt/validate |
+| `.github/workflows/ci.yml` | PR + push to `staging` / `main` | MySQL service, migrate, seed, `bun run quality`, Terraform fmt/validate |
+| `.github/workflows/promote-preview.yml` | **Manual** | Merge `staging` → `main` (Render preview) |
+| `.github/workflows/promote-guard.yml` | PR into `main` | Only `staging` may target `main` |
 | `.github/workflows/mobile.yml` | Changes under `apps/mobile/` | `flutter analyze` + `flutter test` |
-| `.github/workflows/deploy-staging.yml` | **Manual** (`workflow_dispatch`) | Build/push API image → Container App; SWA for both web apps |
-| `.github/workflows/deploy-production.yml` | **Manual** + environment approval | Promote the **same** image tag already tested on staging |
+| `.github/workflows/deploy-staging.yml` | **Manual** (`workflow_dispatch`) | Azure later — idle until secrets exist |
+| `.github/workflows/deploy-production.yml` | **Manual** + environment approval | Azure later — idle until secrets exist |
+
+Git flow: [devops/PIPELINE.md](../devops/PIPELINE.md).
 
 ### 6.1 GitHub settings (you click)
 
