@@ -25,6 +25,8 @@ import { StructurePage } from "./pages/StructurePage";
 import { AssetsPage } from "./pages/AssetsPage";
 import { VendorsPage } from "./pages/VendorsPage";
 import { EventsPage } from "./pages/EventsPage";
+import { LegalPage } from "./pages/LegalPage";
+import { LEGAL_LINKS } from "./lib/legal-links";
 
 function Protected({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -36,6 +38,9 @@ function Protected({ children }: { children: React.ReactNode }) {
 export function App() {
   return (
     <Routes>
+      <Route path={LEGAL_LINKS.home} element={<LegalPage page="home" />} />
+      <Route path={LEGAL_LINKS.privacy} element={<LegalPage page="privacy" />} />
+      <Route path={LEGAL_LINKS.terms} element={<LegalPage page="terms" />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />

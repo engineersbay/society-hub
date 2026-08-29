@@ -2,6 +2,7 @@ import { FormEvent, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { ApiClientError } from "@society-hub/sdk";
 import { useAuth } from "../auth";
+import { LEGAL_LINKS } from "../lib/legal-links";
 
 type Mode = "password" | "otp" | "pin" | "google";
 
@@ -271,6 +272,17 @@ export function LoginPage() {
           <a className="text-[var(--leaf)]" href={MANAGE_URL}>
             Open Manage
           </a>
+        </p>
+        <p className="mt-3 flex justify-center gap-3 text-center text-xs text-black/45">
+          <Link className="text-[var(--leaf)]" to={LEGAL_LINKS.home}>
+            Home
+          </Link>
+          <Link className="text-[var(--leaf)]" to={LEGAL_LINKS.privacy}>
+            Privacy
+          </Link>
+          <Link className="text-[var(--leaf)]" to={LEGAL_LINKS.terms}>
+            Terms
+          </Link>
         </p>
       </div>
     </div>
