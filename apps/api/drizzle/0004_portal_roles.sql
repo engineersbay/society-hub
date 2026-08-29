@@ -10,7 +10,7 @@ ALTER TABLE `user_roles` MODIFY COLUMN `role` ENUM(
   'resident',
   'tenant'
 ) NOT NULL;
-
+--> statement-breakpoint
 ALTER TABLE `invitations` MODIFY COLUMN `role` ENUM(
   'superadmin',
   'chairperson',
@@ -22,7 +22,7 @@ ALTER TABLE `invitations` MODIFY COLUMN `role` ENUM(
   'resident',
   'tenant'
 ) NOT NULL;
-
--- Legacy society admin → chairperson
+--> statement-breakpoint
 UPDATE `user_roles` SET `role` = 'chairperson' WHERE `role` = 'admin';
+--> statement-breakpoint
 UPDATE `invitations` SET `role` = 'chairperson' WHERE `role` = 'admin';
