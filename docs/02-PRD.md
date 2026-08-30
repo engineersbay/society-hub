@@ -150,7 +150,9 @@ Phase 2 builds on the complaint portal. It is **in product roadmap**, not droppe
 
 ### 6.3 Future (after Phase 2)
 
-Visitor, parking, clubhouse, staff attendance, CCTV requests, assets, full vendor module, events, marketplace, AI assistant, builder edition, municipal extensions, **Flutter native apps** (repo placeholders: [`apps/mobile/android`](../../apps/mobile/android/), [`apps/mobile/ios`](../../apps/mobile/ios/)), WhatsApp notification channel.
+Visitor, parking, clubhouse, staff attendance, CCTV requests, assets, full vendor module, events, marketplace, AI assistant, builder edition, municipal extensions, **iOS App Store listing** (same Flutter app as Android), WhatsApp notification channel.
+
+**Native Android (now):** Flutter Client App in [`apps/mobile/`](../../apps/mobile/) — Play Store; mirrors `apps/client-app` (no bulk CSV, no manage portal).
 
 ## 7. Functional requirements
 

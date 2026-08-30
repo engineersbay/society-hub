@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:url_launcher/url_launcher.dart';
+
 import '../../../api/models.dart';
 import '../../../auth/session.dart';
 import '../../../core/app_keys.dart';
@@ -151,7 +153,20 @@ class _AccountPageState extends ConsumerState<AccountPage> {
           ].join(' · '),
           style: const TextStyle(color: Colors.black54),
         ),
-        const SizedBox(height: 16),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton(
+            key: AppKeys.accountPrivacy,
+            onPressed: () {
+              final url = Uri.parse(
+                ref.read(apiConfigProvider).resolvedPrivacyPolicyUrl,
+              );
+              launchUrl(url, mode: LaunchMode.externalApplication);
+            },
+            child: const Text('Privacy Policy'),
+          ),
+        ),
+        const SizedBox(height: 8),
         ShCard(
           key: AppKeys.accountFlatDetails,
           child: Column(
@@ -347,7 +362,7 @@ class _AccountPageState extends ConsumerState<AccountPage> {
             ],
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
         OutlinedButton(
           onPressed: () async {
             await ref.read(sessionProvider.notifier).clearSession();

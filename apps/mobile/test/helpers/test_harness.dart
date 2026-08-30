@@ -175,14 +175,13 @@ List<Override> testSessionOverrides({
   UserDto? user,
   AppMode mode = AppMode.admin,
   SocietyHubApi? api,
+  ApiConfig config = const ApiConfig(baseUrl: testApiBase, env: 'dev'),
 }) {
   FlutterSecureStorage.setMockInitialValues({});
   return <Override>[
     skipSessionRestoreProvider.overrideWithValue(true),
     secureStorageProvider.overrideWithValue(const FlutterSecureStorage()),
-    apiConfigProvider.overrideWithValue(
-      const ApiConfig(baseUrl: testApiBase, env: 'dev'),
-    ),
+    apiConfigProvider.overrideWithValue(config),
   ];
 }
 

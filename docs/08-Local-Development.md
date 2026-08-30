@@ -16,6 +16,7 @@ This guide is the **source of truth for local run**. Prefer a **native MySQL** (
 | Client App | http://app.localhost:5173 | Society Admin \| Resident (Fassport Raise/Invest style) |
 | Manage | http://manage.localhost:5174 | SocietyHub **platform employees only** |
 | API | http://localhost:3000 | Elysia `/v1` |
+| Flutter Android | emulator / USB | [`apps/mobile/`](../apps/mobile/README.md) — §12 |
 | OpenAPI | http://localhost:3000/docs | Swagger UI |
 | API guide | [09-API.md](09-API.md) | Narrative REST reference (Fassport-style) |
 | MySQL | `127.0.0.1:3306` | Local server (Workbench) |
@@ -342,8 +343,9 @@ bun run db:seed
 ```text
 society-hub/
   apps/api/          # Bun + Elysia API
-  apps/client-app/          # Resident React web
+  apps/client-app/   # Resident React web
   apps/manage/       # Admin React web
+  apps/mobile/       # Flutter Client App (Android first)
   packages/          # shared types, validation, sdk, auth
   docs/08-Local-Development.md   # this file
   devops/docker/     # optional Docker MySQL / images
@@ -351,7 +353,30 @@ society-hub/
 
 ---
 
-## 12. Checklist before first login
+## 12. Mobile (Flutter) — Android first
+
+The native Client App lives in [`apps/mobile/`](../apps/mobile/). Deep dive: [`apps/mobile/README.md`](../apps/mobile/README.md). Web + API above must already be running.
+
+### Prerequisites
+
+- Flutter **stable** (`flutter doctor -v` — Android SDK, emulator, licenses)
+- Same Bun API as §6 (`http://localhost:3000`, `DEV_AUTH=true`)
+
+### Run
+
+| Target | Command |
+|--------|---------|
+| Android emulator | `cd apps/mobile && flutter run --dart-define=API_BASE_URL=http://10.0.2.2:3000 --dart-define=ENV=dev` |
+| Physical Android | Same, but `API_BASE_URL=http://<LAN-IP>:3000` (`ipconfig getifaddr en0`) |
+| iOS Simulator (optional) | `API_BASE_URL=http://127.0.0.1:3000` |
+
+OTP (local): Chairperson `9999999999` · Resident `8888888888` · `123456`.
+
+Store signing, Play AAB, and CI secrets: [10-Go-Live.md](10-Go-Live.md) §6–7 and the mobile README.
+
+---
+
+## 13. Checklist before first login
 
 - [ ] `bun --version` works  
 - [ ] Workbench connects to MySQL on `3306`  
@@ -361,3 +386,4 @@ society-hub/
 - [ ] `CORS_ORIGIN` includes ports `5173` and `5174`  
 - [ ] `bun run dev` → client-app + manage + API up  
 - [ ] Sign in with `superadmin@societyhub.local` / `Test@1234`  
+- [ ] (Optional) `cd apps/mobile && flutter run --dart-define=API_BASE_URL=http://10.0.2.2:3000 --dart-define=ENV=dev`  

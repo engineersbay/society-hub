@@ -27,10 +27,10 @@ This document is the **single explanation of what we use and why**. Detailed sys
 | Email | Resend | 2 |
 | Push | Firebase Cloud Messaging (web) | 2 |
 | Payments | Razorpay + manual cash/cheque/NEFT | 2 |
-| Native mobile | Flutter (`apps/mobile/android`, `apps/mobile/ios`) | Future |
+| Native mobile | Flutter (`apps/mobile/`) — **Android / Play now**; iOS listing next | Android now |
 | Tests | Vitest + Playwright | When implementing |
 
-**Client for Phase 1:** two **simple responsive web apps** — `apps/client-app` (residents) and `apps/manage` (Admin / Super Admin). Not Flutter.
+**Client for Phase 1 web:** two **simple responsive web apps** — `apps/client-app` (residents) and `apps/manage` (Admin / Super Admin). Flutter Android in `apps/mobile/` is the native Client App (Play); it does not replace web.
 
 ---
 
@@ -89,7 +89,7 @@ flowchart TB
 | `apps/api` | Backend modular monolith |
 | `apps/client-app` | Resident responsive web UI |
 | `apps/manage` | Admin / Super Admin responsive web UI |
-| `apps/mobile/*` | Placeholders for future Flutter Android/iOS |
+| `apps/mobile/` | Flutter Client App (Android first; iOS same project) |
 | `packages/*` | Shared auth helpers, SDK, Zod schemas, types |
 | `devops/` | Docker + Azure staging/production (cost-aware) |
 | `docs/` | Product and technical specification |
@@ -183,7 +183,7 @@ UI rules: [PRD §5](02-PRD.md).
 
 ## 10. Explicitly out of Phase 1 stack
 
-- Flutter / native Android & iOS app code (folders are placeholders only)  
+- iOS App Store listing (Flutter project exists; enable after Android internal track)  
 - WhatsApp Business API  
 - Kubernetes / microservices  
 - Redis required in Phase 1 (optional later)  

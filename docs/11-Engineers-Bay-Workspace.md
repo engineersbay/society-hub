@@ -16,6 +16,8 @@ Company identity for SocietyHub and future products. Product domain is **not** b
 | Workspace | **Base** (India), 1 user, 14-day trial then promo |
 | Mail | `sandesh@engineersbay.in` |
 | Product domain | Deferred |
+| GCP project | **SocietyHub** / `societyhub-507013` (org `engineersbay.in`) |
+| OAuth Web | `societyhub-web` — Client ID in [10-Go-Live](10-Go-Live.md) §4.2 |
 
 ## Task status
 
@@ -30,6 +32,8 @@ Company identity for SocietyHub and future products. Product domain is **not** b
 | Product domain (`societyhub.in` or other) | **Deferred** |
 | Google Sites company page | **Optional / not started** |
 | Point [10-Go-Live](10-Go-Live.md) at `@engineersbay.in` | **Done** (company mail); product host still TBD |
+| GCP **SocietyHub** / `societyhub-507013` + Web OAuth `societyhub-web` | **Done** (29 Aug 2026). Do not create another project. |
+| Android OAuth client `societyhub-android` | **Done** (30 Aug 2026). Package `com.societyhub.societyhub_mobile` + debug SHA-1 + upload SHA-1. Add Play App Signing SHA-1 after first AAB. |
 
 ## Next for you (Admin) — DKIM / SPF / DMARC
 
