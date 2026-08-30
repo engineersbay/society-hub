@@ -4,7 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http_mock_adapter/http_mock_adapter.dart';
 import 'package:societyhub_mobile/api/society_hub_api.dart';
+import 'package:societyhub_mobile/auth/google_id_token.dart';
 import 'package:societyhub_mobile/auth/session.dart';
+import 'package:societyhub_mobile/config/api_config.dart';
 import 'package:societyhub_mobile/core/app_keys.dart';
 import 'package:societyhub_mobile/features/auth/presentation/login_page.dart';
 
@@ -93,4 +95,132 @@ void main() {
     expect(find.byKey(AppKeys.loginError), findsOneWidget);
     expect(find.text('Invalid email or password'), findsOneWidget);
   });
+
+  testWidgets('dev Google login sends a dev: token', (tester) async {
+    final bundle = MockApiBundle();
+    bundle.adapter.onPost(
+      '/v1/auth/google',
+      (server) => server.reply(200, loginJson(fixtureUser())),
+      data: Matchers.any,
+    );
+
+    final router = GoRouter(
+      initialLocation: '/login',
+      routes: [
+        GoRoute(path: '/login', builder: (_, _) => const LoginPage()),
+        GoRoute(
+          path: '/select-society',
+          builder: (_, _) => const Scaffold(body: Text('SELECT_SOCIETY')),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: testSessionOverrides(),
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+    attachApi(tester, bundle.api);
+
+    await tester.tap(find.byKey(AppKeys.loginModeGoogle));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(AppKeys.loginPhone), '8888888888');
+    await tester.tap(find.byKey(AppKeys.loginSubmit));
+    await tester.pumpAndSettle();
+
+    expect(find.text('SELECT_SOCIETY'), findsOneWidget);
+  });
+
+  testWidgets('prod Google login posts a real idToken and hides the phone field',
+      (tester) async {
+    final bundle = MockApiBundle();
+    bundle.adapter.onPost(
+      '/v1/auth/google',
+      (server) => server.reply(200, loginJson(fixtureUser())),
+      data: {'idToken': 'ey.real.token'},
+    );
+
+    final router = GoRouter(
+      initialLocation: '/login',
+      routes: [
+        GoRoute(path: '/login', builder: (_, _) => const LoginPage()),
+        GoRoute(
+          path: '/select-society',
+          builder: (_, _) => const Scaffold(body: Text('SELECT_SOCIETY')),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          ...testSessionOverrides(
+            config: const ApiConfig(
+              baseUrl: testApiBase,
+              env: 'prod',
+              googleServerClientId: 'web-client.apps.googleusercontent.com',
+            ),
+          ),
+          googleIdTokenSourceProvider.overrideWithValue(
+            _FakeGoogleSource('ey.real.token'),
+          ),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+    attachApi(tester, bundle.api);
+
+    await tester.tap(find.byKey(AppKeys.loginModeGoogle));
+    await tester.pumpAndSettle();
+    expect(find.byKey(AppKeys.loginPhone), findsNothing);
+    expect(find.text('Continue with Google'), findsOneWidget);
+
+    await tester.tap(find.byKey(AppKeys.loginSubmit));
+    await tester.pumpAndSettle();
+
+    expect(find.text('SELECT_SOCIETY'), findsOneWidget);
+  });
+
+  testWidgets('prod Google login refuses a cancelled or missing token',
+      (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          ...testSessionOverrides(
+            config: const ApiConfig(baseUrl: testApiBase, env: 'prod'),
+          ),
+          googleIdTokenSourceProvider.overrideWithValue(
+            const _FakeGoogleSource(null),
+          ),
+        ],
+        child: const MaterialApp(home: LoginPage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(AppKeys.loginModeGoogle));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(AppKeys.loginSubmit));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(AppKeys.loginError), findsOneWidget);
+    expect(
+      find.textContaining('Google sign-in was cancelled'),
+      findsOneWidget,
+    );
+  });
+}
+
+class _FakeGoogleSource implements GoogleIdTokenSource {
+  const _FakeGoogleSource(this.token);
+
+  final String? token;
+
+  @override
+  Future<String?> fetchIdToken({required String serverClientId}) async {
+    return token;
+  }
 }

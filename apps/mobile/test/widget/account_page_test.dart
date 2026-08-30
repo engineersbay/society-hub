@@ -38,6 +38,8 @@ void main() {
     expect(find.byKey(AppKeys.accountFlatNumber), findsOneWidget);
     expect(find.text('A-101'), findsWidgets);
     expect(find.byKey(AppKeys.accountFlatEmpty), findsNothing);
+    expect(find.byKey(AppKeys.accountPrivacy), findsOneWidget);
+    expect(find.text('Privacy Policy'), findsOneWidget);
   });
 
   testWidgets('shows empty flat state when profile has no flat', (tester) async {

@@ -29,8 +29,9 @@ class SocietyHubApi {
             Dio(
               BaseOptions(
                 baseUrl: config.baseUrl,
-                connectTimeout: const Duration(seconds: 15),
-                receiveTimeout: const Duration(seconds: 30),
+                // Render Hobby cold-starts can take ~60s; keep headroom.
+                connectTimeout: const Duration(seconds: 90),
+                receiveTimeout: const Duration(seconds: 90),
                 headers: {
                   'Accept': 'application/json',
                   'Content-Type': 'application/json',

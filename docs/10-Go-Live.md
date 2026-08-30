@@ -46,12 +46,12 @@ Do **not** buy seats for Keshav Heights residents.
 ```text
 1. Domain
 2. Workspace Business Base (2 users) + 2SV
-3. Google Cloud project + OAuth clients (web, Android, iOS)
+3. Google Cloud — project + Web client DONE; add Android client (iOS later)
 4. Azure staging only (not production)
 5. GitHub secrets + Environments
 6. Push → CI green → manual Deploy staging
-7. Play Console + Apple Developer
-8. Then we wire the real Google button (code still uses dev:<phone> until OAuth IDs exist)
+7. Play Console (account created; identity in review) + Apple later
+8. Wire GOOGLE_CLIENT_ID on Render + Flutter (Web client ID is known)
 ```
 
 Production Azure and store **production** tracks come after staging UAT.
@@ -71,35 +71,52 @@ Keep the **Workspace admin** login in a password manager. This account owns the 
 
 ---
 
-## 4. Google Cloud + SSO clients (you click, ₹0)
+## 4. Google Cloud + SSO clients (₹0)
 
-Workspace does **not** turn on product SSO. Create OAuth clients in Google Cloud.
+Workspace does **not** turn on product SSO. OAuth lives in Google Cloud.
 
-### 4.1 Project
+**Do not create a second GCP project.** Use the live project below. Do not click Gemini, Deploy, VM, or the $300 trial for Sign-In — OAuth is free without billing.
 
-1. [console.cloud.google.com](https://console.cloud.google.com) while logged in as `sandesh@engineersbay.in`.
-2. Create project `societyhub-prod` (and later `societyhub-dev` if you want a split).
-3. Link billing only if you use paid Google APIs later. **OAuth clients are free.**
-4. APIs & Services → **OAuth consent screen**
-   - User type: **External** (residents use personal Gmail)
-   - App name: `SocietyHub`
-   - Support email: your Workspace address
-   - Authorized domains: `societyhub.in` (after the domain is verified)
-   - Scopes: `openid`, `email`, `profile` only
-   - Publish when ready (or keep Testing and add tester Gmails)
+### 4.1 Project (done — 29 Aug 2026)
 
-### 4.2 Clients to create (four)
+| Field | Value |
+|-------|--------|
+| Console | [console.cloud.google.com](https://console.cloud.google.com) as `sandesh@engineersbay.in` |
+| Organisation | `engineersbay.in` |
+| Project name | **SocietyHub** |
+| Project ID | `societyhub-507013` |
+| Project number | `583640086898` |
+| Billing | Not required for OAuth |
 
-| Client type | Name | Used by |
-|-------------|------|---------|
-| **Web** | `societyhub-web` | `apps/client-app` + API `GOOGLE_CLIENT_ID` (token audience) |
-| **Web** | `societyhub-manage` | `apps/manage` only (optional second client, or reuse web) |
-| **Android** | `societyhub-android` | Flutter Play / debug builds |
-| **iOS** | `societyhub-ios` | Flutter TestFlight / simulator |
+Consent / branding (Google Auth platform):
 
-**Web client — authorized JavaScript origins and redirect URIs (same list)**
+- User type: **External** (residents use personal Gmail)
+- App name: `SocietyHub`
+- Support email: `sandesh@engineersbay.in`
+- Homepage / privacy / terms: Client App on Render (`/`, `/privacy`, `/terms`)
+- Authorized domain: `engineersbay.in` only (do **not** add `onrender.com`; add `societyhub.in` after that domain exists)
+- Scopes: `openid`, `email`, `profile` only
+- Publishing: **Testing** + test users until Play is live; then Publish
 
-Google rejects `*.localhost` hostnames. Use loopback + the live preview hosts:
+### 4.2 OAuth clients
+
+| Client type | Name | Status | Used by |
+|-------------|------|--------|---------|
+| **Web** | `societyhub-web` | **Done** (29 Aug 2026) | `apps/client-app`, `apps/manage` (reuse), API `GOOGLE_CLIENT_ID` |
+| **Android** | `societyhub-android` | **Done** (30 Aug 2026) | Flutter Play / debug |
+| **iOS** | `societyhub-ios` | Skip until TestFlight | Flutter iOS |
+
+**Web client ID (public; not a secret):**
+
+```text
+583640086898-uhmdenf6kpv8iskvdaju4pk4gpbmae20.apps.googleusercontent.com
+```
+
+Use this as Render `GOOGLE_CLIENT_ID`, GitHub `GOOGLE_SERVER_CLIENT_ID`, and Flutter `--dart-define=GOOGLE_SERVER_CLIENT_ID=…`. Do **not** put the Web client **secret** in the Flutter app or this repo.
+
+**Web client — authorised JavaScript origins and redirect URIs (already set, same list)**
+
+Google rejects `*.localhost` hostnames. Loopback + live preview hosts are on `societyhub-web`:
 
 ```text
 http://localhost:5173
@@ -112,10 +129,16 @@ https://societyhub-manage.onrender.com
 
 Add `https://app.societyhub.in` and `https://manage.societyhub.in` after the product domain exists. Do not add `onrender.com` as an OAuth authorized domain (you do not own it). Branding authorized domain is `engineersbay.in`.
 
-**Android client**
+**Android client (done)** — package `com.societyhub.societyhub_mobile`.
 
-- Package name: `com.societyhub.societyhub_mobile`
-- SHA-1: debug first, then Play App Signing SHA-1
+SHA-1s already on `societyhub-android` (same client, two fingerprints):
+
+```text
+Debug:  E8:49:BF:F4:F0:C5:9B:A2:96:CC:61:E0:1F:9C:29:A5:D2:C2:D7:57
+Upload: A7:05:A3:91:D4:DC:D7:7F:6F:84:6A:32:36:2D:10:B4:8E:CE:76:E2
+```
+
+After Play App Signing exists, add the **App signing key certificate** SHA-1 on the same Android client (Play Console → App integrity). Do not create a second Android client.
 
 ```bash
 # Debug SHA-1 (local)
@@ -228,6 +251,8 @@ Container Apps references these secrets. Never commit them.
 
 ## 6. CI/CD (in this repo)
 
+Operator map of every pipeline: **[12-CICD](12-CICD.md)**. Short git rules: [`devops/PIPELINE.md`](../devops/PIPELINE.md).
+
 Workflows:
 
 | File | When | What |
@@ -235,7 +260,7 @@ Workflows:
 | `.github/workflows/ci.yml` | PR + push to `staging` / `main` | MySQL service, migrate, seed, `bun run quality`, Terraform fmt/validate |
 | `.github/workflows/promote-preview.yml` | **Manual** | Merge `staging` → `main` (Render preview) |
 | `.github/workflows/promote-guard.yml` | PR into `main` | Only `staging` may target `main` |
-| `.github/workflows/mobile.yml` | Changes under `apps/mobile/` | `flutter analyze` + `flutter test` |
+| `.github/workflows/mobile.yml` | PR/push `apps/mobile/**`; dispatch; tags `mobile-v*` | Analyze + test; **Android AAB**; Play internal upload skipped until `ENABLE_PLAY_UPLOAD`; **iOS IPA** skipped until `ENABLE_IOS_IPA` |
 | `.github/workflows/deploy-staging.yml` | **Manual** (`workflow_dispatch`) | Azure later — idle until secrets exist |
 | `.github/workflows/deploy-production.yml` | **Manual** + environment approval | Azure later — idle until secrets exist |
 
@@ -265,22 +290,33 @@ Git flow: [devops/PIPELINE.md](../devops/PIPELINE.md).
 
 **Production** environment: same names, production values. Add `IMAGE_TAG` at dispatch time (git SHA already on staging).
 
-Do **not** put Android keystores or Apple keys in the repo. Add later:
+Do **not** put Android keystores or Apple keys in the repo.
 
-| Secret | When |
-|--------|------|
-| `ANDROID_KEYSTORE_BASE64` | Play upload |
-| `ANDROID_KEYSTORE_PASSWORD` | Play upload |
-| `ANDROID_KEY_PASSWORD` | Play upload |
-| `ASC_API_KEY` / `ASC_KEY_ID` / `ASC_ISSUER_ID` | TestFlight |
+**Mobile Environments** (reuse `staging` / `production`, or add `mobile-staging` / `mobile-prod`):
+
+| Kind | Name | Used by |
+|------|------|---------|
+| Variable | `MOBILE_API_BASE_URL` | AAB / IPA dart-define |
+| Variable | `GOOGLE_SERVER_CLIENT_ID` | Web OAuth client (API audience) |
+| Variable | `PRIVACY_POLICY_URL` | In-app + store listing (default `https://app.societyhub.in/privacy`) |
+| Variable | `ENABLE_IOS_IPA` | Set `true` to run the IPA job |
+| Variable | `ENABLE_PLAY_UPLOAD` | Set `true` to upload the AAB to Play **internal** (draft). Off until the Play app exists. |
+| Secret | `ANDROID_KEYSTORE_BASE64` | AAB signing |
+| Secret | `ANDROID_KEYSTORE_PASSWORD` | AAB signing |
+| Secret | `ANDROID_KEY_PASSWORD` | AAB signing |
+| Secret | `ANDROID_KEY_ALIAS` | AAB signing (usually `upload`) |
+| Secret | `PLAY_SERVICE_ACCOUNT_JSON` | Play Developer API (JSON). Internal track only. |
+| Secret | `ASC_API_KEY` / `ASC_KEY_ID` / `ASC_ISSUER_ID` | IPA / TestFlight (later) |
 
 ---
 
-## 7. Android + iOS (Flutter already exists)
+## 7. Android first (Flutter) — iOS next
 
-The app is `apps/mobile/` — one codebase, package `com.societyhub.societyhub_mobile` / bundle `com.societyhub.societyhubMobile`.
+The app is `apps/mobile/` — one codebase. **This phase ships Android** (`com.societyhub.societyhub_mobile`) to Play. iOS (`com.societyhub.societyhubMobile`) uses the same Dart code; store listing waits until Android is on an internal Play track.
 
-It already talks to the same `/v1` API. Google Sign-In is **dev-only** (`dev:<phone>`) until OAuth clients exist.
+Local debug: [apps/mobile/README.md](../apps/mobile/README.md) and [08-Local-Development.md](08-Local-Development.md) §12.
+
+**Google Sign-In:** `ENV=dev` may send `dev:<phone>`. Staging/prod send a real Google ID token. Set `GOOGLE_CLIENT_ID` on the API and `GOOGLE_SERVER_CLIENT_ID` (same Web client) in the Flutter build.
 
 ### 7.1 Accounts
 
@@ -315,22 +351,42 @@ flutter run --release \
 ### 7.3 Store builds (after accounts)
 
 ```bash
-# Android App Bundle (Play)
+# Android App Bundle (Play) — requires android/key.properties
 flutter build appbundle --release \
   --dart-define=ENV=prod \
   --dart-define=API_BASE_URL=https://api.societyhub.in \
-  --obfuscate --split-debug-info=build/debug-info
-
-# iOS IPA (needs Mac + signing)
-flutter build ipa --release \
-  --dart-define=ENV=prod \
-  --dart-define=API_BASE_URL=https://api.societyhub.in \
+  --dart-define=GOOGLE_SERVER_CLIENT_ID=<web-client-id> \
   --obfuscate --split-debug-info=build/debug-info
 ```
 
-Tracks: Play **internal** → closed → production. iOS **TestFlight** → App Store.
+**Android CI (thought through — no Flutter code change for Play):**
 
-You also need: privacy policy URL, Data safety / nutrition labels, camera/photos for complaint media, no `DEV_AUTH` in prod.
+| Step | How | Auto? |
+|------|-----|--------|
+| Analyze + test | PR / push `apps/mobile/**` | Yes |
+| Signed AAB | Actions → **Mobile CI** → Run workflow, or tag `mobile-v*` | Yes, after keystore secrets |
+| First Play upload | Download the AAB artifact → Play **internal** track | **Manual** until identity unlocks **Create app** |
+| Later uploads | Same workflow + `ENABLE_PLAY_UPLOAD=true` + `PLAY_SERVICE_ACCOUNT_JSON` | Internal **draft** only |
+| Production | Play Console: promote internal → production, staged 20% → 100% | **Never** from CI |
+
+Do **not** auto-publish production from `main` or every commit. First listing, Data safety, and content rating stay Console clicks.
+
+Privacy policy until the product domain exists: `https://societyhub-client.onrender.com/privacy`. Data safety: account, phone, complaint photos/videos. No `DEV_AUTH` on the hosted API for store builds.
+
+### 7.3a Next: iOS (do not block Android)
+
+1. Apple Developer $99 + App Store Connect app, bundle `com.societyhub.societyhubMobile`.
+2. Info.plist camera/photo usage strings, ATS HTTP only in Debug, Google iOS URL scheme.
+3. Set `ENABLE_IOS_IPA=true` and ASC secrets; re-run Mobile CI with **Build IPA**.
+4. TestFlight → App Store; privacy nutrition labels.
+
+```bash
+flutter build ipa --release \
+  --dart-define=ENV=prod \
+  --dart-define=API_BASE_URL=https://api.societyhub.in \
+  --dart-define=GOOGLE_SERVER_CLIENT_ID=<web-client-id> \
+  --obfuscate --split-debug-info=build/debug-info
+```
 
 ### 7.4 Google Sign-In on mobile (after §4)
 
@@ -361,30 +417,31 @@ Do **not** create production RG until staging UAT is green.
 
 ## 9. What is done in git vs what you still click
 
-| Done in repo | You must do |
-|--------------|-------------|
-| `ci.yml` / `mobile.yml` / deploy workflows | Buy domain + Workspace Base |
-| Dockerfiles, Azure naming, cost SKUs | Create GCP OAuth clients |
-| Flutter app (OTP / password / PIN / complaints) | Azure RG + Key Vault + OIDC |
-| This document | Play $25 + Apple $99 |
-| | Paste secrets into GitHub + Key Vault |
-| | Tell me when OAuth IDs exist so we ship the real Google button |
+| Done | Still to do |
+|------|-------------|
+| Workspace `engineersbay.in`, GCP project `societyhub-507013`, Web + Android OAuth clients | Play signing SHA-1 after first AAB |
+| `ci.yml` / `mobile.yml` / deploy workflows | Paste `GOOGLE_CLIENT_ID` on Render + GitHub `GOOGLE_SERVER_CLIENT_ID` |
+| Flutter Android (OTP / password / PIN / Google / complaints) | Play identity approval, then create app + AAB |
+| Privacy / terms on Client App | `DEV_AUTH=false` on hosted API for store builds |
+| Play Console personal account (Engineers Bay) | Apple $99 when you want TestFlight |
 
 ---
 
 ## 10. Checklist
 
+- [x] Workspace on `engineersbay.in` (`sandesh@engineersbay.in`)
+- [x] GCP project **SocietyHub** / `societyhub-507013` + Web client `societyhub-web`
 - [ ] Domain `societyhub.in` (or chosen TLD)
-- [ ] Workspace **Business Base**, 2 users, 2SV, SPF/DKIM/DMARC
-- [ ] GCP project + External consent + 4 OAuth clients
-- [ ] Web client ID saved for `GOOGLE_CLIENT_ID`
-- [ ] Android SHA-1 (debug + Play) on Android client
-- [ ] iOS URL scheme noted
+- [ ] 2SV, SPF/DKIM/DMARC
+- [ ] Paste Web client ID as `GOOGLE_CLIENT_ID` on Render (and GitHub `GOOGLE_SERVER_CLIENT_ID`)
+- [x] Android OAuth client `societyhub-android` + debug SHA-1 (Play SHA-1 after App Signing)
+- [ ] iOS URL scheme (later)
 - [ ] Azure `rg-societyhub-staging` in Central India
-- [ ] GitHub environments + OIDC secrets
+- [ ] GitHub environments + OIDC / mobile keystore secrets
 - [ ] `ci.yml` green on `main`
 - [ ] Manual **Deploy staging** succeeds; `/health` returns ok
-- [ ] OTP login on `https://app.…` against staging
-- [ ] Play Console app created
-- [ ] Apple Developer + App Store Connect app created
-- [ ] Real Google SSO coded (after IDs exist)
+- [ ] OTP login on hosted Client App
+- [x] Play Console account (personal, Engineers Bay) — identity in review
+- [ ] Play **Create app** + AAB on **internal** track
+- [ ] Real Google SSO on device (Web + Android clients)
+- [ ] Apple Developer + App Store Connect (next; not required for Android)
