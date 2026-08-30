@@ -45,7 +45,7 @@ Build SocietyHub per the Spec. **Docs are source of truth.** Never invent busine
 | Transactional email | `.cursor/skills/societyhub-resend-email` |
 | Web push | `.cursor/skills/societyhub-firebase-notifications` |
 | Payments / webhooks | `.cursor/skills/societyhub-razorpay-payments` |
-| Native mobile Android/iOS (future only) | `.cursor/skills/societyhub-flutter-future` |
+| Native mobile Android (Play now) + iOS later | `.cursor/skills/societyhub-flutter-future` |
 
 ## Out of scope unless Spec updated
 

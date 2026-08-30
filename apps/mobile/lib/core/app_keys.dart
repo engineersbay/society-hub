@@ -13,6 +13,7 @@ abstract final class AppKeys {
   static const loginPin = Key('login-pin');
   static const loginSubmit = Key('login-submit');
   static const loginError = Key('login-error');
+  static const accountPrivacy = Key('account-privacy');
 
   static const modeAdmin = Key('app-mode-admin');
   static const modeResident = Key('app-mode-resident');

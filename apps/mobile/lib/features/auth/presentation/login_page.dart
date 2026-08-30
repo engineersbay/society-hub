@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../api/models.dart';
+import '../../../auth/google_id_token.dart';
 import '../../../auth/session.dart';
-import '../../../config/api_config.dart';
 import '../../../core/app_keys.dart';
 import '../../../core/theme.dart';
 import '../../../shared/widgets.dart';
@@ -272,43 +272,65 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         ),
       ];
 
+  Future<void> _signInGoogle() async {
+    final config = ref.read(apiConfigProvider);
+    if (config.allowsDevGoogle) {
+      final token = googleIdTokenForApi(
+        config: config,
+        phone: _phone.text,
+        googleIdToken: null,
+      );
+      if (token == null) {
+        setState(() => _error = 'Enter the onboarded mobile number.');
+        return;
+      }
+      await _apply(() => ref.read(apiProvider).loginGoogle(token));
+      return;
+    }
+
+    final raw = await ref.read(googleIdTokenSourceProvider).fetchIdToken(
+          serverClientId: config.googleServerClientId,
+        );
+    final token = googleIdTokenForApi(
+      config: config,
+      phone: '',
+      googleIdToken: raw,
+    );
+    if (token == null) {
+      setState(() {
+        _error =
+            'Google sign-in was cancelled or is not configured. Use OTP or email.';
+      });
+      return;
+    }
+    await _apply(() => ref.read(apiProvider).loginGoogle(token));
+  }
+
   List<Widget> _googleForm() {
-    final isDev = ApiConfig.fromEnvironment().isDev;
+    final config = ref.watch(apiConfigProvider);
+    final isDev = config.allowsDevGoogle;
     return [
       Text(
         isDev
             ? 'Dev Google SSO uses your onboarded phone as dev:<phone>.'
-            : 'Sign in with Google (configure OAuth client IDs for release).',
+            : 'Sign in with the Google account that is already onboarded.',
         style: const TextStyle(color: Colors.black54, fontSize: 14),
       ),
-      const SizedBox(height: 12),
-      TextField(
-        key: AppKeys.loginPhone,
-        controller: _phone,
-        keyboardType: TextInputType.phone,
-        decoration: InputDecoration(
-          labelText: isDev ? 'Mobile (dev)' : 'Phone linked to Google',
+      if (isDev) ...[
+        const SizedBox(height: 12),
+        TextField(
+          key: AppKeys.loginPhone,
+          controller: _phone,
+          keyboardType: TextInputType.phone,
+          decoration: const InputDecoration(labelText: 'Mobile (dev)'),
         ),
-      ),
+      ],
       const SizedBox(height: 20),
       ShPrimaryButton(
         key: AppKeys.loginSubmit,
         label: isDev ? 'Continue with Google (dev)' : 'Continue with Google',
         busy: _busy,
-        onPressed: () {
-          if (!isDev) {
-            setState(() {
-              _error =
-                  'Production Google Sign-In requires OAuth setup. Use OTP or email for now.';
-            });
-            return;
-          }
-          _apply(
-            () => ref
-                .read(apiProvider)
-                .loginGoogle('dev:${_phone.text.trim()}'),
-          );
-        },
+        onPressed: _signInGoogle,
       ),
     ];
   }
