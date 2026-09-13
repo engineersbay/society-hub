@@ -19,8 +19,8 @@ Full setup (society → tower → flats → parking → CSV import): see [`READM
 
 ## Ask them to try
 
-1. OTP login (**Resident** mode)
-2. Raise a complaint (optional photo)
+1. Android: Welcome → Login → OTP launcher → OTP (**Resident** mode). Use AppBar / system back on forms and detail screens.
+2. Raise a complaint (optional photo); back returns to the list
 3. Account → Household / Parking
 4. Read a notice you publish as staff
 5. Bills (if you generated a period for these flats)

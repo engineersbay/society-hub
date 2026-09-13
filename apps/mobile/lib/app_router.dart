@@ -4,14 +4,24 @@ import 'package:go_router/go_router.dart';
 
 import 'auth/session.dart';
 import 'features/account/presentation/account_page.dart';
+import 'features/auth/presentation/login_methods_page.dart';
 import 'features/auth/presentation/login_page.dart';
 import 'features/auth/presentation/select_society_page.dart';
+import 'features/auth/presentation/welcome_page.dart';
 import 'features/complaints/presentation/complaints_pages.dart';
 import 'features/dashboard/presentation/dashboard_page.dart';
 import 'features/residents/presentation/residents_page.dart';
 import 'features/ops/presentation/api_list_page.dart';
+import 'features/ops/presentation/gate_page.dart';
+import 'features/ops/presentation/visitors_page.dart';
 import 'features/shell/presentation/app_shell.dart';
 import 'features/team/presentation/team_page.dart';
+
+bool isAuthRoute(String loc) {
+  return loc == '/welcome' ||
+      loc == '/login' ||
+      loc.startsWith('/login/');
+}
 
 final routerProvider = Provider<GoRouter>((ref) {
   final refresh = _SessionListenable(ref);
@@ -24,25 +34,27 @@ final routerProvider = Provider<GoRouter>((ref) {
     '/home/vendors',
     '/home/events',
     '/home/audit',
+    '/home/gate',
     '/home/onboard',
     '/home/invites',
   ];
 
   return GoRouter(
-    initialLocation: '/login',
+    initialLocation: '/welcome',
     refreshListenable: refresh,
     redirect: (context, state) {
       final session = ref.read(sessionProvider);
       final loading = session.loading;
       final loggedIn = session.user != null;
       final loc = state.matchedLocation;
-      final onLogin = loc == '/login';
+      final onAuth = isAuthRoute(loc);
 
       if (loading) return null;
-      if (!loggedIn && !onLogin) return '/login';
-      if (loggedIn && onLogin) return '/select-society';
+      if (!loggedIn && !onAuth) return '/welcome';
+      if (loggedIn && onAuth) return '/select-society';
 
-      final needsAdmin = adminOnlyPrefixes.any((p) => loc == p || loc.startsWith('$p/'));
+      final needsAdmin =
+          adminOnlyPrefixes.any((p) => loc == p || loc.startsWith('$p/'));
       if (needsAdmin &&
           !(canUseAdminMode(session.user?.role) &&
               session.mode == AppMode.admin)) {
@@ -52,8 +64,24 @@ final routerProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       GoRoute(
+        path: '/welcome',
+        builder: (context, state) => const WelcomePage(),
+      ),
+      GoRoute(
         path: '/login',
-        builder: (context, state) => const LoginPage(),
+        builder: (context, state) => const LoginMethodsPage(),
+        routes: [
+          GoRoute(
+            path: ':mode',
+            builder: (context, state) {
+              final mode = loginModeFromPath(state.pathParameters['mode']);
+              if (mode == null) {
+                return const LoginMethodsPage();
+              }
+              return LoginPage(mode: mode);
+            },
+          ),
+        ],
       ),
       GoRoute(
         path: '/select-society',
@@ -78,8 +106,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/home/complaints/:id',
             builder: (context, state) => ComplaintDetailPage(
               id: state.pathParameters['id']!,
-              justCreated:
-                  state.uri.queryParameters['justCreated'] == '1',
+              justCreated: state.uri.queryParameters['justCreated'] == '1',
             ),
           ),
           GoRoute(
@@ -149,12 +176,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/home/visitors',
-            builder: (context, state) => const ApiListPage(
-              title: 'Visitors',
-              path: '/v1/visitors?page=1&limit=50',
-              titleField: 'visitorName',
-              subtitleField: 'purpose',
-            ),
+            builder: (context, state) => const VisitorsPage(),
+          ),
+          GoRoute(
+            path: '/home/gate',
+            builder: (context, state) => const GatePage(),
           ),
           GoRoute(
             path: '/home/parking',

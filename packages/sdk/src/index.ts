@@ -21,6 +21,8 @@ import type {
   TeamMemberDto,
   SocietyResidentDto,
   VisitorDto,
+  VisitorPassIssueDto,
+  GatePassPreviewDto,
   ParkingSlotDto,
   BookingDto,
   AssetDto,
@@ -1202,6 +1204,30 @@ export function createSocietyHubClient(opts: SocietyHubClientOptions) {
       request<VisitorDto>(`/v1/visitors/${id}/check-out`, { method: "POST" }),
     deleteVisitor: (id: string) =>
       request<{ ok: true }>(`/v1/visitors/${id}`, { method: "DELETE" }),
+    issueVisitorPass: (
+      id: string,
+      body?: {
+        expiresAt?: string | null;
+        channels?: Array<"sms" | "whatsapp">;
+      },
+    ) =>
+      request<VisitorPassIssueDto>(`/v1/visitors/${id}/pass`, {
+        method: "POST",
+        body: JSON.stringify(body ?? {}),
+      }),
+    revokeVisitorPass: (id: string) =>
+      request<VisitorDto>(`/v1/visitors/${id}/pass/revoke`, { method: "POST" }),
+    previewGatePass: (passToken: string) =>
+      request<GatePassPreviewDto>(`/v1/gate/pass/${passToken}`),
+    verifyGatePass: (body: {
+      qrPayload?: string;
+      passToken?: string;
+      otp?: string;
+    }) =>
+      request<VisitorDto>("/v1/gate/verify", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
 
     listParkingSlots: (page = 1, limit = 50) =>
       request<Paginated<ParkingSlotDto>>(`/v1/parking?page=${page}&limit=${limit}`),

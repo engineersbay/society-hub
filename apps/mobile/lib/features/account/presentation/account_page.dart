@@ -991,7 +991,7 @@ class _AccountPageState extends ConsumerState<AccountPage> {
         OutlinedButton(
           onPressed: () async {
             await ref.read(sessionProvider.notifier).clearSession();
-            if (context.mounted) context.go('/login');
+            if (context.mounted) context.go('/welcome');
           },
           child: const Text('Log out'),
         ),

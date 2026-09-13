@@ -15,6 +15,7 @@ import { PaymentsPage } from "./pages/PaymentsPage";
 import { NoticesPage } from "./pages/NoticesPage";
 import { NotificationsPage } from "./pages/NotificationsPage";
 import { VisitorsPage } from "./pages/VisitorsPage";
+import { GatePage } from "./pages/GatePage";
 import { ParkingPage } from "./pages/ParkingPage";
 import { BookingsPage } from "./pages/BookingsPage";
 import { OnboardPage } from "./pages/OnboardPage";
@@ -78,6 +79,7 @@ export function App() {
         <Route path="notices" element={<NoticesPage />} />
         <Route path="notifications" element={<NotificationsPage />} />
         <Route path="visitors" element={<VisitorsPage />} />
+        <Route path="gate" element={<GatePage />} />
         <Route path="parking" element={<ParkingPage />} />
         <Route path="bookings" element={<BookingsPage />} />
         <Route path="residents" element={<ResidentsPage />} />

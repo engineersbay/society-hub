@@ -723,6 +723,8 @@ export type SocietyResidentDto = {
   isOwner: boolean;
 };
 
+export type VisitorPassStatus = "none" | "issued" | "used" | "expired" | "revoked";
+
 export type VisitorDto = {
   id: string;
   flatId: string;
@@ -733,7 +735,29 @@ export type VisitorDto = {
   expectedAt: string | null;
   checkedInAt: string | null;
   checkedOutAt: string | null;
+  passStatus: VisitorPassStatus;
+  passToken: string | null;
+  expiresAt: string | null;
+  passIssuedAt: string | null;
+  verifiedAt: string | null;
   createdAt: string;
+};
+
+export type VisitorPassIssueDto = {
+  visitor: VisitorDto;
+  qrPayload: string;
+  otp: string;
+  expiresAt: string;
+};
+
+export type GatePassPreviewDto = {
+  passToken: string;
+  visitorName: string;
+  flatNumber: string | null;
+  purpose: string | null;
+  expiresAt: string | null;
+  passStatus: VisitorPassStatus;
+  phone: string | null;
 };
 
 export type ParkingSlotDto = {

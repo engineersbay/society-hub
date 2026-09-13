@@ -132,6 +132,102 @@ class SocietyHubApi {
     return _request(path, parse: (json) => json);
   }
 
+  Future<dynamic> postJson(String path, [Object? data]) {
+    return _request(path, method: 'POST', data: data, parse: (json) => json);
+  }
+
+  Future<List<Map<String, dynamic>>> listVisitors({int page = 1, int limit = 50}) {
+    return _request(
+      '/v1/visitors',
+      query: {'page': page, 'limit': limit},
+      parse: (json) {
+        final items = (json as Map)['items'] as List? ?? const [];
+        return items
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+      },
+    );
+  }
+
+  Future<Map<String, dynamic>> createVisitor({
+    required String visitorName,
+    String? phone,
+    String? purpose,
+    String? expectedAt,
+    String? flatId,
+  }) {
+    return _request(
+      '/v1/visitors',
+      method: 'POST',
+      data: {
+        'visitorName': visitorName,
+        if (phone != null && phone.isNotEmpty) 'phone': phone,
+        if (purpose != null && purpose.isNotEmpty) 'purpose': purpose,
+        if (expectedAt != null && expectedAt.isNotEmpty) 'expectedAt': expectedAt,
+        if (flatId != null && flatId.isNotEmpty) 'flatId': flatId,
+      },
+      parse: (json) => Map<String, dynamic>.from(json as Map),
+    );
+  }
+
+  Future<Map<String, dynamic>> issueVisitorPass(String id) {
+    return _request(
+      '/v1/visitors/$id/pass',
+      method: 'POST',
+      data: const {},
+      parse: (json) => Map<String, dynamic>.from(json as Map),
+    );
+  }
+
+  Future<Map<String, dynamic>> revokeVisitorPass(String id) {
+    return _request(
+      '/v1/visitors/$id/pass/revoke',
+      method: 'POST',
+      parse: (json) => Map<String, dynamic>.from(json as Map),
+    );
+  }
+
+  Future<Map<String, dynamic>> checkInVisitor(String id) {
+    return _request(
+      '/v1/visitors/$id/check-in',
+      method: 'POST',
+      parse: (json) => Map<String, dynamic>.from(json as Map),
+    );
+  }
+
+  Future<Map<String, dynamic>> checkOutVisitor(String id) {
+    return _request(
+      '/v1/visitors/$id/check-out',
+      method: 'POST',
+      parse: (json) => Map<String, dynamic>.from(json as Map),
+    );
+  }
+
+  Future<Map<String, dynamic>> previewGatePass(String passToken) {
+    return _request(
+      '/v1/gate/pass/$passToken',
+      parse: (json) => Map<String, dynamic>.from(json as Map),
+    );
+  }
+
+  Future<Map<String, dynamic>> verifyGatePass({
+    String? qrPayload,
+    String? passToken,
+    String? otp,
+  }) {
+    return _request(
+      '/v1/gate/verify',
+      method: 'POST',
+      data: {
+        if (qrPayload != null && qrPayload.isNotEmpty) 'qrPayload': qrPayload,
+        if (passToken != null && passToken.isNotEmpty) 'passToken': passToken,
+        if (otp != null && otp.isNotEmpty) 'otp': otp,
+      },
+      parse: (json) => Map<String, dynamic>.from(json as Map),
+    );
+  }
+
   ApiException _mapError(DioException e) {
     final data = e.response?.data;
     if (data is Map) {

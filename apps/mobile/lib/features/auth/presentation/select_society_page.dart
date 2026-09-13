@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../api/models.dart';
 import '../../../auth/memberships.dart';
 import '../../../auth/session.dart';
+import '../../../core/app_keys.dart';
 import '../../../core/theme.dart';
 import '../../../shared/widgets.dart';
 
@@ -59,9 +60,16 @@ class _SelectSocietyPageState extends ConsumerState<SelectSocietyPage> {
     }
   }
 
+  Future<void> _logout() async {
+    await ref.read(sessionProvider.notifier).clearSession();
+    if (!mounted) return;
+    context.go('/welcome');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.paper,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -92,7 +100,9 @@ class _SelectSocietyPageState extends ConsumerState<SelectSocietyPage> {
                                 ListTile(
                                   title: Text(
                                     _memberships![i].societyName,
-                                    style: const TextStyle(fontWeight: FontWeight.w600),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
                                   trailing: Text(
                                     _busyTenant == _memberships![i].tenantId
@@ -110,8 +120,17 @@ class _SelectSocietyPageState extends ConsumerState<SelectSocietyPage> {
                   ),
                   if (_error != null) ...[
                     const SizedBox(height: 16),
-                    Text(_error!, style: const TextStyle(color: AppColors.danger)),
+                    Text(
+                      _error!,
+                      style: const TextStyle(color: AppColors.danger),
+                    ),
                   ],
+                  const SizedBox(height: 16),
+                  TextButton(
+                    key: AppKeys.selectSocietyLogout,
+                    onPressed: _busyTenant != null ? null : _logout,
+                    child: const Text('Log out'),
+                  ),
                 ],
               ),
             ),

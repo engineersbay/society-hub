@@ -14,13 +14,14 @@ Sign in at the Client App → pick society → toggle **Admin**.
 | **Payments** | Publish UPI/QR; review screenshots; cash/cheque/NEFT |
 | **Notices** | Draft / publish / unpublish; attachments; read counts |
 | **Notifications** | In-app inbox; mark read |
-| **Visitors** | Expected / on-site; check-in and check-out |
+| **Visitors** | Expected / on-site; **Issue / share pass** (QR + OTP); **Gate** verify; check-in and check-out; revoke |
 | **Parking** | Assign / release Manage lots to flats |
 | **Bookings** | Confirm or cancel facility requests |
 | **Assets** | Register society assets |
 | **Vendors** | Vendor directory |
 | **Events** | Publish events; see RSVPs |
 | **Society settings** | Complaint SLA days; UPI ID / payment note for residents |
+| **Gate** | Scan QR or enter OTP to verify a visitor pass |
 | **Audit log** | Society mutations |
 | **Account** | My flat / Household / Security; open Support ticket (staff) |
 

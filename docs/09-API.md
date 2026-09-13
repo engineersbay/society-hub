@@ -498,12 +498,21 @@ WhatsApp share is **client-side** (`wa.me/?text=…` with title, body preview, a
 
 | Prefix | Create body highlights | Auth create/list/delete |
 |--------|------------------------|-------------------------|
-| `/v1/visitors` | `visitorName`, optional `flatId`, `purpose` | Resident create; list own/staff |
+| `/v1/visitors` | `visitorName`, optional `flatId`, `purpose`, `phone`, `expectedAt` | Resident create; list own/staff; check-in/out staff |
 | `/v1/parking` | `slotNumber`, optional `flatId`, `vehicleNumber` | GET any signed-in user (Account / Onboard pickers); create/delete Staff |
 | `/v1/bookings` | `facilityName`, `startAt`, `endAt`, optional `flatId` | Resident/staff; MySQL datetime `YYYY-MM-DD HH:MM:SS` |
 | `/v1/assets` | `name`, optional category/location | Staff |
 | `/v1/vendors` | `name`, optional phone/email | Staff |
 | `/v1/events` | `title`, optional `startAt`/`endAt`/`location` | Staff create; all can list |
+
+#### Visitors — digital pass & gate (FR-VIS)
+
+| Method | Path | Auth | Notes |
+|--------|------|------|-------|
+| POST | `/v1/visitors/:id/pass` | Flat resident or staff | Issue/re-issue pass; SMS+WhatsApp; returns `{ visitor, qrPayload, otp, expiresAt }` once |
+| POST | `/v1/visitors/:id/pass/revoke` | Staff | Set `pass_status=revoked` |
+| GET | `/v1/gate/pass/:passToken` | Staff | Preview name/flat/purpose/expiry (no consume) |
+| POST | `/v1/gate/verify` | Staff | Body `{ qrPayload }` or `{ passToken, otp? }` → check-in + notify |
 
 ---
 
