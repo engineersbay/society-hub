@@ -47,6 +47,7 @@ import {
   claimsFromGoogleIdToken,
   findOnboardedGoogleUser,
 } from "./google-login";
+import { createEmailAdapter } from "../../lib/messaging/email";
 
 function trackLogin(
   userId: string,
@@ -299,7 +300,21 @@ export const authRoutes = new Elysia({ prefix: "/v1/auth" })
       expiresAt,
     });
 
-    // Email provider later (Resend); DEV returns code for local web/mobile
+    const mail = await createEmailAdapter().send({
+      to: email,
+      subject: "SocietyHub password reset code",
+      text:
+        `Your SocietyHub password reset code is ${code}.\n` +
+        `It expires in 30 minutes. If you did not request this, ignore this email.`,
+      html:
+        `<p>Your SocietyHub password reset code is <strong>${code}</strong>.</p>` +
+        `<p>It expires in 30 minutes. If you did not request this, ignore this email.</p>`,
+    });
+    if (!mail.ok) {
+      console.warn("[auth] password reset email failed:", mail.error);
+    }
+
+    // DEV returns code for local web/mobile when DEV_AUTH=true
     return {
       ok: true as const,
       ...(env.devAuth ? { devCode: code } : {}),

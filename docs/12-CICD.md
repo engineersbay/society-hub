@@ -89,7 +89,11 @@ Repo + environments `staging`, `prod`, `production`. Mobile store jobs always us
 | Variable | `ENABLE_PLAY_UPLOAD` | Leave unset/`false` until Play app exists |
 | Variable | `ENABLE_IOS_IPA` | Leave unset until Apple |
 | Secret | `PLAY_SERVICE_ACCOUNT_JSON` | Only when Play upload is on |
+| Secret | `RESEND_API_KEY` | Transactional email (API / Azure later). **Never** put in Flutter |
+| Secret | `RESEND_FROM` | e.g. `SocietyHub <onboarding@resend.dev>` until domain verified |
 | Secret | Azure / `SWA_*` / OIDC | Idle until Azure |
+
+**Email / Resend:** configure with `scripts/configure-resend.sh` (local `.env` + GitHub secrets + Render API env). Mobile does **not** need Resend — AABs already call `MOBILE_API_BASE_URL` (Render API), which sends mail server-side.
 
 Upload keystore lives only on the operator Mac (`apps/mobile/android/upload-keystore.jks`) and in GitHub secrets. Never in git.
 

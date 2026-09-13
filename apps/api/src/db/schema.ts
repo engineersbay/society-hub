@@ -678,9 +678,28 @@ export const visitors = mysqlTable(
     expectedAt: datetime("expected_at", { mode: "string", fsp: 3 }),
     checkedInAt: datetime("checked_in_at", { mode: "string", fsp: 3 }),
     checkedOutAt: datetime("checked_out_at", { mode: "string", fsp: 3 }),
+    passToken: char("pass_token", { length: 36 }),
+    otpHash: varchar("otp_hash", { length: 255 }),
+    otpExpiresAt: datetime("otp_expires_at", { mode: "string", fsp: 3 }),
+    expiresAt: datetime("expires_at", { mode: "string", fsp: 3 }),
+    passIssuedAt: datetime("pass_issued_at", { mode: "string", fsp: 3 }),
+    passStatus: mysqlEnum("pass_status", [
+      "none",
+      "issued",
+      "used",
+      "expired",
+      "revoked",
+    ])
+      .notNull()
+      .default("none"),
+    verifiedByUserId: char("verified_by_user_id", { length: 36 }),
+    verifiedAt: datetime("verified_at", { mode: "string", fsp: 3 }),
     ...timestamps,
   },
-  (t) => [index("visitors_tenant_flat_idx").on(t.tenantId, t.flatId)],
+  (t) => [
+    index("visitors_tenant_flat_idx").on(t.tenantId, t.flatId),
+    uniqueIndex("visitors_pass_token_uidx").on(t.passToken),
+  ],
 );
 
 export const parkingSlots = mysqlTable(

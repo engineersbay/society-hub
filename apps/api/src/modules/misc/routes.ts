@@ -4,10 +4,13 @@ import type {
   AssetDto,
   BookingDto,
   EventDto,
+  GatePassPreviewDto,
   Paginated,
   ParkingSlotDto,
   VendorDto,
   VisitorDto,
+  VisitorPassIssueDto,
+  VisitorPassStatus,
 } from "@society-hub/types";
 import {
   createAssetSchema,
@@ -16,6 +19,8 @@ import {
   createParkingSlotSchema,
   createVendorSchema,
   createVisitorSchema,
+  gateVerifySchema,
+  issueVisitorPassSchema,
   listQuerySchema,
   updateAssetSchema,
   updateBookingStatusSchema,
@@ -42,9 +47,37 @@ import {
   requireAuth,
   requireSocietyStaff,
 } from "../../lib/auth-context";
+import { notifyUser } from "../../lib/notify";
+import { listFlatOccupants } from "../residents/repository";
+import { deliverVisitorPass } from "../../lib/messaging/visitor-pass-delivery";
+import {
+  assertOtpVerifyAllowed,
+  clearOtpVerifyAttempts,
+  defaultPassExpiresAt,
+  generateVisitorOtp,
+  hashVisitorOtp,
+  parseVisitorQrPayload,
+  recordOtpVerifyFailure,
+  signVisitorQrPayload,
+  toMysqlDatetime,
+  verifyVisitorOtp,
+} from "../../lib/visitor-pass";
 
 function nowMysql() {
   return new Date().toISOString().replace("T", " ").replace("Z", "");
+}
+
+function effectivePassStatus(
+  row: typeof visitors.$inferSelect,
+  now = new Date(),
+): VisitorPassStatus {
+  if (row.passStatus === "issued" && row.expiresAt) {
+    const exp = new Date(
+      row.expiresAt.includes("T") ? row.expiresAt : `${row.expiresAt.replace(" ", "T")}Z`,
+    );
+    if (!Number.isNaN(exp.getTime()) && exp < now) return "expired";
+  }
+  return row.passStatus as VisitorPassStatus;
 }
 
 function toVisitorDto(row: typeof visitors.$inferSelect, flatNumber: string | null): VisitorDto {
@@ -58,8 +91,25 @@ function toVisitorDto(row: typeof visitors.$inferSelect, flatNumber: string | nu
     expectedAt: row.expectedAt,
     checkedInAt: row.checkedInAt,
     checkedOutAt: row.checkedOutAt,
+    passStatus: effectivePassStatus(row),
+    passToken: row.passToken,
+    expiresAt: row.expiresAt,
+    passIssuedAt: row.passIssuedAt,
+    verifiedAt: row.verifiedAt,
     createdAt: row.createdAt,
   };
+}
+
+async function loadVisitorScoped(id: string, tenantId: string) {
+  const [row] = await db
+    .select({ visitor: visitors, flatNumber: flats.number })
+    .from(visitors)
+    .leftJoin(flats, eq(flats.id, visitors.flatId))
+    .where(
+      and(eq(visitors.id, id), eq(visitors.tenantId, tenantId), eq(visitors.isDeleted, false)),
+    )
+    .limit(1);
+  return row ?? null;
 }
 
 export const visitorRoutes = new Elysia({ prefix: "/v1/visitors" })
@@ -132,6 +182,117 @@ export const visitorRoutes = new Elysia({ prefix: "/v1/visitors" })
       .where(eq(visitors.id, id))
       .limit(1);
     return toVisitorDto(row!.visitor, row!.flatNumber);
+  })
+  .post("/:id/pass", async ({ auth, params, body }) => {
+    const claims = requireAuth(auth);
+    const parsed = issueVisitorPassSchema.parse(body ?? {});
+    const loaded = await loadVisitorScoped(params.id, claims.tenantId);
+    if (!loaded) throw new AppError(404, "not_found", "Visitor not found");
+    const existing = loaded.visitor;
+    if (!isStaffRole(claims.role) && existing.flatId !== claims.flatId) {
+      throw new AppError(403, "forbidden", "You can only issue passes for your flat");
+    }
+    if (!existing.phone?.trim()) {
+      throw new AppError(400, "phone_required", "Visitor phone is required to share a pass");
+    }
+    if (existing.checkedOutAt) {
+      throw new AppError(409, "already_checked_out", "Visitor already checked out");
+    }
+
+    const now = new Date();
+    let expires: Date;
+    if (parsed.expiresAt) {
+      expires = new Date(
+        parsed.expiresAt.includes("T")
+          ? parsed.expiresAt
+          : `${parsed.expiresAt.replace(" ", "T")}Z`,
+      );
+      if (Number.isNaN(expires.getTime())) {
+        throw new AppError(400, "invalid_expires_at", "Invalid expiresAt");
+      }
+    } else {
+      expires = defaultPassExpiresAt(existing.expectedAt, now);
+    }
+    const max = new Date(now.getTime() + 24 * 3600_000);
+    if (expires <= now) {
+      throw new AppError(400, "invalid_expires_at", "expiresAt must be in the future");
+    }
+    if (expires > max) {
+      throw new AppError(400, "expires_too_long", "Pass may not exceed 24 hours from now");
+    }
+
+    const passToken = crypto.randomUUID();
+    const otp = generateVisitorOtp();
+    const otpHash = await hashVisitorOtp(otp);
+    const expiresMysql = toMysqlDatetime(expires);
+    const issuedAt = nowMysql();
+
+    await db
+      .update(visitors)
+      .set({
+        passToken,
+        otpHash,
+        otpExpiresAt: expiresMysql,
+        expiresAt: expiresMysql,
+        passIssuedAt: issuedAt,
+        passStatus: "issued",
+        verifiedByUserId: null,
+        verifiedAt: null,
+        updatedBy: claims.sub,
+      })
+      .where(eq(visitors.id, existing.id));
+
+    const qrPayload = signVisitorQrPayload(claims.tenantId, passToken);
+    const message = `SocietyHub visitor pass for ${existing.visitorName}. OTP: ${otp}. Show QR at gate. Valid until ${expires.toISOString()}. Ref: ${passToken.slice(0, 8)}`;
+    await deliverVisitorPass({
+      phone: existing.phone.trim(),
+      body: message,
+      channels: parsed.channels,
+    });
+
+    await recordAudit({
+      tenantId: claims.tenantId,
+      actorUserId: claims.sub,
+      action: "visitor.pass_issued",
+      entityType: "visitor",
+      entityId: existing.id,
+      meta: { passToken },
+    });
+
+    const refreshed = await loadVisitorScoped(existing.id, claims.tenantId);
+    const result: VisitorPassIssueDto = {
+      visitor: toVisitorDto(refreshed!.visitor, refreshed!.flatNumber),
+      qrPayload,
+      otp,
+      expiresAt: expiresMysql,
+    };
+    return result;
+  })
+  .post("/:id/pass/revoke", async ({ auth, params }) => {
+    const claims = requireAuth(auth);
+    requireSocietyStaff(claims);
+    const loaded = await loadVisitorScoped(params.id, claims.tenantId);
+    if (!loaded) throw new AppError(404, "not_found", "Visitor not found");
+    if (loaded.visitor.passStatus === "none") {
+      throw new AppError(409, "no_pass", "No pass to revoke");
+    }
+    await db
+      .update(visitors)
+      .set({
+        passStatus: "revoked",
+        otpHash: null,
+        updatedBy: claims.sub,
+      })
+      .where(eq(visitors.id, params.id));
+    await recordAudit({
+      tenantId: claims.tenantId,
+      actorUserId: claims.sub,
+      action: "visitor.pass_revoked",
+      entityType: "visitor",
+      entityId: params.id,
+    });
+    const refreshed = await loadVisitorScoped(params.id, claims.tenantId);
+    return toVisitorDto(refreshed!.visitor, refreshed!.flatNumber);
   })
   .post("/:id/check-in", async ({ auth, params }) => {
     const claims = requireAuth(auth);
@@ -210,6 +371,139 @@ export const visitorRoutes = new Elysia({ prefix: "/v1/visitors" })
     if (!existing) throw new AppError(404, "not_found", "Visitor not found");
     await softDelete(visitors, params.id, claims.sub);
     return { ok: true as const };
+  });
+
+export const gateRoutes = new Elysia({ prefix: "/v1/gate" })
+  .use(authPlugin)
+  .get("/pass/:passToken", async ({ auth, params }) => {
+    const claims = requireAuth(auth);
+    requireSocietyStaff(claims);
+    const [row] = await db
+      .select({ visitor: visitors, flatNumber: flats.number })
+      .from(visitors)
+      .leftJoin(flats, eq(flats.id, visitors.flatId))
+      .where(
+        and(
+          eq(visitors.passToken, params.passToken),
+          eq(visitors.tenantId, claims.tenantId),
+          eq(visitors.isDeleted, false),
+        ),
+      )
+      .limit(1);
+    if (!row) throw new AppError(404, "not_found", "Pass not found");
+    const preview: GatePassPreviewDto = {
+      passToken: row.visitor.passToken!,
+      visitorName: row.visitor.visitorName,
+      flatNumber: row.flatNumber,
+      purpose: row.visitor.purpose,
+      expiresAt: row.visitor.expiresAt,
+      passStatus: effectivePassStatus(row.visitor),
+      phone: row.visitor.phone,
+    };
+    return preview;
+  })
+  .post("/verify", async ({ auth, body }) => {
+    const claims = requireAuth(auth);
+    requireSocietyStaff(claims);
+    const parsed = gateVerifySchema.parse(body);
+
+    let passToken = parsed.passToken;
+    if (parsed.qrPayload) {
+      const decoded = parseVisitorQrPayload(parsed.qrPayload);
+      if (!decoded) {
+        throw new AppError(400, "invalid_qr", "Invalid or tampered QR payload");
+      }
+      if (decoded.tenantId !== claims.tenantId) {
+        throw new AppError(404, "not_found", "Pass not found");
+      }
+      passToken = decoded.passToken;
+    }
+    if (!passToken) {
+      throw new AppError(400, "pass_token_required", "passToken or qrPayload is required");
+    }
+
+    const [row] = await db
+      .select({ visitor: visitors, flatNumber: flats.number })
+      .from(visitors)
+      .leftJoin(flats, eq(flats.id, visitors.flatId))
+      .where(
+        and(
+          eq(visitors.passToken, passToken),
+          eq(visitors.tenantId, claims.tenantId),
+          eq(visitors.isDeleted, false),
+        ),
+      )
+      .limit(1);
+    if (!row) throw new AppError(404, "not_found", "Pass not found");
+
+    const existing = row.visitor;
+    const status = effectivePassStatus(existing);
+    if (status === "revoked") {
+      throw new AppError(409, "pass_revoked", "Pass has been revoked");
+    }
+    if (status === "used") {
+      throw new AppError(409, "pass_used", "Pass already used");
+    }
+    if (status === "expired" || status === "none") {
+      throw new AppError(409, "pass_expired", "Pass is not valid");
+    }
+    if (existing.checkedOutAt) {
+      throw new AppError(409, "already_checked_out", "Visitor already checked out");
+    }
+
+    if (parsed.otp) {
+      try {
+        assertOtpVerifyAllowed(passToken);
+      } catch {
+        throw new AppError(429, "otp_rate_limited", "Too many OTP attempts. Try again later.");
+      }
+      if (!existing.otpHash) {
+        throw new AppError(409, "otp_unavailable", "Pass OTP is not available");
+      }
+      const ok = await verifyVisitorOtp(parsed.otp, existing.otpHash);
+      if (!ok) {
+        recordOtpVerifyFailure(passToken);
+        throw new AppError(401, "invalid_otp", "Invalid OTP");
+      }
+    }
+
+    const verifiedAt = nowMysql();
+    await db
+      .update(visitors)
+      .set({
+        checkedInAt: existing.checkedInAt ?? verifiedAt,
+        passStatus: "used",
+        verifiedByUserId: claims.sub,
+        verifiedAt,
+        otpHash: null,
+        updatedBy: claims.sub,
+      })
+      .where(eq(visitors.id, existing.id));
+    clearOtpVerifyAttempts(passToken);
+
+    await recordAudit({
+      tenantId: claims.tenantId,
+      actorUserId: claims.sub,
+      action: "visitor.pass_verified",
+      entityType: "visitor",
+      entityId: existing.id,
+      meta: { passToken },
+    });
+
+    const occupants = await listFlatOccupants(claims.tenantId, existing.flatId);
+    for (const occ of occupants) {
+      await notifyUser({
+        tenantId: claims.tenantId,
+        userId: occ.userId,
+        title: "Visitor checked in",
+        body: `${existing.visitorName} arrived at the gate${row.flatNumber ? ` for flat ${row.flatNumber}` : ""}.`,
+        kind: "visitor",
+        linkPath: "/visitors",
+      });
+    }
+
+    const refreshed = await loadVisitorScoped(existing.id, claims.tenantId);
+    return toVisitorDto(refreshed!.visitor, refreshed!.flatNumber);
   });
 
 function toParkingDto(

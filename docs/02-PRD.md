@@ -153,7 +153,7 @@ Phase 2 builds on the complaint portal. It is **in product roadmap**, not droppe
 
 | Area | Behavior |
 |------|----------|
-| **Visitors** | Resident pre-registers; staff check-in/out; expected vs on-site vs history |
+| **Visitors** | Resident pre-registers; **issue digital pass** (QR + OTP) shared to visitor phone via SMS + WhatsApp; staff Gate verifies QR or OTP; expiry enforced; check-in/out; expected vs on-site vs history |
 | **Parking** | Assign/release Manage inventory lots to flats; residents see own lots/vehicles |
 | **Bookings** | Request facility + time; conflict detection; staff confirm/cancel |
 | **Assets** | Staff register/edit assets (location, optional next-service date) |
@@ -179,8 +179,9 @@ Staff attendance, CCTV requests, advanced vendor procurement, marketplace, AI as
 - FR-AUTH-3: User can **set a PIN** after successful OTP or SSO; later sessions may unlock with PIN per Architecture (hashed at rest; never stored plaintext).
 - FR-AUTH-4: **Logout** clears session.
 - FR-AUTH-5: Admin can **onboard** residents (and admin users) with mobile and flat binding before first login.
-- FR-AUTH-6: Android login shows the **installed version**. If Play has a newer build, show an **Update** button that opens the in-app update or Play listing.
+- FR-AUTH-6: Android **welcome** screen shows the **installed version**. If Play has a newer build, show an **Update** button that opens the in-app update or Play listing.
 - FR-AUTH-7: **Choose society** lists **one option per society**. Extra staff roles in the same society (Chairperson + Committee) are not separate choices — switch **Admin | Resident** in Client App after entering.
+- FR-AUTH-8: Android auth is **Welcome → Login → method launchers (OTP / Google / PIN / Email) → form**. System and AppBar back walk that stack. After login, AppBar / system back pops pushed detail screens (e.g. complaint detail) or returns to Dashboard from drawer destinations.
 
 ### 7.2 Society & resident onboarding (MVP)
 
@@ -284,6 +285,15 @@ Staff attendance, CCTV requests, advanced vendor procurement, marketplace, AI as
 - FR-NTF-2: Email (Resend) for those critical events.
 - FR-NTF-3: Web push via FCM after opt-in; graceful if permission denied.
 - FR-NTF-4: WhatsApp channel remains **Future** (after Phase 2), not Phase 2 itself.
+
+### 7.10a Phase 2 — visitors / gate pass
+
+- FR-VIS-1: Resident (own flat) or staff pre-registers a visitor (name, phone, purpose, expected time).
+- FR-VIS-2: Resident or staff **issues a digital pass**: opaque `pass_token`, 6-digit OTP (hashed at rest), `expires_at` default **4 hours** from `expected_at` or issue time (staff may set up to **24 hours**). Phone required to issue.
+- FR-VIS-3: On issue/re-issue, SocietyHub sends the visitor **SMS + WhatsApp** with pass link/QR payload and OTP (MSG91 / Gupshup when configured; stub/log in local `DEV_AUTH`). Response returns QR payload + OTP **once** for in-app display/share.
+- FR-VIS-4: Staff **Gate** screen (Client App Admin + Flutter) previews a pass by token/QR, then **verifies** via QR signature and/or OTP. Success checks the visitor in, records verifier, audits `visitor.pass_verified` (no OTP in audit), notifies flat residents in-app.
+- FR-VIS-5: Expired, revoked, or already-used passes are rejected. Staff may **revoke** an issued pass. Cross-tenant pass ids return **404**.
+- FR-VIS-6: Walk-in: staff may create a visitor and issue a pass at the gate in the same session.
 
 ### 7.11 Phase 2 — dashboards
 

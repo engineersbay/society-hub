@@ -162,6 +162,8 @@ erDiagram
   flats ||--o{ bookings : "books"
 ```
 
+`visitors` pass fields (Phase 2 gate): `pass_token` (unique when set), `otp_hash`, `otp_expires_at`, `expires_at`, `pass_issued_at`, `pass_status` (`none`|`issued`|`used`|`expired`|`revoked`), `verified_by_user_id`, `verified_at`. OTP plaintext is never stored; QR payload is `shv1.{tenantId}.{passToken}.{hmac}`.
+
 ### 4.3 Key join paths (how queries hang together)
 
 | Need | Join path |

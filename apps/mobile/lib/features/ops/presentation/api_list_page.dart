@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../auth/session.dart';
+import '../../../shared/widgets.dart';
 
 /// Lightweight list screens for Phase 2 demo modules (bills, notices, ops).
 class ApiListPage extends ConsumerStatefulWidget {
@@ -72,37 +73,56 @@ class _ApiListPageState extends ConsumerState<ApiListPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_loading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (_error != null) {
+      return Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(_error!, textAlign: TextAlign.center),
+          ),
+        ),
+      );
+    }
+    if (_rows.isEmpty) {
+      return Scaffold(
+        body: Padding(
+          padding: const EdgeInsets.all(16),
+          child: EmptyState(
+            message: 'No ${widget.title.toLowerCase()} yet.',
+          ),
+        ),
+      );
+    }
     return Scaffold(
-      appBar: AppBar(title: Text(widget.title)),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Text(_error!, textAlign: TextAlign.center),
-                  ),
-                )
-              : _rows.isEmpty
-                  ? Center(child: Text('No ${widget.title.toLowerCase()} yet.'))
-                  : RefreshIndicator(
-                      onRefresh: _load,
-                      child: ListView.separated(
-                        itemCount: _rows.length,
-                        separatorBuilder: (_, _) => const Divider(height: 1),
-                        itemBuilder: (context, i) {
-                          final row = _rows[i];
-                          final title = '${row[widget.titleField] ?? row['name'] ?? row['visitorName'] ?? row['facilityName'] ?? row['id']}';
-                          final sub = widget.subtitleField != null
-                              ? '${row[widget.subtitleField]}'
-                              : null;
-                          return ListTile(
-                            title: Text(title),
-                            subtitle: sub != null && sub != 'null' ? Text(sub) : null,
-                          );
-                        },
-                      ),
-                    ),
+      body: RefreshIndicator(
+        onRefresh: _load,
+        child: ListView.separated(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          itemCount: _rows.length,
+          separatorBuilder: (_, _) => const SizedBox(height: 10),
+          itemBuilder: (context, i) {
+            final row = _rows[i];
+            final title =
+                '${row[widget.titleField] ?? row['name'] ?? row['visitorName'] ?? row['facilityName'] ?? row['id']}';
+            final sub = widget.subtitleField != null
+                ? '${row[widget.subtitleField]}'
+                : null;
+            final status = sub != null && sub != 'null' ? sub : null;
+            final isStatusField = widget.subtitleField == 'status' ||
+                widget.subtitleField == 'category';
+            return ShListRow(
+              title: title,
+              subtitle: isStatusField ? null : status,
+              status: isStatusField ? status : null,
+            );
+          },
+        ),
+      ),
     );
   }
 }
