@@ -125,6 +125,7 @@ jobs:
             curl -sS --max-time 20 "$MOBILE_API_BASE_URL/health" || true
             exit 1
           fi
+          echo "pubspec version: $(grep -E '^version:' pubspec.yaml)"
           flutter build appbundle --release \
             --dart-define=ENV="$MOBILE_ENV" \
             --dart-define=API_BASE_URL="$MOBILE_API_BASE_URL" \

@@ -14,7 +14,7 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? "";
 const googleMode = googleSignInMode(GOOGLE_CLIENT_ID);
 
 export function LoginPage() {
-  const { user, client, setSession } = useAuth();
+  const { user, client, setSession, loading } = useAuth();
   const navigate = useNavigate();
   const [mode, setMode] = useState<Mode>("password");
   const [email, setEmail] = useState("");
@@ -26,8 +26,6 @@ export function LoginPage() {
   const [devHint, setDevHint] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-
-  if (user) return <Navigate to="/dashboard" replace />;
 
   async function applySession(
     login: () => Promise<{ user: Parameters<typeof setSession>[0]; tokens: Parameters<typeof setSession>[1] }>,
@@ -50,6 +48,16 @@ export function LoginPage() {
       setBusy(false);
     }
   }
+
+  const onGoogleCredential = useCallback(
+    (idToken: string) => {
+      void applySession(() => client.loginGoogle(idToken));
+    },
+    [client],
+  );
+
+  if (loading) return <p className="p-8">Loading…</p>;
+  if (user) return <Navigate to="/dashboard" replace />;
 
   async function loginPassword(e: FormEvent) {
     e.preventDefault();
@@ -85,13 +93,6 @@ export function LoginPage() {
     e.preventDefault();
     await applySession(() => client.loginGoogle(`dev:${phone}`));
   }
-
-  const onGoogleCredential = useCallback(
-    (idToken: string) => {
-      void applySession(() => client.loginGoogle(idToken));
-    },
-    [client],
-  );
 
   const modeLabel: Record<Mode, string> = {
     password: "Email",
