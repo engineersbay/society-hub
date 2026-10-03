@@ -84,25 +84,104 @@ body {
 
 .input {
   width: 100%;
-  border: 1px solid var(--sand);
-  background: #fffdfb;
-  border-radius: 0.45rem;
-  padding: 0.4rem 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--sand) 85%, #c4a882);
+  background: #fff;
+  border-radius: 0.5rem;
+  padding: 0.55rem 0.75rem;
   font: inherit;
   font-size: 0.875rem;
   line-height: 1.35;
+  color: var(--ink);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.input::placeholder {
+  color: color-mix(in srgb, var(--ink) 35%, transparent);
+}
+
+.input:hover {
+  border-color: color-mix(in srgb, var(--saffron) 45%, var(--sand));
 }
 
 .input:focus {
-  outline: 2px solid color-mix(in srgb, var(--leaf) 40%, transparent);
-  border-color: var(--leaf);
+  outline: none;
+  border-color: var(--saffron);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--saffron) 18%, transparent);
 }
 
 .label {
   display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--ink) 55%, transparent);
+  margin-bottom: 0.35rem;
+}
+
+/* Compact create/request panels used on Visitors, Bookings, etc. */
+.sh-form-panel {
+  max-width: 36rem;
+  border-radius: 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--sand) 80%, transparent);
+  background: #fff;
+  box-shadow: 0 8px 28px rgba(42, 26, 18, 0.06);
+  overflow: hidden;
+}
+
+.sh-form-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.9rem 1.1rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--sand) 70%, transparent);
+  background: linear-gradient(180deg, #fffaf4 0%, #fff 100%);
+}
+
+.sh-form-panel-body {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem 1.1rem;
+}
+
+.sh-form-panel-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.75rem 1.1rem;
+  border-top: 1px solid color-mix(in srgb, var(--sand) 70%, transparent);
+  background: #faf7f2;
+}
+
+.sh-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.sh-chip {
+  border: 1px solid color-mix(in srgb, var(--sand) 85%, transparent);
+  background: #fff;
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 0.28rem 0.7rem;
   font-size: 0.75rem;
   font-weight: 600;
-  margin-bottom: 0.2rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.sh-chip:hover {
+  border-color: color-mix(in srgb, var(--saffron) 55%, var(--sand));
+  background: var(--mist);
+}
+
+.sh-chip-active {
+  border-color: var(--saffron);
+  background: color-mix(in srgb, var(--saffron) 14%, #fff);
+  color: var(--leaf-dark);
 }
 
 .btn-sm {

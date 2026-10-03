@@ -173,7 +173,7 @@ function ModeToggle() {
           ].join(" ")}
           onClick={() => setMode("admin")}
         >
-          Admin
+          Admin view
         </button>
         <button
           type="button"
@@ -186,7 +186,7 @@ function ModeToggle() {
           ].join(" ")}
           onClick={() => setMode("resident")}
         >
-          Resident
+          Resident view
         </button>
       </div>
       <p className="px-1 text-[10px] leading-snug text-black/40">
@@ -314,11 +314,15 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           >
             {brandActive ? branding?.name : "SocietyHub"}
           </p>
-          {user?.flatNumber && (
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--gold)]">
-              Flat {user.flatNumber}
-            </p>
-          )}
+          <p
+            className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--gold)]"
+            data-testid="app-view-label"
+          >
+            {effectiveMode === "admin" ? "Admin view" : "Resident view"}
+            {user?.flatNumber && effectiveMode === "resident"
+              ? ` · Flat ${user.flatNumber}`
+              : ""}
+          </p>
         </div>
       </div>
 
@@ -369,7 +373,8 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         )}
         {user?.name && (
           <p className="mt-2 truncate px-3 text-xs text-black/40">
-            {user.name} · {user.role}
+            {user.name} ·{" "}
+            {effectiveMode === "admin" ? "Admin view" : "Resident view"}
           </p>
         )}
       </div>
@@ -418,7 +423,14 @@ export function Shell() {
           >
             <Icon name="menu" className="h-5 w-5" />
           </button>
-          <p className="font-display text-lg text-[var(--leaf-dark)]">SocietyHub</p>
+          <div className="text-center">
+            <p className="font-display text-lg leading-tight text-[var(--leaf-dark)]">
+              SocietyHub
+            </p>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--gold)]">
+              {mode === "admin" ? "Admin view" : "Resident view"}
+            </p>
+          </div>
           <NavLink
             to="/account"
             className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--mist)] text-[var(--leaf-dark)]"
@@ -428,7 +440,12 @@ export function Shell() {
         </header>
 
         <header className="hidden items-center justify-between border-b border-[var(--sand)] px-6 py-2.5 lg:flex">
-          <div />
+          <span
+            className="rounded-md bg-[var(--mist)]/80 px-2.5 py-1 text-xs font-semibold text-[var(--leaf-dark)]"
+            data-testid="app-view-chip"
+          >
+            {mode === "admin" ? "Admin view" : "Resident view"}
+          </span>
           <div className="flex items-center gap-3">
             <span className="text-sm text-black/55">
               {user?.name}

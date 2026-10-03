@@ -49,16 +49,16 @@ ThemeData buildAppTheme() {
       fillColor: AppColors.card,
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(10),
         borderSide: const BorderSide(color: AppColors.sand),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(10),
         borderSide: const BorderSide(color: AppColors.sand),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: AppColors.leaf, width: 1.5),
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: AppColors.saffron, width: 1.5),
       ),
       labelStyle: const TextStyle(
         fontFamily: 'sans-serif',

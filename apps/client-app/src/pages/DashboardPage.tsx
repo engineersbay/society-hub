@@ -8,12 +8,12 @@ import {
 } from "@society-hub/ui";
 import { useAuth } from "../auth";
 import { canUseAdminMode, useAppMode } from "../app-mode";
+import { Icon, type IconName } from "../components/icons";
 
 function rupees(paise: number) {
   return `₹${(paise / 100).toLocaleString("en-IN")}`;
 }
 
-/** Occupancy metric that doubles as a link into the matching filtered list. */
 function OccupancyTile({
   to,
   label,
@@ -37,6 +37,78 @@ function OccupancyTile({
   );
 }
 
+function StatTile({
+  to,
+  label,
+  value,
+  hint,
+  icon,
+  tone = "default",
+}: {
+  to: string;
+  label: string;
+  value: string | number;
+  hint: string;
+  icon: IconName;
+  tone?: "default" | "alert" | "dues";
+}) {
+  const valueClass =
+    tone === "dues"
+      ? "text-[var(--danger)]"
+      : tone === "alert"
+        ? "text-[var(--alert)]"
+        : "text-[var(--leaf-dark)]";
+
+  return (
+    <Link
+      to={to}
+      className="group relative overflow-hidden rounded-xl border border-[var(--sand)]/80 bg-white p-4 shadow-[0_1px_2px_rgba(42,26,18,0.04)] transition hover:border-[var(--saffron)]/40 hover:shadow-md"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-black/40">
+            {label}
+          </p>
+          <p className={`mt-1.5 font-display text-3xl leading-none ${valueClass}`}>{value}</p>
+          <p className="mt-2 text-xs font-medium text-[var(--leaf)] opacity-80 group-hover:opacity-100">
+            {hint} →
+          </p>
+        </div>
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--mist)] text-[var(--leaf-dark)]">
+          <Icon name={icon} className="h-5 w-5" />
+        </span>
+      </div>
+    </Link>
+  );
+}
+
+function QuickAction({
+  to,
+  title,
+  subtitle,
+  icon,
+}: {
+  to: string;
+  title: string;
+  subtitle: string;
+  icon: IconName;
+}) {
+  return (
+    <Link
+      to={to}
+      className="group flex items-start gap-3 rounded-xl border border-[var(--sand)]/70 bg-[#fffdfb] px-3.5 py-3.5 transition hover:border-[var(--saffron)]/45 hover:bg-[var(--mist)]/40"
+    >
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--saffron)]/15 to-[var(--leaf-dark)]/10 text-[var(--leaf-dark)] transition group-hover:from-[var(--saffron)]/25">
+        <Icon name={icon} className="h-5 w-5" />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-sm font-semibold text-[var(--ink)]">{title}</span>
+        <span className="mt-0.5 block text-xs leading-snug text-black/45">{subtitle}</span>
+      </span>
+    </Link>
+  );
+}
+
 export function DashboardPage() {
   const { client, user } = useAuth();
   const { mode } = useAppMode();
@@ -52,41 +124,63 @@ export function DashboardPage() {
       .catch(() => undefined);
   }, [client, staffView]);
 
+  const firstName = user?.name?.split(" ")[0];
+  const viewLine = staffView
+    ? "Admin view · society overview"
+    : user?.flatNumber
+      ? `Resident view · Flat ${user.flatNumber}`
+      : "Resident view";
+
   return (
     <div>
-      <div className="mb-4">
-        <h1 className="font-display text-xl sm:text-2xl">
-          Hello{user?.name ? `, ${user.name.split(" ")[0]}` : ""}
-        </h1>
-        <p className="mt-0.5 text-sm text-black/55">
-          {user?.flatNumber ? `Flat ${user.flatNumber}` : "Welcome to SocietyHub"}
-        </p>
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--gold)]">
+            {viewLine}
+          </p>
+          <h1 className="mt-1 font-display text-2xl text-[var(--leaf-dark)] sm:text-3xl">
+            Hello{firstName ? `, ${firstName}` : ""}
+          </h1>
+          <p className="mt-1 text-sm text-black/50">
+            {staffView
+              ? "What needs attention across the society today."
+              : "Bills, complaints, and society updates for your flat."}
+          </p>
+        </div>
+        <Link to="/complaints/new" className="btn btn-primary shrink-0 px-5 py-2.5 text-sm">
+          Raise a complaint
+        </Link>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <Link to="/bills" className="kpi-card block transition-transform hover:-translate-y-0.5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-black/45">Dues outstanding</p>
-          <p className="mt-2 font-display text-3xl text-[var(--leaf-dark)]">
-            {stats ? rupees(stats.duesOutstandingPaise) : "—"}
-          </p>
-        </Link>
-        <Link to="/complaints" className="kpi-card block transition-transform hover:-translate-y-0.5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-black/45">Open complaints</p>
-          <p className="mt-2 font-display text-3xl text-[var(--leaf-dark)]">
-            {stats?.openComplaints ?? "—"}
-          </p>
-        </Link>
-        <Link to="/notices" className="kpi-card block transition-transform hover:-translate-y-0.5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-black/45">Notices</p>
-          <p className="mt-2 font-display text-3xl text-[var(--leaf-dark)]">
-            {stats?.publishedNotices ?? "—"}
-          </p>
-        </Link>
+        <StatTile
+          to="/bills"
+          label="Dues outstanding"
+          value={stats ? rupees(stats.duesOutstandingPaise) : "—"}
+          hint={staffView ? "Open bills" : "Pay or view bills"}
+          icon="bills"
+          tone="dues"
+        />
+        <StatTile
+          to="/complaints"
+          label="Open complaints"
+          value={stats?.openComplaints ?? "—"}
+          hint={staffView ? "Review queue" : "Track yours"}
+          icon="complaints"
+          tone={stats && stats.openComplaints > 0 ? "alert" : "default"}
+        />
+        <StatTile
+          to="/notices"
+          label="Notices"
+          value={stats?.publishedNotices ?? "—"}
+          hint="Read updates"
+          icon="notices"
+        />
       </div>
 
       {staffView && stats?.occupancy && (
         <section className="mt-5" data-testid="dashboard-occupancy">
-          <h2 className="mb-2 font-semibold">Occupancy</h2>
+          <h2 className="mb-2 text-sm font-semibold text-[var(--ink)]">Occupancy</h2>
           <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-5">
             <OccupancyTile
               to="/residents?tab=flats"
@@ -146,16 +240,25 @@ export function DashboardPage() {
         </section>
       )}
 
-      <div className="mt-5 grid gap-4 lg:grid-cols-2">
-        <div className="card p-4">
-          <div className="mb-2 flex items-center justify-between">
-            <h2 className="font-semibold">{staffView ? "Recent complaints" : "Your recent complaints"}</h2>
-            <Link to="/complaints" className="text-sm text-[var(--leaf)]">
+      <div className="mt-5 grid gap-4 lg:grid-cols-5">
+        <section className="rounded-xl border border-[var(--sand)]/80 bg-white p-4 shadow-[0_1px_2px_rgba(42,26,18,0.04)] lg:col-span-3">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-semibold text-[var(--ink)]">
+                {staffView ? "Recent complaints" : "Your recent complaints"}
+              </h2>
+              <p className="text-xs text-black/40">
+                {staffView ? "Latest across the society" : "Latest from your flat"}
+              </p>
+            </div>
+            <Link to="/complaints" className="text-sm font-medium text-[var(--leaf)]">
               View all
             </Link>
           </div>
           {recent.length === 0 ? (
-            <p className="text-sm text-black/50">No complaints yet.</p>
+            <p className="rounded-lg bg-[var(--mist)]/50 px-4 py-8 text-center text-sm text-black/45">
+              No complaints yet.
+            </p>
           ) : (
             <div className="sh-complaint-list sh-complaint-list-inset">
               {recent.map((c) => (
@@ -172,35 +275,73 @@ export function DashboardPage() {
               ))}
             </div>
           )}
-          <Link to="/complaints/new" className="btn btn-primary mt-4 w-full text-sm">
-            Raise a complaint
-          </Link>
-        </div>
+        </section>
 
-        <div className="card p-4">
-          <h2 className="mb-2 font-semibold">Quick actions</h2>
-          <div className="grid grid-cols-2 gap-2">
+        <section className="rounded-xl border border-[var(--sand)]/80 bg-white p-4 shadow-[0_1px_2px_rgba(42,26,18,0.04)] lg:col-span-2">
+          <div className="mb-3">
+            <h2 className="text-sm font-semibold text-[var(--ink)]">Quick actions</h2>
+            <p className="text-xs text-black/40">
+              {staffView ? "Common society admin tasks" : "Everyday flat tasks"}
+            </p>
+          </div>
+          <div className="grid gap-2.5">
             {staffView ? (
               <>
-                <Link to="/residents?add=1" className="btn btn-ghost text-sm">
-                  Add resident
-                </Link>
-                <Link to="/residents?tab=invites" className="btn btn-ghost text-sm">
-                  Pending invitations
-                </Link>
-                <Link to="/bills" className="btn btn-ghost text-sm">Generate bills</Link>
-                <Link to="/notices" className="btn btn-ghost text-sm">New notice</Link>
+                <QuickAction
+                  to="/residents?add=1"
+                  title="Add resident"
+                  subtitle="Onboard a household to a flat"
+                  icon="onboard"
+                />
+                <QuickAction
+                  to="/residents?tab=invites"
+                  title="Pending invitations"
+                  subtitle="Follow up on open invites"
+                  icon="invites"
+                />
+                <QuickAction
+                  to="/bills"
+                  title="Generate bills"
+                  subtitle="Create or review society dues"
+                  icon="bills"
+                />
+                <QuickAction
+                  to="/notices"
+                  title="New notice"
+                  subtitle="Publish an update to residents"
+                  icon="notices"
+                />
               </>
             ) : (
               <>
-                <Link to="/bills" className="btn btn-ghost text-sm">Pay dues</Link>
-                <Link to="/bookings" className="btn btn-ghost text-sm">Book clubhouse</Link>
-                <Link to="/visitors" className="btn btn-ghost text-sm">Expect visitor</Link>
-                <Link to="/parking" className="btn btn-ghost text-sm">Parking</Link>
+                <QuickAction
+                  to="/bills"
+                  title="Pay dues"
+                  subtitle="See outstanding bills and pay"
+                  icon="bills"
+                />
+                <QuickAction
+                  to="/bookings"
+                  title="Book clubhouse"
+                  subtitle="Reserve a shared amenity"
+                  icon="bookings"
+                />
+                <QuickAction
+                  to="/visitors"
+                  title="Expect visitor"
+                  subtitle="Create a digital gate pass"
+                  icon="visitors"
+                />
+                <QuickAction
+                  to="/parking"
+                  title="Parking"
+                  subtitle="View slots and vehicles"
+                  icon="parking"
+                />
               </>
             )}
           </div>
-        </div>
+        </section>
       </div>
     </div>
   );

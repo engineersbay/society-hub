@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../core/theme.dart';
+import 'societyhub_logo.dart';
+
+export 'societyhub_logo.dart';
 
 class ShCard extends StatelessWidget {
   const ShCard({super.key, required this.child, this.padding, this.onTap});
@@ -28,6 +31,70 @@ class ShCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
               child: body,
             ),
+    );
+  }
+}
+
+class ShChoiceChip extends StatelessWidget {
+  const ShChoiceChip({
+    super.key,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected
+          ? AppColors.saffron.withValues(alpha: 0.14)
+          : Colors.white,
+      shape: StadiumBorder(
+        side: BorderSide(
+          color: selected ? AppColors.saffron : AppColors.sand,
+        ),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const StadiumBorder(),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: selected ? AppColors.leafDark : AppColors.ink,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class ShFormLabel extends StatelessWidget {
+  const ShFormLabel(this.text, {super.key});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        text.toUpperCase(),
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.8,
+          color: Colors.black.withValues(alpha: 0.45),
+        ),
+      ),
     );
   }
 }
@@ -67,50 +134,32 @@ class ShPrimaryButton extends StatelessWidget {
 }
 
 class BrandMark extends StatelessWidget {
-  const BrandMark({super.key, this.compact = false});
+  const BrandMark({super.key, this.compact = false, this.subtitle});
 
   final bool compact;
+  /// Overrides the default gold line under SocietyHub (e.g. "Resident view").
+  final String? subtitle;
 
   @override
   Widget build(BuildContext context) {
     final size = compact ? 40.0 : 44.0;
+    final line = subtitle ?? (compact ? 'CLIENT' : 'Resident sign-in');
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          width: size,
-          height: size,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [AppColors.saffron, AppColors.leafDark],
-            ),
-          ),
-          child: Text(
-            'SH',
-            style: TextStyle(
-              fontFamily: 'sans-serif',
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: compact ? 14 : 16,
-            ),
-          ),
-        ),
+        SocietyHubLogo(size: size),
         const SizedBox(width: 12),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('SocietyHub', style: displayStyle(size: compact ? 18 : 22)),
             Text(
-              compact ? 'CLIENT' : 'Resident sign-in',
+              line,
               style: TextStyle(
                 fontFamily: 'sans-serif',
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.2,
                 color: AppColors.gold,
               ),
             ),
