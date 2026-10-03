@@ -327,6 +327,7 @@ As before — notices audience all|wing|flat; notifications in-app; audit_logs f
 | `platform_subscriptions` | One row per society — plan, cycle, starts/ends, status |
 | `platform_discounts` | Percent or flat off; optional code; date window; subscription id |
 | `platform_bills` | SocietyHub subscription invoice to a society |
+| `society_onboardings` | Self-serve signup before provision — plan, slug, chairperson, resume token, payment; society row is created only after pay |
 | `platform_payments` | Offline mark-paid against a platform bill |
 | `platform_announcements` | Broadcast title/body; audience all or tenant list |
 | `support_tickets` | Society staff → platform inbox; status open/closed |

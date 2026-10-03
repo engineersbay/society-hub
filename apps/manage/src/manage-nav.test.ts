@@ -1,15 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { MANAGE_NAV, manageNavByPath, SOCIETY_COMING_SOON } from "./manage-nav";
+import {
+  ADMIN_NAV,
+  MANAGE_NAV,
+  TENANT_NAV,
+  manageNavByPath,
+  SOCIETY_COMING_SOON,
+} from "./manage-nav";
 
 describe("manage-nav", () => {
-  it("marks core and commercial routes live", () => {
-    const live = MANAGE_NAV.filter((n) => n.status === "live").map((n) => n.to);
+  it("marks admin platform routes live", () => {
+    const live = ADMIN_NAV.filter((n) => n.status === "live").map((n) => n.to);
     expect(live).toContain("/dashboard");
     expect(live).toContain("/societies");
     expect(live).toContain("/users");
     expect(live).toContain("/audit");
-    expect(live).toContain("/feature-flags");
-    expect(live).toContain("/society-settings");
     expect(live).toContain("/subscriptions");
     expect(live).toContain("/discounts");
     expect(live).toContain("/bills");
@@ -19,8 +23,22 @@ describe("manage-nav", () => {
     expect(live).toContain("/support");
   });
 
+  it("tenant nav has society workspace routes", () => {
+    const live = TENANT_NAV.filter((n) => n.status === "live").map((n) => n.to);
+    expect(live).toContain("/society");
+    expect(live).toContain("/structure");
+    expect(live).toContain("/feature-flags");
+    expect(live).toContain("/branding");
+    expect(live).toContain("/society-settings");
+    expect(live).not.toContain("/society-billing");
+    expect(live).not.toContain("/users");
+    expect(TENANT_NAV.find((n) => n.to === "/society-settings")?.label).toBe(
+      "Society settings",
+    );
+  });
+
   it("has no coming-soon nav items in the demo commercial layer", () => {
-    const soon = MANAGE_NAV.filter((n) => n.status === "soon");
+    const soon = [...ADMIN_NAV, ...TENANT_NAV].filter((n) => n.status === "soon");
     expect(soon).toEqual([]);
   });
 
@@ -28,6 +46,10 @@ describe("manage-nav", () => {
     const flags = manageNavByPath("/feature-flags");
     expect(flags?.status).toBe("live");
     expect(flags?.blurb.length).toBeGreaterThan(20);
+  });
+
+  it("MANAGE_NAV aliases ADMIN_NAV for compatibility", () => {
+    expect(MANAGE_NAV).toBe(ADMIN_NAV);
   });
 
   it("society detail still documents future usage metering", () => {

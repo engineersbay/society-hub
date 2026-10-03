@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./auth";
 import { Shell } from "./components/Shell";
 import { LoginPage } from "./pages/LoginPage";
+import { SocietyOnboardPage } from "./pages/SocietyOnboardPage";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { AccountPage } from "./pages/AccountPage";
@@ -11,6 +12,12 @@ import { SocietyDetailPage } from "./pages/SocietyDetailPage";
 import { UsersPage } from "./pages/UsersPage";
 import { UserDetailPage } from "./pages/UserDetailPage";
 import { AuditPage } from "./pages/AuditPage";
+import { BrandingPage } from "./pages/BrandingPage";
+import { SocietyBillingPage } from "./pages/SocietyBillingPage";
+import {
+  StructureRedirect,
+  TenantSocietyDashboard,
+} from "./pages/TenantSocietyDashboard";
 import {
   AnnouncementsPage,
   DiscountsPage,
@@ -34,6 +41,7 @@ export function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/onboard" element={<SocietyOnboardPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route
@@ -46,6 +54,8 @@ export function App() {
       >
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="society" element={<TenantSocietyDashboard />} />
+        <Route path="structure" element={<StructureRedirect />} />
         <Route path="societies" element={<SocietiesPage />} />
         <Route path="societies/:id" element={<SocietyDetailPage />} />
         <Route path="users" element={<UsersPage />} />
@@ -53,7 +63,9 @@ export function App() {
         <Route path="audit" element={<AuditPage />} />
         <Route path="account" element={<AccountPage />} />
         <Route path="feature-flags" element={<FeatureFlagsPage />} />
+        <Route path="branding" element={<BrandingPage />} />
         <Route path="society-settings" element={<SocietySettingsManagePage />} />
+        <Route path="society-billing" element={<SocietyBillingPage />} />
         <Route path="subscriptions" element={<SubscriptionsPage />} />
         <Route path="discounts" element={<DiscountsPage />} />
         <Route path="bills" element={<PlatformBillsPage />} />

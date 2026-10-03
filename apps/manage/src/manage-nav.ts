@@ -12,9 +12,10 @@ export type ManageNavItem = {
 
 /**
  * SocietyHub Manage = platform operations for SocietyHub employees.
- * Day-to-day society admin lives in the Client App.
+ * Admin view = cross-society console. Tenant view = one society workspace.
+ * Day-to-day society admin (residents, complaints) lives in the Client App.
  */
-export const MANAGE_NAV: ManageNavItem[] = [
+export const ADMIN_NAV: ManageNavItem[] = [
   {
     to: "/dashboard",
     label: "Dashboard",
@@ -35,23 +36,7 @@ export const MANAGE_NAV: ManageNavItem[] = [
     icon: "users",
     status: "live",
     blurb:
-      "Search and manage platform employees and society members across tenants — invite, suspend, reset access.",
-  },
-  {
-    to: "/feature-flags",
-    label: "Feature flags",
-    icon: "toggle",
-    status: "live",
-    blurb:
-      "Turn modules on or off per society (complaints, bills, payments, visitors, bookings, and more).",
-  },
-  {
-    to: "/society-settings",
-    label: "Society settings",
-    icon: "settings",
-    status: "live",
-    blurb:
-      "Enable or disable a society on the platform, set SLA defaults, branding, and support contacts.",
+      "Platform employees who can sign in to Manage — invite, suspend, reset access.",
   },
   {
     to: "/subscriptions",
@@ -114,8 +99,51 @@ export const MANAGE_NAV: ManageNavItem[] = [
   },
 ];
 
+/** Tenant view — tools for the society selected in the picker. */
+export const TENANT_NAV: ManageNavItem[] = [
+  {
+    to: "/society",
+    label: "Dashboard",
+    icon: "dashboard",
+    status: "live",
+    blurb: "Overview for the selected society.",
+  },
+  {
+    to: "/structure",
+    label: "Structure",
+    icon: "societies",
+    status: "live",
+    blurb: "Towers, flats, parking, and society team.",
+  },
+  {
+    to: "/feature-flags",
+    label: "Feature flags",
+    icon: "toggle",
+    status: "live",
+    blurb:
+      "Turn modules on or off for this society (complaints, bills, payments, visitors, bookings, and more).",
+  },
+  {
+    to: "/branding",
+    label: "Branding",
+    icon: "settings",
+    status: "live",
+    blurb: "Fassport-style Theme and Media — primary color and logos for the Client App.",
+  },
+  {
+    to: "/society-settings",
+    label: "Society settings",
+    icon: "settings",
+    status: "live",
+    blurb: "Fassport-style society settings — details, billing, and access.",
+  },
+];
+
+/** @deprecated Prefer ADMIN_NAV or TENANT_NAV by view mode. */
+export const MANAGE_NAV = ADMIN_NAV;
+
 export function manageNavByPath(path: string): ManageNavItem | undefined {
-  return MANAGE_NAV.find((item) => item.to === path);
+  return [...ADMIN_NAV, ...TENANT_NAV].find((item) => item.to === path);
 }
 
 /** Remaining future ideas shown on society Controls (not nav Coming soon). */

@@ -486,6 +486,47 @@ export const manageCommercialRoutes = new Elysia({ prefix: "/v1/manage" })
       .where(and(eq(societies.id, params.id), eq(societies.isDeleted, false)))
       .limit(1);
     if (!society) throw new AppError(404, "not_found", "Society not found");
+    if (parsed.slug) {
+      const [dup] = await db
+        .select({ id: societies.id })
+        .from(societies)
+        .where(and(eq(societies.slug, parsed.slug), eq(societies.isDeleted, false)))
+        .limit(1);
+      if (dup && dup.id !== params.id) {
+        throw new AppError(409, "slug_in_use", "That slug is already in use");
+      }
+    }
+    const customDomain =
+      parsed.customDomain !== undefined
+        ? parsed.customDomain
+          ? parsed.customDomain
+              .trim()
+              .toLowerCase()
+              .replace(/^https?:\/\//, "")
+              .replace(/\/.*$/, "")
+              .replace(/:\d+$/, "")
+          : null
+        : undefined;
+    if (customDomain) {
+      const [dup] = await db
+        .select({ id: societies.id })
+        .from(societies)
+        .where(
+          and(
+            eq(societies.customDomain, customDomain),
+            eq(societies.isDeleted, false),
+          ),
+        )
+        .limit(1);
+      if (dup && dup.id !== params.id) {
+        throw new AppError(
+          409,
+          "custom_domain_in_use",
+          "That custom domain is already in use",
+        );
+      }
+    }
+
     await db
       .update(societies)
       .set({
@@ -498,6 +539,32 @@ export const manageCommercialRoutes = new Elysia({ prefix: "/v1/manage" })
           ? { featureFlagsJson: parsed.featureFlagsJson }
           : {}),
         ...(parsed.planId !== undefined ? { planId: parsed.planId } : {}),
+        ...(parsed.slug !== undefined ? { slug: parsed.slug } : {}),
+        ...(customDomain !== undefined ? { customDomain } : {}),
+        ...(parsed.brandingEnabled !== undefined
+          ? { brandingEnabled: parsed.brandingEnabled }
+          : {}),
+        ...(parsed.brandColor !== undefined
+          ? { brandColor: parsed.brandColor }
+          : {}),
+        ...(parsed.brandSecondaryColor !== undefined
+          ? { brandSecondaryColor: parsed.brandSecondaryColor }
+          : {}),
+        ...(parsed.brandTertiaryColor !== undefined
+          ? { brandTertiaryColor: parsed.brandTertiaryColor }
+          : {}),
+        ...(parsed.brandLogoBlobPath !== undefined
+          ? { brandLogoBlobPath: parsed.brandLogoBlobPath }
+          : {}),
+        ...(parsed.brandLogoContentType !== undefined
+          ? { brandLogoContentType: parsed.brandLogoContentType }
+          : {}),
+        ...(parsed.brandLogoDarkBlobPath !== undefined
+          ? { brandLogoDarkBlobPath: parsed.brandLogoDarkBlobPath }
+          : {}),
+        ...(parsed.brandIconBlobPath !== undefined
+          ? { brandIconBlobPath: parsed.brandIconBlobPath }
+          : {}),
         updatedBy: claims.sub,
       })
       .where(eq(societies.id, params.id));
@@ -507,7 +574,12 @@ export const manageCommercialRoutes = new Elysia({ prefix: "/v1/manage" })
       action: "society.settings_updated",
       entityType: "society",
       entityId: params.id,
-      meta: parsed,
+      meta: {
+        slaDays: parsed.slaDays,
+        status: parsed.status,
+        brandingEnabled: parsed.brandingEnabled,
+        hasLogo: Boolean(parsed.brandLogoBlobPath),
+      },
     });
     return { ok: true as const };
   });
@@ -581,11 +653,20 @@ export const societyFlagsRoutes = new Elysia({ prefix: "/v1/society" })
     return {
       id: society.id,
       name: society.name,
+      slug: society.slug,
+      customDomain: society.customDomain,
       slaDays: society.slaDays,
       billingDefaults: society.billingDefaults,
       status: society.status,
       featureFlagsJson: society.featureFlagsJson,
       planId: society.planId,
+      brandingEnabled: society.brandingEnabled,
+      brandColor: society.brandColor,
+      brandSecondaryColor: society.brandSecondaryColor,
+      brandTertiaryColor: society.brandTertiaryColor,
+      brandLogoBlobPath: society.brandLogoBlobPath,
+      brandLogoDarkBlobPath: society.brandLogoDarkBlobPath,
+      brandIconBlobPath: society.brandIconBlobPath,
     };
   })
   .patch("/settings", async ({ auth, body }) => {

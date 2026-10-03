@@ -39,7 +39,14 @@ export const env = {
   publicApiUrl: process.env.PUBLIC_API_URL ?? "http://localhost:3000",
   devAuth: process.env.DEV_AUTH === "true",
   devOtpCode: process.env.DEV_OTP_CODE ?? "123456",
+  razorpayKeyId: process.env.RAZORPAY_KEY_ID ?? "",
+  razorpayKeySecret: process.env.RAZORPAY_KEY_SECRET ?? "",
   razorpayWebhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET ?? "",
+  societyHubRootDomain: process.env.SOCIETYHUB_ROOT_DOMAIN ?? "localhost",
+  get razorpayConfigured() {
+    return Boolean(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET);
+  },
+
   // Live getters so integration tests can set GOOGLE_* for one case.
   get googleClientId() {
     return process.env.GOOGLE_CLIENT_ID ?? "";

@@ -31,8 +31,40 @@ import {
   requireSocietyStaff,
 } from "../../lib/auth-context";
 import { syncFlatParkingSlot } from "../admin/onboard-resident";
+import {
+  normalizeCustomDomain,
+  slugifySocietyName,
+} from "../../lib/society-hostname";
 
 const DEFAULT_CHAIR_PASSWORD = "Test@1234";
+
+async function assertSlugAvailable(slug: string, excludeId?: string) {
+  const [existing] = await db
+    .select({ id: societies.id })
+    .from(societies)
+    .where(and(eq(societies.slug, slug), eq(societies.isDeleted, false)))
+    .limit(1);
+  if (existing && existing.id !== excludeId) {
+    throw new AppError(409, "slug_in_use", "That slug is already in use");
+  }
+}
+
+async function assertDomainAvailable(domain: string, excludeId?: string) {
+  const [existing] = await db
+    .select({ id: societies.id })
+    .from(societies)
+    .where(
+      and(eq(societies.customDomain, domain), eq(societies.isDeleted, false)),
+    )
+    .limit(1);
+  if (existing && existing.id !== excludeId) {
+    throw new AppError(
+      409,
+      "custom_domain_in_use",
+      "That custom domain is already in use",
+    );
+  }
+}
 
 function parseDetails(raw: string | null): Record<string, string> | null {
   if (!raw) return null;
@@ -69,6 +101,8 @@ async function buildSocietyDto(societyId: string): Promise<SocietyDto> {
   return {
     id: society.id,
     name: society.name,
+    slug: society.slug,
+    customDomain: society.customDomain,
     address: society.address,
     city: society.city,
     pincode: society.pincode,
@@ -80,6 +114,13 @@ async function buildSocietyDto(societyId: string): Promise<SocietyDto> {
     slaDays: society.slaDays,
     featureFlagsJson: society.featureFlagsJson,
     planId: society.planId,
+    brandingEnabled: society.brandingEnabled,
+    brandColor: society.brandColor,
+    brandSecondaryColor: society.brandSecondaryColor,
+    brandTertiaryColor: society.brandTertiaryColor,
+    brandLogoBlobPath: society.brandLogoBlobPath,
+    brandLogoDarkBlobPath: society.brandLogoDarkBlobPath,
+    brandIconBlobPath: society.brandIconBlobPath,
     createdAt: society.createdAt,
   };
 }
@@ -112,9 +153,18 @@ export const societyRoutes = new Elysia({ prefix: "/v1/societies" })
     const parsed = createSocietySchema.parse(body);
 
     const societyId = crypto.randomUUID();
+    let slug = parsed.slug?.trim() || slugifySocietyName(parsed.name);
+    await assertSlugAvailable(slug);
+    const customDomain = parsed.customDomain
+      ? normalizeCustomDomain(parsed.customDomain)
+      : null;
+    if (customDomain) await assertDomainAvailable(customDomain);
+
     await db.insert(societies).values({
       id: societyId,
       name: parsed.name,
+      slug,
+      customDomain: customDomain || null,
       address: parsed.address ?? null,
       city: parsed.city ?? null,
       pincode: parsed.pincode ?? null,
@@ -184,10 +234,21 @@ export const societyRoutes = new Elysia({ prefix: "/v1/societies" })
       .limit(1);
     if (!existing) throw new AppError(404, "not_found", "Society not found");
 
+    if (parsed.slug) await assertSlugAvailable(parsed.slug, params.id);
+    const customDomain =
+      parsed.customDomain !== undefined
+        ? parsed.customDomain
+          ? normalizeCustomDomain(parsed.customDomain)
+          : null
+        : undefined;
+    if (customDomain) await assertDomainAvailable(customDomain, params.id);
+
     await db
       .update(societies)
       .set({
         name: parsed.name,
+        ...(parsed.slug !== undefined ? { slug: parsed.slug } : {}),
+        ...(customDomain !== undefined ? { customDomain } : {}),
         ...(parsed.address !== undefined ? { address: parsed.address } : {}),
         ...(parsed.city !== undefined ? { city: parsed.city } : {}),
         ...(parsed.pincode !== undefined ? { pincode: parsed.pincode } : {}),

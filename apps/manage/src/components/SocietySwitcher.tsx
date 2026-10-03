@@ -1,30 +1,18 @@
 import { useEffect, useRef, useState } from "react";
-import type { MembershipDto } from "@society-hub/types";
-import { uniqueMembershipsBySociety } from "@society-hub/ui";
-import { useAuth } from "../auth";
+import { useSelectedSociety } from "../selected-society";
 import { Icon } from "./icons";
 
 export function SocietySwitcher() {
-  const { user, client, setSession } = useAuth();
+  const {
+    societies,
+    selectedSociety,
+    selectedSocietyId,
+    setSelectedSocietyId,
+    loading,
+  } = useSelectedSociety();
   const [open, setOpen] = useState(false);
-  const [memberships, setMemberships] = useState<MembershipDto[]>([]);
-  const [currentName, setCurrentName] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [q, setQ] = useState("");
   const boxRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    client
-      .listMemberships()
-      .then((rows) => {
-        const unique = uniqueMembershipsBySociety(rows);
-        setMemberships(unique);
-        const mine = unique.find((r) => r.tenantId === user?.tenantId);
-        if (mine) setCurrentName(mine.societyName);
-      })
-      .catch(() => {
-        // Endpoint may not exist yet; fall back silently.
-      });
-  }, [client, user?.tenantId]);
 
   useEffect(() => {
     function onClick(e: MouseEvent) {
@@ -36,68 +24,98 @@ export function SocietySwitcher() {
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
-  async function pick(tenantId: string) {
-    if (tenantId === user?.tenantId) {
-      setOpen(false);
-      return;
-    }
-    setBusy(true);
-    try {
-      const res = await client.selectTenant(tenantId);
-      setSession(res.user, res.tokens);
-    } catch {
-      // Not available yet on the API — keep dropdown open with a hint.
-    } finally {
-      setBusy(false);
-      setOpen(false);
-    }
-  }
-
-  const showSwitcher = memberships.length > 1 || user?.role === "superadmin";
-  const label = currentName ?? "Your society";
-
-  if (!showSwitcher) {
+  const filtered = societies.filter((s) => {
+    if (!q.trim()) return true;
+    const needle = q.trim().toLowerCase();
     return (
-      <div className="truncate rounded-lg bg-[var(--mist)]/60 px-3 py-2 text-sm font-medium text-[var(--leaf-dark)]">
-        {label}
-      </div>
+      s.name.toLowerCase().includes(needle) ||
+      s.id.toLowerCase().includes(needle) ||
+      (s.city ?? "").toLowerCase().includes(needle)
     );
-  }
+  });
+
+  const letter = (selectedSociety?.name ?? "S").slice(0, 1).toUpperCase();
 
   return (
-    <div className="relative" ref={boxRef}>
+    <div className="relative px-3 pb-2" ref={boxRef}>
       <button
         type="button"
         data-testid="society-switcher"
-        className="flex w-full items-center justify-between gap-2 rounded-lg border border-[var(--sand)] bg-white/70 px-3 py-2 text-left text-sm font-medium text-[var(--ink)] hover:border-[var(--leaf)]"
+        className="flex w-full items-center gap-2 rounded-lg border border-[var(--sand)] bg-white px-2 py-2 text-left shadow-[0_1px_4px_1px_rgba(184,115,51,0.2)] hover:border-[var(--leaf)]"
         onClick={() => setOpen((o) => !o)}
-        disabled={busy}
+        disabled={loading}
       >
-        <span className="truncate">{label}</span>
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[var(--sand)] bg-[var(--mist)]/50 text-xs font-bold text-[var(--leaf-dark)]">
+          {letter}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[10px] font-medium uppercase tracking-wider text-black/45">
+            Society
+          </span>
+          <span className="block truncate text-sm font-semibold text-[var(--ink)]">
+            {loading
+              ? "Loading…"
+              : selectedSociety?.name ?? (societies.length ? "Select society" : "No societies")}
+          </span>
+        </span>
         <Icon name="chevronDown" className="h-4 w-4 shrink-0 text-black/45" />
       </button>
+
       {open && (
-        <div className="absolute left-0 top-full z-20 mt-1 w-full min-w-[14rem] rounded-lg border border-[var(--sand)] bg-white p-1 shadow-lg">
-          {memberships.length === 0 && (
-            <p className="px-3 py-2 text-xs text-black/45">No other societies yet.</p>
+        <div
+          className="absolute left-3 right-3 top-full z-30 mt-1 max-h-80 overflow-hidden rounded-lg border border-[var(--sand)] bg-white shadow-lg sm:left-0 sm:right-auto sm:w-[22rem]"
+          data-testid="society-switcher-panel"
+        >
+          {societies.length > 6 && (
+            <div className="border-b border-[var(--sand)] p-2">
+              <input
+                className="input w-full text-sm"
+                placeholder="Filter societies…"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                data-testid="society-switcher-filter"
+              />
+            </div>
           )}
-          {memberships.map((m) => (
-            <button
-              key={m.tenantId}
-              type="button"
-              data-testid="society-switcher-option"
-              className={[
-                "flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm hover:bg-[var(--mist)]/60",
-                m.tenantId === user?.tenantId ? "font-semibold text-[var(--leaf-dark)]" : "",
-              ].join(" ")}
-              onClick={() => pick(m.tenantId)}
-            >
-              <span className="truncate">{m.societyName}</span>
-              <span className="ml-2 shrink-0 text-[10px] uppercase tracking-wide text-black/40">
-                {m.role}
-              </span>
-            </button>
-          ))}
+          <ul className="max-h-64 overflow-y-auto p-1">
+            {filtered.length === 0 && (
+              <li className="px-3 py-2 text-xs text-black/45">No societies match.</li>
+            )}
+            {filtered.map((s) => {
+              const selected = s.id === selectedSocietyId;
+              return (
+                <li key={s.id}>
+                  <button
+                    type="button"
+                    data-testid="society-switcher-option"
+                    className={[
+                      "flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-[var(--mist)]/70",
+                      selected
+                        ? "bg-[var(--mist)]/50 font-semibold text-[var(--leaf-dark)] shadow-[0_1px_4px_2px_rgba(184,115,51,0.2)]"
+                        : "",
+                    ].join(" ")}
+                    onClick={() => {
+                      setSelectedSocietyId(s.id);
+                      setOpen(false);
+                      setQ("");
+                    }}
+                  >
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[var(--sand)] bg-[var(--mist)]/40 text-[10px] font-bold">
+                      {s.name.slice(0, 1).toUpperCase()}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium">{s.name}</span>
+                      <span className="block truncate text-[10px] text-black/40">
+                        {s.city ? `${s.city} · ` : ""}
+                        {s.id.slice(0, 8)}…
+                        {s.status === "suspended" ? " · Suspended" : ""}
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       )}
     </div>

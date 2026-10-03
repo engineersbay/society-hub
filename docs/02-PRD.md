@@ -19,16 +19,16 @@
 
 SocietyHub is a multi-tenant SaaS for housing societies. The **product roadmap includes all planned modules** (complaints, billing, payments, notices, notifications, dashboards, etc.).  
 
-**Phase 1** shipped Complaints + Society & Resident Management. **Phase 2 demo** completes Client App Bills, Payments, Notices, Notifications, Dashboard, Audit, and society ops (Visitors, Parking, Bookings, Assets, Vendors, Events), plus Manage commercial controls (plans, flags, platform invoices, support). WhatsApp inbound, marketplace, and Razorpay live checkout remain Future.
+**Phase 1** shipped Complaints + Society & Resident Management. **Phase 2 demo** completes Client App Bills, Payments, Notices, Notifications, Dashboard, Audit, and society ops (Visitors, Parking, Bookings, Assets, Vendors, Events), plus Manage commercial controls (plans, flags, platform invoices, branding/domain, platform-fee Razorpay/offline). WhatsApp inbound, marketplace, and **resident** Razorpay checkout remain Future.
 
 **Clients (Fassport-style split):**
 
 | App | Audience | Modes |
 |-----|----------|--------|
-| `apps/client-app` (`app.localhost:5173`) | Society members | **Admin \| Resident** toggle (like Fassport Raise \| Invest). Staff: Chairperson, Secretary, Treasurer, Cashier, Committee. Residents/tenants: Resident mode only. |
-| `apps/manage` (`manage.localhost:5174`) | SocietyHub **platform employees** only | Create societies, list/add/remove a society team, and define **all society structure**: towers (buildings), flats, and parking slots (form or CSV). Day-to-day society admin (residents, complaints, occupancy) stays in Client App Admin — Client Admin **lists** flats/parking and does **not** create inventory. |
+| `apps/client-app` (`{slug}.…` or society custom domain) | Society members | **Admin \| Resident** toggle (like Fassport Raise \| Invest). Wears that society’s logo + brand color when branding is enabled. Staff: Chairperson, Secretary, Treasurer, Cashier, Committee. Residents/tenants: Resident mode only. |
+| `apps/manage` (`manage.…`) | SocietyHub **platform employees**, plus **public society self-onboarding** at `/onboard` | Fassport-style shell: society picker, **Open Client App**, **Viewing as Admin \| Tenant**. Admin = platform console. Tenant = selected society workspace. A new society can register, pick a plan, pay the platform fee, then use the Client App as chairperson. |
 
-Both share one API (`apps/api`) and `packages/sdk`.
+Both share one API (`apps/api`) and `packages/sdk`. Manage login never switches JWT on picker change. Host → society resolution sets `x-society` (custom domain, then `{slug}.{SOCIETYHUB_ROOT_DOMAIN}`; never `manage` / `api` / `app` / `www`).
 
 ## 3. Goals and success metrics
 
@@ -143,7 +143,8 @@ Phase 2 builds on the complaint portal. It is **in product roadmap**, not droppe
 | **Residents** | Owners vs tenants; move-in/move-out; profile self-update; tenant verification document store/retrieve |
 | **Complaints (advanced)** | Status `Assigned`; assignment to staff; comments thread; SLA timers/reminders/escalation (BullMQ) |
 | **Billing** | Generate maintenance bills per flat/period; line items; dues; defaulters; bill correct/void with audit |
-| **Payments** | **Now:** offline UPI/QR — society posts UPI ID + optional QR/account details; resident uploads a payment screenshot; Admin/Treasurer reviews, credits the bill, and acknowledges (or rejects). **Future:** Razorpay online checkout + webhooks. Cash/cheque/NEFT staff entry still available. |
+| **Payments (resident maintenance)** | **Now:** offline UPI/QR — society posts UPI ID + optional QR/account details; resident uploads a payment screenshot; Admin/Treasurer reviews, credits the bill, and acknowledges (or rejects). Cash/cheque/NEFT staff entry still available. **Future:** same Razorpay gateway for resident online pay. |
+| **Payments (platform fee)** | **Now:** society **self-onboarding** on Manage `/onboard` (plan + coupon + Pay offline / Razorpay). Platform invoices also payable in Tenant view. Signed webhooks provision the society only after capture. Resident maintenance pay stays offline UPI. |
 | **Notices** | Publish to all/wing/flat; read acknowledgment; edit/unpublish |
 | **Notifications** | In-app inbox; email (Resend); web push (FCM); deep links |
 | **Dashboards** | Secretary ops; Treasurer finance (collection %, outstanding); Committee read-only; richer resident home |
@@ -162,11 +163,11 @@ Phase 2 builds on the complaint portal. It is **in product roadmap**, not droppe
 
 ### 6.2b Phase 2 Manage commercial (demo)
 
-Plans (Starter/Growth/Enterprise), per-society subscription + feature flags, discounts, platform subscription invoices (offline mark paid), platform announcements, support tickets, integrations **health** (read-only — secrets stay in env).
+Plans (Starter/Growth/Enterprise), per-society subscription + feature flags, discounts, platform subscription invoices (offline + Razorpay when purchased), payment timeline/reconcile, society branding (logo + brand color) and domain (slug + custom domain), platform announcements, support tickets, integrations **health** (read-only — secrets stay in env). Manage **Users** lists platform employees (`superadmin`) only.
 
 ### 6.3 Future (after Phase 2)
 
-Staff attendance, CCTV requests, advanced vendor procurement, marketplace, AI assistant, builder edition, municipal extensions, **iOS App Store listing**, WhatsApp inbound complaint channel, Razorpay live checkout + signed webhooks.
+Staff attendance, CCTV requests, advanced vendor procurement, marketplace, AI assistant, builder edition, municipal extensions, **iOS App Store listing**, WhatsApp inbound complaint channel, **resident** Razorpay live checkout (reuses the platform payment gateway).
 
 **Native Android (now):** Flutter Client App in [`apps/mobile/`](../../apps/mobile/) — Play Store; mirrors `apps/client-app` (no bulk CSV, no manage portal).
 

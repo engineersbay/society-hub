@@ -1,17 +1,25 @@
 import { FormEvent, useEffect, useState } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import type { SocietyDto } from "@society-hub/types";
 import { ApiClientError } from "@society-hub/sdk";
 import { useAuth } from "../auth";
+import { useSelectedSociety } from "../selected-society";
+import { useViewAs } from "../view-as";
+
+const ROOT_DOMAIN = import.meta.env.VITE_SOCIETYHUB_ROOT_DOMAIN ?? "localhost:5173";
 
 export function SocietiesPage() {
   const { client, user } = useAuth();
-  const navigate = useNavigate();
+  const { viewAs, setViewAs } = useViewAs();
+  const { setSelectedSocietyId, refreshSocieties } = useSelectedSociety();
+  const canCreate = viewAs === "admin";
   const [items, setItems] = useState<SocietyDto[] | null>(null);
   const [notReady, setNotReady] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
     name: "",
+    slug: "",
+    customDomain: "",
     address: "",
     city: "",
     pincode: "",
@@ -20,6 +28,7 @@ export function SocietiesPage() {
     chairpersonPhone: "",
   });
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{ slug?: string; customDomain?: string }>({});
   const [busy, setBusy] = useState(false);
 
   function load() {
@@ -41,9 +50,12 @@ export function SocietiesPage() {
     e.preventDefault();
     setBusy(true);
     setError(null);
+    setFieldErrors({});
     try {
       const created = await client.createSociety({
         name: form.name,
+        slug: form.slug || null,
+        customDomain: form.customDomain || null,
         address: form.address || null,
         city: form.city || null,
         pincode: form.pincode || null,
@@ -53,6 +65,8 @@ export function SocietiesPage() {
       });
       setForm({
         name: "",
+        slug: "",
+        customDomain: "",
         address: "",
         city: "",
         pincode: "",
@@ -61,35 +75,56 @@ export function SocietiesPage() {
         chairpersonPhone: "",
       });
       setShowForm(false);
-      navigate(`/societies/${created.id}`);
+      setSelectedSocietyId(created.id);
+      await refreshSocieties();
+      load();
+      // Stay in Admin view on the societies list (Fassport create-tenant pattern).
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.body.message : "Failed to create society");
+      if (err instanceof ApiClientError) {
+        const code = err.body.code;
+        if (code === "slug_in_use") {
+          setFieldErrors({ slug: err.body.message });
+        } else if (code === "custom_domain_in_use") {
+          setFieldErrors({ customDomain: err.body.message });
+        } else {
+          setError(err.body.message);
+        }
+      } else {
+        setError("Failed to create society");
+      }
     } finally {
       setBusy(false);
     }
   }
 
+  function openSociety(id: string) {
+    setSelectedSocietyId(id);
+    setViewAs("tenant");
+  }
+
   return (
-    <div>
+    <div data-testid="societies-page">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="font-display text-2xl">Societies</h1>
           <p className="mt-1 text-sm text-black/55">
-            Every society on the SocietyHub platform. After create, set up Structure:
-            Society → Towers → Wings → Flats.
+            Every society on the SocietyHub platform. Create here, then open a society to work in
+            Tenant view (structure, branding, domain, platform fee).
           </p>
         </div>
-        <button
-          type="button"
-          data-testid="societies-add-toggle"
-          className="btn btn-primary text-sm"
-          onClick={() => setShowForm((s) => !s)}
-        >
-          {showForm ? "Cancel" : "New society"}
-        </button>
+        {canCreate && (
+          <button
+            type="button"
+            data-testid="societies-add-toggle"
+            className="btn btn-primary text-sm"
+            onClick={() => setShowForm((s) => !s)}
+          >
+            {showForm ? "Cancel" : "New society"}
+          </button>
+        )}
       </div>
 
-      {showForm && (
+      {canCreate && showForm && (
         <form className="card mb-6 grid gap-4 p-5 sm:grid-cols-2" data-testid="societies-form" onSubmit={submit}>
           <div className="sm:col-span-2">
             <label className="label" htmlFor="soc-name">Society name</label>
@@ -101,6 +136,40 @@ export function SocietiesPage() {
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
               required
             />
+          </div>
+          <div>
+            <label className="label" htmlFor="soc-slug">Slug</label>
+            <input
+              id="soc-slug"
+              className="input"
+              data-testid="societies-input-slug"
+              value={form.slug}
+              onChange={(e) => setForm((f) => ({ ...f, slug: e.target.value }))}
+              placeholder="auto from name if blank"
+            />
+            <p className="mt-1 text-xs text-black/45">
+              {(form.slug || "your-slug").toLowerCase()}.{ROOT_DOMAIN}
+            </p>
+            {fieldErrors.slug && (
+              <p className="mt-1 text-xs text-[var(--danger)]">{fieldErrors.slug}</p>
+            )}
+          </div>
+          <div>
+            <label className="label" htmlFor="soc-domain">Custom domain (optional)</label>
+            <input
+              id="soc-domain"
+              className="input"
+              data-testid="societies-input-domain"
+              value={form.customDomain}
+              onChange={(e) => setForm((f) => ({ ...f, customDomain: e.target.value }))}
+              placeholder="app.yoursociety.com"
+            />
+            <p className="mt-1 text-xs text-black/45">
+              Point DNS at the Client App before using a live domain.
+            </p>
+            {fieldErrors.customDomain && (
+              <p className="mt-1 text-xs text-[var(--danger)]">{fieldErrors.customDomain}</p>
+            )}
           </div>
           <div className="sm:col-span-2">
             <label className="label" htmlFor="soc-address">Address</label>
@@ -168,7 +237,7 @@ export function SocietiesPage() {
       {error && <p className="mb-4 text-sm text-[var(--danger)]">{error}</p>}
       {notReady && (
         <p className="mb-4 text-sm text-[var(--alert)]">
-          Societies API isn't live yet — this screen will populate automatically once it is.
+          Societies API isn&apos;t live yet — this screen will populate automatically once it is.
         </p>
       )}
 
@@ -179,11 +248,22 @@ export function SocietiesPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((s) => (
-            <Link key={s.id} to={`/societies/${s.id}`} className="card block p-5 hover:-translate-y-0.5 transition-transform">
+            <Link
+              key={s.id}
+              to={`/societies/${s.id}`}
+              onClick={() => openSociety(s.id)}
+              className="card block p-5 hover:-translate-y-0.5 transition-transform"
+              data-testid={`society-card-${s.id}`}
+            >
               <h3 className="font-semibold">{s.name}</h3>
               <p className="mt-1 text-sm text-black/55">
                 {[s.city, s.pincode].filter(Boolean).join(" · ") || "No location set"}
               </p>
+              {s.slug && (
+                <p className="mt-1 text-xs text-black/40">
+                  {s.slug}.{ROOT_DOMAIN}
+                </p>
+              )}
               {s.chairpersonName && (
                 <p className="mt-2 text-xs uppercase tracking-wide text-black/35">
                   Chairperson: {s.chairpersonName}

@@ -68,6 +68,7 @@ export { ComplaintPhotoDropzone } from "./complaint-form";
 
 export { googleSignInMode } from "./google-sign-in";
 export { GoogleSignInButton } from "./google-sign-in-button";
+export { SocietyHubLogo } from "./societyhub-logo";
 export { canUseManageApp } from "./manage-access";
 export { uniqueMembershipsBySociety } from "./memberships";
 export {

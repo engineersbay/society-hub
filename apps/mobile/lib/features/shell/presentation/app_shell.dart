@@ -131,9 +131,9 @@ class AppShell extends ConsumerWidget {
     final session = ref.watch(sessionProvider);
     final user = session.user;
     final showToggle = canUseAdminMode(user?.role);
-    final sections = (showToggle && session.mode == AppMode.admin)
-        ? _adminSections
-        : _residentSections;
+    final isAdminView = showToggle && session.mode == AppMode.admin;
+    final viewLabel = isAdminView ? 'Admin view' : 'Resident view';
+    final sections = isAdminView ? _adminSections : _residentSections;
     final loc = GoRouterState.of(context).uri.path;
     final title = shellTitleForPath(loc);
     final canPop = GoRouter.of(context).canPop();
@@ -148,7 +148,21 @@ class AppShell extends ConsumerWidget {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text(title, style: displayStyle(size: 20)),
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: displayStyle(size: 20)),
+              Text(
+                viewLabel,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.gold,
+                  letterSpacing: 0.4,
+                ),
+              ),
+            ],
+          ),
           leading: showBack
               ? IconButton(
                   icon: const Icon(Icons.arrow_back),
@@ -179,11 +193,11 @@ class AppShell extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  child: BrandMark(compact: true),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  child: BrandMark(compact: true, subtitle: viewLabel.toUpperCase()),
                 ),
-                if (user?.flatNumber != null)
+                if (user?.flatNumber != null && !isAdminView)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Text(
@@ -211,7 +225,7 @@ class AppShell extends ConsumerWidget {
                           Expanded(
                             child: _ModeChip(
                               key: AppKeys.modeAdmin,
-                              label: 'Admin',
+                              label: 'Admin view',
                               selected: session.mode == AppMode.admin,
                               onTap: () => ref
                                   .read(sessionProvider.notifier)
@@ -221,7 +235,7 @@ class AppShell extends ConsumerWidget {
                           Expanded(
                             child: _ModeChip(
                               key: AppKeys.modeResident,
-                              label: 'Resident',
+                              label: 'Resident view',
                               selected: session.mode == AppMode.resident,
                               onTap: () => ref
                                   .read(sessionProvider.notifier)

@@ -198,6 +198,8 @@ export type MembershipDto = {
 export type SocietyDto = {
   id: string;
   name: string;
+  slug?: string | null;
+  customDomain?: string | null;
   address: string | null;
   city: string | null;
   pincode: string | null;
@@ -209,6 +211,14 @@ export type SocietyDto = {
   slaDays?: number;
   featureFlagsJson?: string | null;
   planId?: string | null;
+  brandingEnabled?: boolean;
+  brandColor?: string | null;
+  brandSecondaryColor?: string | null;
+  brandTertiaryColor?: string | null;
+  brandLogoBlobPath?: string | null;
+  brandLogoDarkBlobPath?: string | null;
+  brandIconBlobPath?: string | null;
+  brandLogoUrl?: string | null;
   createdAt: string;
 };
 
@@ -881,6 +891,25 @@ export type SupportTicketDto = {
   reply: string | null;
   openedByUserId: string;
   createdAt: string;
+};
+
+export type SocietyOnboardingDto = {
+  id: string;
+  status: "started" | "payment_pending" | "paid" | "provisioned" | "failed";
+  name: string;
+  slug: string;
+  customDomain: string | null;
+  planId: string;
+  originalAmountPaise: number;
+  dueAmountPaise: number;
+  discountCode: string | null;
+  currency: "INR";
+  societyId: string | null;
+  clientAppUrl: string | null;
+  resumeToken?: string;
+  razorpayConfigured: boolean;
+  keyId: string | null;
+  offlineOnly: boolean;
 };
 
 export type IntegrationHealthDto = {
