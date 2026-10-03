@@ -302,6 +302,19 @@ describe("validation schemas", () => {
     expect(
       createSocietySchema.parse({ name: "Keshav Heights", city: "Pune" }).name,
     ).toBe("Keshav Heights");
+    expect(
+      createSocietySchema.parse({
+        name: "Keshav Heights",
+        slug: "Keshav-Heights",
+        customDomain: "https://www.keshav.example:443/path",
+      }).customDomain,
+    ).toBe("www.keshav.example");
+    expect(() =>
+      createSocietySchema.parse({
+        name: "Keshav Heights",
+        customDomain: "not a domain!!",
+      }),
+    ).toThrow();
     expect(createBuildingSchema.parse({ name: "Tower A" }).name).toBe("Tower A");
     expect(createWingSchema.parse({ name: "A" }).name).toBe("A");
     expect(createFlatSchema.parse({ number: "101" }).number).toBe("101");
