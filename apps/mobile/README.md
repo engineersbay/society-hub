@@ -170,7 +170,7 @@ keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey \
 |-----|------|-------|
 | Analyze + test | PR / push to `apps/mobile/**` | Always |
 | Android AAB | `workflow_dispatch` or tag `mobile-v*` | Needs keystore secrets + `MOBILE_API_BASE_URL` |
-| Play internal | Same + `ENABLE_PLAY_UPLOAD=true` + `upload_play` | Rolls out **internal** (`status: completed`). Never production. |
+| Play internal | **Dispatch** + `upload_play` + `ENABLE_PLAY_UPLOAD=true` | Rolls out **internal**. Tags build AAB only. Never production. |
 | iOS IPA | Same triggers **and** `ENABLE_IOS_IPA=true` | Skipped until Apple secrets; see Go-Live |
 
 GitHub **variables** (environment `prod` for store jobs): `MOBILE_API_BASE_URL` (**must** be `https://societyhub-api-ece6.onrender.com` — confirm with `GET /health`), `GOOGLE_SERVER_CLIENT_ID`, `PRIVACY_POLICY_URL`. Optional: `ENABLE_PLAY_UPLOAD`, `ENABLE_IOS_IPA`.

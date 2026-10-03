@@ -148,12 +148,18 @@ jobs:
   play-internal:
     name: Play internal
     needs: android-aab
+    # Dispatch + upload_play only. Tags still build the AAB; a second Play
+    # edit (tag + dispatch) expires the first: "This edit has expired".
     if: >
       vars.ENABLE_PLAY_UPLOAD == 'true' &&
-      (github.event_name != 'workflow_dispatch' || github.event.inputs.upload_play == 'true')
+      github.event_name == 'workflow_dispatch' &&
+      github.event.inputs.upload_play == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     environment: prod
+    concurrency:
+      group: play-internal-com.societyhub.societyhub_mobile
+      cancel-in-progress: false
 
     steps:
       - uses: actions/download-artifact@v4
@@ -174,13 +180,14 @@ jobs:
           echo "path=$aab" >> "$GITHUB_OUTPUT"
 
       - name: Upload AAB to Play internal track
-        uses: r0adkll/upload-google-play@v1
+        uses: r0adkll/upload-google-play@v1.1.3
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: com.societyhub.societyhub_mobile
           releaseFiles: ${{ steps.aab.outputs.path }}
-          track: internal
+          tracks: internal
           status: completed
+          changesNotSentForReview: true
 
   ios-ipa:
     name: iOS IPA
