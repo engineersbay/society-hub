@@ -1414,7 +1414,7 @@ describe("api integration", () => {
     });
     expect(clashDomain.status).toBe(409);
 
-    const patched = await fetch(`${base}/v1/societies/${society.id}`, {
+    const patchedSociety = await fetch(`${base}/v1/societies/${society.id}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -1427,7 +1427,7 @@ describe("api integration", () => {
         city: "Pune",
       }),
     });
-    expect(patched.ok).toBe(true);
+    expect(patchedSociety.ok).toBe(true);
 
     const missingSociety = await fetch(
       `${base}/v1/societies/${crypto.randomUUID()}`,
@@ -1442,11 +1442,11 @@ describe("api integration", () => {
     );
     expect(missingSociety.status).toBe(404);
 
-    const resident = await otpLogin("8888888888");
-    const forbidden = await fetch(`${base}/v1/societies/${society.id}`, {
-      headers: { Authorization: `Bearer ${resident.tokens.accessToken}` },
+    const residentSession = await otpLogin("8888888888");
+    const residentForbidden = await fetch(`${base}/v1/societies/${society.id}`, {
+      headers: { Authorization: `Bearer ${residentSession.tokens.accessToken}` },
     });
-    expect(forbidden.status).toBe(403);
+    expect(residentForbidden.status).toBe(403);
 
     const phoneOnly = await fetch(`${base}/v1/societies`, {
       method: "POST",
