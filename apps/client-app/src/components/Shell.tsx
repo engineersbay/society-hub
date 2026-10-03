@@ -142,7 +142,7 @@ function NavRow({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }
         [
           "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
           isActive
-            ? "bg-[var(--mist)] text-[var(--leaf-dark)]"
+            ? "border-r-4 border-[var(--leaf)] bg-[var(--mist)] text-[var(--leaf-dark)]"
             : "text-[var(--ink)]/75 hover:bg-[var(--mist)]/70 hover:text-[var(--leaf-dark)]",
         ].join(" ")
       }
@@ -195,6 +195,19 @@ function ModeToggle() {
   );
 }
 
+const DEFAULT_BRAND = "#2F5D3A";
+
+function isHexColor(value: string | null | undefined): value is string {
+  return Boolean(value && /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(value));
+}
+
+function mediaUrl(blobPath: string | null | undefined): string | null {
+  if (!blobPath) return null;
+  if (blobPath.startsWith("http://") || blobPath.startsWith("https://")) return blobPath;
+  const api = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
+  return `${api.replace(/\/$/, "")}/v1/media/${encodeURIComponent(blobPath)}`;
+}
+
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const { user, clearSession, client } = useAuth();
   const { mode } = useAppMode();
@@ -202,24 +215,99 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const effectiveMode = showToggle ? mode : "resident";
   const baseSections = effectiveMode === "admin" ? adminSections : residentSections;
   const [enabledModules, setEnabledModules] = useState<Set<string> | null>(null);
+  const [branding, setBranding] = useState<{
+    enabled: boolean;
+    name: string;
+    color: string;
+    logoUrl: string | null;
+  } | null>(null);
 
   useEffect(() => {
     client
       .getSocietySettings()
-      .then((s) => setEnabledModules(parseEnabledModules(s.featureFlagsJson)))
-      .catch(() => setEnabledModules(null));
+      .then((s) => {
+        setEnabledModules(parseEnabledModules(s.featureFlagsJson));
+        const enabled = Boolean(s.brandingEnabled);
+        const color = isHexColor(s.brandColor) ? s.brandColor : DEFAULT_BRAND;
+        setBranding({
+          enabled,
+          name: s.name,
+          color,
+          logoUrl: mediaUrl(s.brandLogoBlobPath),
+        });
+        if (enabled && isHexColor(s.brandColor)) {
+          document.documentElement.style.setProperty("--leaf", s.brandColor);
+          document.documentElement.style.setProperty("--leaf-dark", s.brandColor);
+        } else {
+          document.documentElement.style.removeProperty("--leaf");
+          document.documentElement.style.removeProperty("--leaf-dark");
+        }
+      })
+      .catch(() => {
+        setEnabledModules(null);
+        setBranding(null);
+      });
+    return () => {
+      document.documentElement.style.removeProperty("--leaf");
+      document.documentElement.style.removeProperty("--leaf-dark");
+    };
   }, [client, user?.tenantId]);
 
+  // Host-based branding before / while auth loads (Fassport x-tenant pattern via public host).
+  useEffect(() => {
+    if (user) return;
+    client
+      .getPublicSocietyByHost(window.location.host)
+      .then((res) => {
+        const s = res.society;
+        if (!s?.brandingEnabled) return;
+        const color = isHexColor(s.brandColor) ? s.brandColor : DEFAULT_BRAND;
+        setBranding({
+          enabled: true,
+          name: s.name,
+          color,
+          logoUrl: mediaUrl(s.brandLogoBlobPath),
+        });
+        document.documentElement.style.setProperty("--leaf", color);
+        document.documentElement.style.setProperty("--leaf-dark", color);
+      })
+      .catch(() => undefined);
+  }, [client, user]);
+
   const sections = filterSections(baseSections, enabledModules);
+  const letter = (branding?.name ?? "S").slice(0, 1).toUpperCase();
+  const brandActive = Boolean(branding?.enabled);
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-3 px-4 pb-4 pt-5">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--saffron)] to-[var(--leaf-dark)] text-sm font-bold text-white">
-          SH
-        </div>
+      <div className="flex items-center gap-3 px-4 pb-4 pt-5" data-testid="client-brand-mark">
+        {brandActive && branding?.logoUrl ? (
+          <img
+            src={branding.logoUrl}
+            alt=""
+            className="h-10 w-10 rounded-xl object-cover"
+          />
+        ) : (
+          <div
+            className={[
+              "flex h-10 w-10 items-center justify-center rounded-xl text-sm font-bold text-white",
+              brandActive ? "" : "bg-gradient-to-br from-[var(--saffron)] to-[var(--leaf-dark)]",
+            ].join(" ")}
+            style={brandActive ? { background: branding?.color ?? DEFAULT_BRAND } : undefined}
+          >
+            {brandActive ? letter : "SH"}
+          </div>
+        )}
         <div>
-          <p className="font-display text-lg leading-tight text-[var(--leaf-dark)]">SocietyHub</p>
+          <p
+            className={[
+              "font-display text-lg leading-tight",
+              brandActive ? "" : "text-[var(--leaf-dark)]",
+            ].join(" ")}
+            style={brandActive ? { color: branding?.color } : undefined}
+          >
+            {brandActive ? branding?.name : "SocietyHub"}
+          </p>
           {user?.flatNumber && (
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--gold)]">
               Flat {user.flatNumber}

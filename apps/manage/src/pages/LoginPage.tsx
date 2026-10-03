@@ -296,6 +296,12 @@ export function LoginPage() {
           </p>
         )}
         <p className="mt-6 text-center text-sm text-black/50">
+          Register a new society?{" "}
+          <Link className="text-[var(--leaf)]" to="/onboard">
+            Self-onboard and pay
+          </Link>
+        </p>
+        <p className="mt-2 text-center text-sm text-black/50">
           Society staff or resident?{" "}
           <a className="text-[var(--leaf)]" href={WEB_URL}>
             Open Client App

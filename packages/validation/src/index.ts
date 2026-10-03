@@ -326,8 +326,32 @@ export const updateSocietyTeamMemberSchema = z
     message: "at least one field is required",
   });
 
+const slugSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .min(2)
+  .max(80)
+  .regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/, "Slug must be lowercase letters, numbers, hyphens");
+
+const customDomainSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .max(255)
+  .transform((v) =>
+    v
+      .replace(/^https?:\/\//, "")
+      .replace(/\/.*$/, "")
+      .replace(/:\d+$/, "")
+      .replace(/\.$/, ""),
+  )
+  .refine((v) => !v || /^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$/.test(v), "Invalid domain");
+
 export const createSocietySchema = z.object({
   name: z.string().min(1).max(200),
+  slug: slugSchema.optional().nullable(),
+  customDomain: customDomainSchema.optional().nullable(),
   address: z.string().max(500).optional().nullable(),
   city: z.string().max(120).optional().nullable(),
   pincode: z.string().max(12).optional().nullable(),
@@ -390,6 +414,8 @@ export const createSocietyWingSchema = z.object({
 
 export const updateSocietyBasicsSchema = z.object({
   name: z.string().trim().min(1).max(200),
+  slug: slugSchema.optional().nullable(),
+  customDomain: customDomainSchema.optional().nullable(),
   address: z.string().trim().max(500).optional().nullable(),
   city: z.string().trim().max(120).optional().nullable(),
   pincode: z.string().trim().max(20).optional().nullable(),
@@ -695,6 +721,75 @@ export const updateSocietySettingsSchema = z.object({
   status: z.enum(["active", "suspended"]).optional(),
   featureFlagsJson: z.string().max(4000).optional().nullable(),
   planId: z.string().uuid().optional().nullable(),
+  slug: slugSchema.optional().nullable(),
+  customDomain: customDomainSchema.optional().nullable(),
+  brandingEnabled: z.boolean().optional(),
+  brandColor: z
+    .string()
+    .trim()
+    .regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, "Use a hex color like #1A3A65")
+    .optional()
+    .nullable(),
+  brandLogoBlobPath: z.string().max(500).optional().nullable(),
+  brandLogoContentType: z.string().max(120).optional().nullable(),
+});
+
+export const applyPlatformCouponSchema = z.object({
+  billId: z.string().uuid(),
+  code: z.string().trim().min(1).max(40),
+});
+
+export const startSocietyOnboardingSchema = z.object({
+  name: z.string().min(1).max(200),
+  slug: slugSchema.optional().nullable(),
+  customDomain: customDomainSchema.optional().nullable(),
+  address: z.string().max(500).optional().nullable(),
+  city: z.string().max(120).optional().nullable(),
+  pincode: z.string().max(12).optional().nullable(),
+  chairpersonName: z.string().min(1).max(120),
+  chairpersonEmail: z.string().email().max(200),
+  chairpersonPhone: z.string().min(10).max(15),
+  chairpersonPassword: z.string().min(8).max(128),
+  planId: z.string().uuid(),
+});
+
+export const applyOnboardingCouponSchema = z.object({
+  resumeToken: z.string().min(16).max(128),
+  code: z.string().trim().min(1).max(40),
+});
+
+export const markOnboardingOfflineSchema = z.object({
+  resumeToken: z.string().min(16).max(128),
+});
+
+export const createOnboardingOrderSchema = z.object({
+  resumeToken: z.string().min(16).max(128),
+});
+
+export const verifyOnboardingPaymentSchema = z.object({
+  resumeToken: z.string().min(16).max(128),
+  paymentReference: z.string().min(1).max(64),
+  razorpayOrderId: z.string().min(1).max(120),
+  razorpayPaymentId: z.string().min(1).max(120),
+  razorpaySignature: z.string().min(1).max(256),
+});
+
+export const createPlatformPaymentOrderSchema = z.object({
+  billId: z.string().uuid(),
+  discountCode: z.string().trim().max(40).optional().nullable(),
+});
+
+export const verifyPlatformPaymentSchema = z.object({
+  paymentReference: z.string().min(1).max(64),
+  razorpayOrderId: z.string().min(1).max(120),
+  razorpayPaymentId: z.string().min(1).max(120),
+  razorpaySignature: z.string().min(1).max(256),
+});
+
+export const markPlatformBillOfflineSchema = z.object({
+  billId: z.string().uuid(),
+  discountCode: z.string().trim().max(40).optional().nullable(),
+  note: z.string().max(500).optional().nullable(),
 });
 
 export const assignSubscriptionSchema = z.object({

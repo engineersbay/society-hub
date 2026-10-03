@@ -12,6 +12,8 @@ import type {
 import { ApiClientError } from "@society-hub/sdk";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../auth";
+import { useSelectedSociety } from "../selected-society";
+import { useViewAs } from "../view-as";
 
 const MODULES = [
   "complaints",
@@ -102,63 +104,47 @@ export function SubscriptionsPage() {
 
 export function FeatureFlagsPage() {
   const { client, user } = useAuth();
+  const { viewAs } = useViewAs();
+  const { selectedSociety, selectedSocietyId, refreshSocieties } = useSelectedSociety();
   const allowed = user?.role === "superadmin";
-  const [societies, setSocieties] = useState<SocietyDto[]>([]);
-  const [tenantId, setTenantId] = useState("");
   const [flags, setFlags] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    client.listSocieties().then((soc) => {
-      setSocieties(soc);
-      if (soc[0]) {
-        setTenantId(soc[0].id);
-        const raw = soc[0].featureFlagsJson;
-        const list: string[] = raw ? JSON.parse(raw) : MODULES;
-        const next: Record<string, boolean> = {};
-        for (const m of MODULES) next[m] = list.includes(m);
-        setFlags(next);
-      }
-    });
-  }, [client]);
-
-  useEffect(() => {
-    const s = societies.find((x) => x.id === tenantId);
-    if (!s) return;
-    const raw = s.featureFlagsJson;
+    if (!selectedSociety) return;
+    const raw = selectedSociety.featureFlagsJson;
     const list: string[] = raw ? JSON.parse(raw) : MODULES;
     const next: Record<string, boolean> = {};
     for (const m of MODULES) next[m] = list.includes(m);
     setFlags(next);
-  }, [tenantId, societies]);
+  }, [selectedSociety]);
 
   async function save() {
+    if (!selectedSocietyId) return;
     setError(null);
     setMsg(null);
     try {
       const enabled = MODULES.filter((m) => flags[m]);
-      await client.updateManageSocietySettings(tenantId, {
+      await client.updateManageSocietySettings(selectedSocietyId, {
         featureFlagsJson: JSON.stringify(enabled),
       });
       setMsg("Flags saved");
-      const soc = await client.listSocieties();
-      setSocieties(soc);
+      await refreshSocieties();
     } catch (err) {
       setError(err instanceof ApiClientError ? err.body.message : "Failed");
     }
   }
 
   if (!allowed) return <Navigate to="/login" replace />;
+  if (viewAs !== "tenant") return <Navigate to="/dashboard" replace />;
+  if (!selectedSocietyId) return <Navigate to="/societies" replace />;
   return (
-    <div>
+    <div data-testid="feature-flags-page">
       <h1 className="font-display text-2xl">Feature flags</h1>
-      <p className="text-sm text-black/55">Modules enabled for a society in the Client App.</p>
-      <select className="input mt-4 max-w-md" value={tenantId} onChange={(e) => setTenantId(e.target.value)}>
-        {societies.map((s) => (
-          <option key={s.id} value={s.id}>{s.name}</option>
-        ))}
-      </select>
+      <p className="text-sm text-black/55">
+        Modules enabled for {selectedSociety?.name ?? "this society"} in the Client App.
+      </p>
       <ul className="card mt-4 divide-y divide-[var(--sand)] p-2">
         {MODULES.map((m) => (
           <li key={m} className="flex items-center justify-between px-3 py-2">
@@ -171,7 +157,9 @@ export function FeatureFlagsPage() {
           </li>
         ))}
       </ul>
-      <button type="button" className="btn btn-primary mt-3" onClick={save}>Save flags</button>
+      <button type="button" className="btn btn-primary mt-3" onClick={save} data-testid="feature-flags-save">
+        Save flags
+      </button>
       {msg && <p className="mt-2 text-sm text-[var(--leaf)]">{msg}</p>}
       {error && <p className="mt-2 text-sm text-[var(--danger)]">{error}</p>}
     </div>
@@ -180,48 +168,88 @@ export function FeatureFlagsPage() {
 
 export function SocietySettingsManagePage() {
   const { client, user } = useAuth();
+  const { viewAs } = useViewAs();
+  const { selectedSociety, selectedSocietyId, refreshSocieties } = useSelectedSociety();
   const allowed = user?.role === "superadmin";
-  const [societies, setSocieties] = useState<SocietyDto[]>([]);
-  const [tenantId, setTenantId] = useState("");
+  const [name, setName] = useState("");
+  const [slug, setSlug] = useState("");
+  const [customDomain, setCustomDomain] = useState("");
   const [slaDays, setSlaDays] = useState(3);
   const [status, setStatus] = useState<"active" | "suspended">("active");
   const [msg, setMsg] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    client.listSocieties().then((soc) => {
-      setSocieties(soc);
-      if (soc[0]) {
-        setTenantId(soc[0].id);
-        setSlaDays(soc[0].slaDays ?? 3);
-        setStatus(soc[0].status ?? "active");
-      }
-    });
-  }, [client]);
-
-  useEffect(() => {
-    const s = societies.find((x) => x.id === tenantId);
-    if (!s) return;
-    setSlaDays(s.slaDays ?? 3);
-    setStatus(s.status ?? "active");
-  }, [tenantId, societies]);
+    if (!selectedSociety) return;
+    setName(selectedSociety.name);
+    setSlug(selectedSociety.slug ?? "");
+    setCustomDomain(selectedSociety.customDomain ?? "");
+    setSlaDays(selectedSociety.slaDays ?? 3);
+    setStatus(selectedSociety.status ?? "active");
+  }, [selectedSociety]);
 
   async function save() {
-    await client.updateManageSocietySettings(tenantId, { slaDays, status });
-    setMsg("Saved");
-    setSocieties(await client.listSocieties());
+    if (!selectedSocietyId) return;
+    setError(null);
+    setMsg(null);
+    try {
+      await client.updateSociety(selectedSocietyId, {
+        name,
+        slug: slug || null,
+        customDomain: customDomain || null,
+      });
+      await client.updateManageSocietySettings(selectedSocietyId, {
+        slaDays,
+        status,
+        slug: slug || null,
+        customDomain: customDomain || null,
+      });
+      setMsg("Saved");
+      await refreshSocieties();
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.body.message : "Failed");
+    }
   }
 
   if (!allowed) return <Navigate to="/login" replace />;
+  if (viewAs !== "tenant") return <Navigate to="/dashboard" replace />;
+  if (!selectedSocietyId) return <Navigate to="/societies" replace />;
   return (
-    <div>
-      <h1 className="font-display text-2xl">Society settings</h1>
-      <p className="text-sm text-black/55">SLA defaults and suspend access.</p>
+    <div data-testid="society-details-page">
+      <h1 className="font-display text-2xl">Society details</h1>
+      <p className="text-sm text-black/55">
+        Name, slug, custom domain, SLA defaults, and suspend access.
+      </p>
       <div className="card mt-4 grid max-w-lg gap-3 p-4">
-        <select className="input" value={tenantId} onChange={(e) => setTenantId(e.target.value)}>
-          {societies.map((s) => (
-            <option key={s.id} value={s.id}>{s.name}</option>
-          ))}
-        </select>
+        <div>
+          <label className="label">Name</label>
+          <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
+        </div>
+        <div>
+          <label className="label">Slug</label>
+          <input
+            className="input"
+            value={slug}
+            onChange={(e) => setSlug(e.target.value)}
+            data-testid="society-slug"
+          />
+          <p className="mt-1 text-xs text-black/45">
+            Example: {slug || "your-slug"}.{import.meta.env.VITE_SOCIETYHUB_ROOT_DOMAIN ?? "localhost:5173"}
+          </p>
+        </div>
+        <div>
+          <label className="label">Custom domain</label>
+          <input
+            className="input"
+            value={customDomain}
+            onChange={(e) => setCustomDomain(e.target.value)}
+            placeholder="app.yoursociety.com"
+            data-testid="society-custom-domain"
+          />
+          <p className="mt-1 text-xs text-black/45">
+            Residents use this host. Point DNS at the Client App before saving a live domain.
+          </p>
+        </div>
         <div>
           <label className="label">Complaint SLA (days)</label>
           <input className="input" type="number" min={1} value={slaDays} onChange={(e) => setSlaDays(Number(e.target.value))} />
@@ -233,8 +261,11 @@ export function SocietySettingsManagePage() {
             <option value="suspended">Suspended</option>
           </select>
         </div>
-        <button type="button" className="btn btn-primary" onClick={save}>Save</button>
+        <button type="button" className="btn btn-primary" onClick={save} data-testid="society-details-save">
+          Save
+        </button>
         {msg && <p className="text-sm text-[var(--leaf)]">{msg}</p>}
+        {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
       </div>
     </div>
   );
@@ -352,15 +383,94 @@ export function PlatformPaymentsPage() {
   const { client, user } = useAuth();
   const allowed = user?.role === "superadmin";
   const [bills, setBills] = useState<PlatformBillDto[]>([]);
+  const [detailRef, setDetailRef] = useState("");
+  const [detail, setDetail] = useState<{
+    paymentReference: string;
+    status: string;
+    amountPaise: number;
+    method: string | null;
+    timeline: Array<{ at: string; label: string }>;
+  } | null>(null);
+  const [detailError, setDetailError] = useState<string | null>(null);
+
   useEffect(() => {
     client.listPlatformBills().then(setBills);
   }, [client]);
+
   const paid = bills.filter((b) => b.status === "paid");
   if (!allowed) return <Navigate to="/login" replace />;
+
+  async function loadDetail(e: FormEvent) {
+    e.preventDefault();
+    if (!detailRef.trim()) return;
+    setDetailError(null);
+    try {
+      const row = await client.getPlatformPayment(detailRef.trim());
+      setDetail({
+        paymentReference: row.paymentReference,
+        status: row.status,
+        amountPaise: row.amountPaise,
+        method: row.method,
+        timeline: [
+          { at: row.createdAt, label: `initiated (${row.status})` },
+          ...(row.providerOrderId
+            ? [{ at: row.createdAt, label: `order ${row.providerOrderId}` }]
+            : []),
+          ...(row.providerPaymentId
+            ? [{ at: row.completedAt ?? row.createdAt, label: `payment ${row.providerPaymentId}` }]
+            : []),
+          ...(row.completedAt
+            ? [{ at: row.completedAt, label: "captured / bill marked paid" }]
+            : []),
+          ...(row.failedAt
+            ? [
+                {
+                  at: row.failedAt,
+                  label: row.failureReason
+                    ? `failed: ${row.failureReason}`
+                    : "failed",
+                },
+              ]
+            : []),
+          ...row.webhooks.map((w) => ({
+            at: w.receivedAt,
+            label: `webhook ${w.eventType} (${w.processingStatus})`,
+          })),
+        ].sort((a, b) => a.at.localeCompare(b.at)),
+      });
+    } catch (err) {
+      setDetail(null);
+      setDetailError(err instanceof ApiClientError ? err.body.message : "Not found");
+    }
+  }
+
+  async function reconcile() {
+    if (!detailRef.trim()) return;
+    try {
+      const res = await client.reconcilePlatformPayment(detailRef.trim());
+      setDetailError(null);
+      setDetail((d) =>
+        d
+          ? {
+              ...d,
+              timeline: [
+                ...d.timeline,
+                { at: new Date().toISOString(), label: `reconcile: ${res.result}` },
+              ],
+            }
+          : d,
+      );
+    } catch (err) {
+      setDetailError(err instanceof ApiClientError ? err.body.message : "Reconcile failed");
+    }
+  }
+
   return (
-    <div>
+    <div data-testid="platform-payments-page">
       <h1 className="font-display text-2xl">Payments</h1>
-      <p className="text-sm text-black/55">Paid platform invoices (offline).</p>
+      <p className="text-sm text-black/55">
+        Platform subscription payments — offline receipts and Razorpay when configured.
+      </p>
       <ul className="mt-4 space-y-2">
         {paid.length === 0 ? (
           <li className="empty-state">No paid platform invoices yet.</li>
@@ -372,6 +482,38 @@ export function PlatformPaymentsPage() {
           ))
         )}
       </ul>
+
+      <form className="card mt-6 flex flex-wrap gap-2 p-4" onSubmit={loadDetail}>
+        <input
+          className="input max-w-md flex-1"
+          placeholder="Payment reference SH-PAY-…"
+          value={detailRef}
+          onChange={(e) => setDetailRef(e.target.value)}
+          data-testid="payment-ref-input"
+        />
+        <button className="btn btn-primary" type="submit">
+          Open timeline
+        </button>
+        <button className="btn btn-ghost" type="button" onClick={reconcile} disabled={!detailRef.trim()}>
+          Reconcile
+        </button>
+      </form>
+      {detailError && <p className="mt-2 text-sm text-[var(--danger)]">{detailError}</p>}
+      {detail && (
+        <div className="card mt-3 p-4" data-testid="payment-timeline">
+          <p className="font-medium">
+            {detail.paymentReference} · ₹{(detail.amountPaise / 100).toFixed(0)} · {detail.status}
+            {detail.method ? ` · ${detail.method}` : ""}
+          </p>
+          <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-black/70">
+            {detail.timeline.map((t, i) => (
+              <li key={`${t.at}-${i}`}>
+                {t.label} <span className="text-black/40">({t.at})</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
     </div>
   );
 }

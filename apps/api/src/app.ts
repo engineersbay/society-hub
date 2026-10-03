@@ -4,6 +4,10 @@ import { swagger } from "@elysiajs/swagger";
 import { ZodError } from "zod";
 import { env } from "./config";
 import { AppError, toErrorBody } from "./lib/errors";
+import {
+  hostnameFromRequest,
+  resolveSocietyFromHostname,
+} from "./lib/society-hostname";
 import { authRoutes } from "./modules/auth/routes";
 import { adminRoutes } from "./modules/admin/routes";
 import { teamRoutes } from "./modules/team/routes";
@@ -39,6 +43,12 @@ import {
   manageUserRoutes,
 } from "./modules/manage/user-routes";
 import {
+  platformPaymentRoutes,
+  platformRazorpayWebhookRoutes,
+  publicSocietyBrandingRoutes,
+} from "./modules/manage/platform-payment-routes";
+import { publicSocietyOnboardingRoutes } from "./modules/manage/society-onboarding-routes";
+import {
   manageCommercialRoutes,
   societyFlagsRoutes,
   supportRoutes,
@@ -60,6 +70,7 @@ export function createApp() {
       cors({
         origin: env.corsOrigin,
         credentials: true,
+        exposeHeaders: ["x-society"],
       }),
     )
     .use(
@@ -115,6 +126,19 @@ export function createApp() {
       set.status = mapped.status;
       return mapped.body;
     })
+    .onAfterHandle(async ({ request, set }) => {
+      try {
+        const society = await resolveSocietyFromHostname(
+          hostnameFromRequest(request),
+          env.societyHubRootDomain,
+        );
+        if (society) {
+          set.headers["x-society"] = society.id;
+        }
+      } catch {
+        /* host resolution must never break responses */
+      }
+    })
     .get("/health", () => ({ ok: true, service: "society-hub-api" }))
     .use(authRoutes)
     .use(adminRoutes)
@@ -131,6 +155,10 @@ export function createApp() {
     .use(manageUserRoutes)
     .use(manageActivityRoutes)
     .use(manageCommercialRoutes)
+    .use(platformPaymentRoutes)
+    .use(platformRazorpayWebhookRoutes)
+    .use(publicSocietyBrandingRoutes)
+    .use(publicSocietyOnboardingRoutes)
     .use(supportRoutes)
     .use(societyFlagsRoutes)
     .use(buildingRoutes)

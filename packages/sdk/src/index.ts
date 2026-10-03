@@ -41,6 +41,7 @@ import type {
   ResidentStatus,
   VerificationStatus,
   PlatformPlanDto,
+  SocietyOnboardingDto,
   PlatformSubscriptionDto,
   PlatformDiscountDto,
   PlatformBillDto,
@@ -626,6 +627,8 @@ export function createSocietyHubClient(opts: SocietyHubClientOptions) {
     listSocieties: () => request<SocietyDto[]>("/v1/societies"),
     createSociety: (body: {
       name: string;
+      slug?: string | null;
+      customDomain?: string | null;
       address?: string | null;
       city?: string | null;
       pincode?: string | null;
@@ -641,6 +644,8 @@ export function createSocietyHubClient(opts: SocietyHubClientOptions) {
       societyId: string,
       body: {
         name: string;
+        slug?: string | null;
+        customDomain?: string | null;
         address?: string | null;
         city?: string | null;
         pincode?: string | null;
@@ -1109,11 +1114,16 @@ export function createSocietyHubClient(opts: SocietyHubClientOptions) {
       request<{
         id: string;
         name: string;
+        slug?: string | null;
+        customDomain?: string | null;
         slaDays: number;
         billingDefaults: string | null;
         status: "active" | "suspended";
         featureFlagsJson: string | null;
         planId: string | null;
+        brandingEnabled?: boolean;
+        brandColor?: string | null;
+        brandLogoBlobPath?: string | null;
       }>("/v1/society/settings"),
     updateSocietySettings: (body: {
       slaDays?: number;
@@ -1406,12 +1416,211 @@ export function createSocietyHubClient(opts: SocietyHubClientOptions) {
         status?: "active" | "suspended";
         featureFlagsJson?: string | null;
         planId?: string | null;
+        slug?: string | null;
+        customDomain?: string | null;
+        brandingEnabled?: boolean;
+        brandColor?: string | null;
+        brandLogoBlobPath?: string | null;
+        brandLogoContentType?: string | null;
       },
     ) =>
       request<{ ok: true }>(`/v1/manage/societies/${id}/settings`, {
         method: "PATCH",
         body: JSON.stringify(body),
       }),
+
+    getPlatformPaymentConfig: () =>
+      request<{
+        provider: string;
+        razorpayConfigured: boolean;
+        keyId: string | null;
+        offlineOnly: boolean;
+      }>("/v1/manage/platform-payments/config"),
+    previewPlatformCoupon: (body: { billId: string; code: string }) =>
+      request<{
+        billId: string;
+        originalAmountPaise: number;
+        amountPaise: number;
+        discountCode: string | null;
+        currency: string;
+      }>("/v1/manage/platform-payments/coupons/preview", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    createPlatformPaymentOrder: (body: {
+      billId: string;
+      discountCode?: string | null;
+    }) =>
+      request<{
+        paymentReference: string;
+        status: string;
+        amountPaise: number;
+        currency: string;
+        discountCode: string | null;
+        checkout: {
+          provider: string;
+          orderId: string;
+          keyId: string;
+        } | null;
+        offlineOnly: boolean;
+      }>("/v1/manage/platform-payments/orders", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    markPlatformBillOfflinePay: (body: {
+      billId: string;
+      discountCode?: string | null;
+      note?: string | null;
+    }) =>
+      request<{
+        paymentReference: string;
+        status: string;
+        amountPaise: number;
+        currency: string;
+      }>("/v1/manage/platform-payments/offline", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    verifyPlatformPayment: (body: {
+      paymentReference: string;
+      razorpayOrderId: string;
+      razorpayPaymentId: string;
+      razorpaySignature: string;
+    }) =>
+      request<{ paymentReference: string; status: string }>(
+        "/v1/manage/platform-payments/verify",
+        { method: "POST", body: JSON.stringify(body) },
+      ),
+    listSocietyPlatformPayments: (tenantId: string) =>
+      request<
+        Array<{
+          paymentReference: string;
+          billId: string;
+          amountPaise: number;
+          status: string;
+          method: string | null;
+          discountCode: string | null;
+          providerOrderId: string | null;
+          providerPaymentId: string | null;
+          createdAt: string;
+          completedAt: string | null;
+        }>
+      >(`/v1/manage/platform-payments/by-society/${tenantId}`),
+    getPlatformPayment: (paymentReference: string) =>
+      request<{
+        paymentReference: string;
+        correlationId: string;
+        tenantId: string;
+        billId: string;
+        amountPaise: number;
+        currency: string;
+        status: string;
+        method: string | null;
+        discountCode: string | null;
+        providerOrderId: string | null;
+        providerPaymentId: string | null;
+        createdAt: string;
+        completedAt: string | null;
+        failedAt: string | null;
+        failureReason: string | null;
+        webhooks: Array<{
+          eventType: string;
+          processingStatus: string;
+          receivedAt: string;
+          signatureValid: boolean;
+        }>;
+      }>(`/v1/manage/platform-payments/${paymentReference}`),
+    reconcilePlatformPayment: (paymentReference: string) =>
+      request<{
+        paymentReference: string;
+        result: "matched" | "mismatch" | "not_found";
+        localStatus: string;
+        providerStatus: string | null;
+      }>(`/v1/manage/platform-payments/${encodeURIComponent(paymentReference)}/reconcile`, {
+        method: "POST",
+      }),
+    getPublicSocietyByHost: (host: string) =>
+      request<{
+        society: {
+          id: string;
+          name: string;
+          slug: string | null;
+          brandingEnabled: boolean;
+          brandColor: string | null;
+          brandLogoBlobPath: string | null;
+        } | null;
+      }>(`/v1/public/society-by-host?host=${encodeURIComponent(host)}`, {}, false),
+    listPublicOnboardingPlans: () =>
+      request<{
+        plans: PlatformPlanDto[];
+        razorpayConfigured: boolean;
+        keyId: string | null;
+        offlineOnly: boolean;
+      }>("/v1/public/society-onboarding/plans", {}, false),
+    startSocietyOnboarding: (body: {
+      name: string;
+      slug?: string | null;
+      customDomain?: string | null;
+      address?: string | null;
+      city?: string | null;
+      pincode?: string | null;
+      chairpersonName: string;
+      chairpersonEmail: string;
+      chairpersonPhone: string;
+      chairpersonPassword: string;
+      planId: string;
+    }) =>
+      request<SocietyOnboardingDto>("/v1/public/society-onboarding", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }, false),
+    getSocietyOnboarding: (id: string, token: string) =>
+      request<SocietyOnboardingDto>(
+        `/v1/public/society-onboarding/${id}?token=${encodeURIComponent(token)}`,
+        {},
+        false,
+      ),
+    previewOnboardingCoupon: (id: string, body: { resumeToken: string; code: string }) =>
+      request<{
+        originalAmountPaise: number;
+        amountPaise: number;
+        discountCode: string | null;
+        currency: string;
+      }>(`/v1/public/society-onboarding/${id}/coupon`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }, false),
+    payOnboardingOffline: (id: string, body: { resumeToken: string }) =>
+      request<SocietyOnboardingDto>(`/v1/public/society-onboarding/${id}/pay-offline`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }, false),
+    createOnboardingOrder: (id: string, body: { resumeToken: string }) =>
+      request<{
+        paymentReference: string | null;
+        status: string;
+        amountPaise: number;
+        currency: string;
+        checkout: { provider: string; orderId: string; keyId: string } | null;
+        offlineOnly: boolean;
+      }>(`/v1/public/society-onboarding/${id}/orders`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }, false),
+    verifyOnboardingPayment: (
+      id: string,
+      body: {
+        resumeToken: string;
+        paymentReference: string;
+        razorpayOrderId: string;
+        razorpayPaymentId: string;
+        razorpaySignature: string;
+      },
+    ) =>
+      request<SocietyOnboardingDto>(`/v1/public/society-onboarding/${id}/verify`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }, false),
   };
 }
 

@@ -9,6 +9,8 @@ import { SocietyFlatsPanel } from "../components/SocietyFlatsPanel";
 import { SocietyParkingsPanel } from "../components/SocietyParkingsPanel";
 import { SocietyStructurePanel } from "../components/SocietyStructurePanel";
 import { SOCIETY_COMING_SOON } from "../manage-nav";
+import { useSelectedSociety } from "../selected-society";
+import { useViewAs } from "../view-as";
 
 const APP_URL =
   import.meta.env.VITE_APP_ORIGIN ??
@@ -336,6 +338,8 @@ export function SocietyDetailPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = parseSocietyTab(searchParams.get("tab"));
   const { client, user } = useAuth();
+  const { setSelectedSocietyId, selectedSocietyId } = useSelectedSociety();
+  const { setViewAs, viewAs } = useViewAs();
   const [society, setSociety] = useState<SocietyDto | null>(null);
   const [members, setMembers] = useState<TeamMemberDto[] | null>(null);
   const [teamError, setTeamError] = useState<string | null>(null);
@@ -383,6 +387,13 @@ export function SocietyDetailPage() {
     void loadSociety();
     void loadTeam();
   }, [id, loadSociety, loadTeam]);
+
+  // Keep picker + Viewing as Tenant in sync with this society detail URL.
+  useEffect(() => {
+    if (!id) return;
+    if (selectedSocietyId !== id) setSelectedSocietyId(id);
+    if (viewAs !== "tenant") setViewAs("tenant");
+  }, [id, selectedSocietyId, setSelectedSocietyId, viewAs, setViewAs]);
 
   useEffect(() => {
     if (!society) return;
