@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import type { PlatformPlanDto, SocietyOnboardingDto } from "@society-hub/types";
 import { ApiClientError, createSocietyHubClient } from "@society-hub/sdk";
+import { SocietyHubLogo } from "@society-hub/ui";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 const ROOT_DOMAIN = import.meta.env.VITE_SOCIETYHUB_ROOT_DOMAIN ?? "localhost:5173";
@@ -90,9 +91,7 @@ function BrandPanel({ children }: Readonly<{ children?: ReactNode }>) {
       />
       <div>
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 text-sm font-bold backdrop-blur">
-            SH
-          </div>
+          <SocietyHubLogo size={40} className="shrink-0 shadow-lg shadow-black/20" />
           <div>
             <p className="font-display text-2xl leading-none tracking-wide">SocietyHub</p>
             <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-white/55">
@@ -140,9 +139,7 @@ function FormShell({
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <header className="flex shrink-0 items-center justify-between gap-4 px-5 py-4 sm:px-8">
           <Link to="/login" className="flex items-center gap-2 lg:invisible">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[var(--saffron)] to-[var(--leaf-dark)] text-xs font-bold text-white">
-              SH
-            </div>
+            <SocietyHubLogo size={32} className="shrink-0" />
             <span className="text-sm font-semibold text-[var(--leaf-dark)]">SocietyHub</span>
           </Link>
           <Journey current={step} />

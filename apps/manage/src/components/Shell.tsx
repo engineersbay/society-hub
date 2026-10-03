@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { SocietyHubLogo } from "@society-hub/ui";
 import { useAuth } from "../auth";
 import { ADMIN_NAV, TENANT_NAV, type ManageNavItem } from "../manage-nav";
 import {
@@ -72,9 +73,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-3 px-4 pb-3 pt-5">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--saffron)] to-[var(--leaf-dark)] text-sm font-bold text-white">
-          SH
-        </div>
+        <SocietyHubLogo size={40} className="shrink-0" />
         <div>
           <p className="font-display text-lg leading-tight text-[var(--leaf-dark)]">SocietyHub</p>
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--gold)]">

@@ -1,7 +1,7 @@
 import { FormEvent, useCallback, useState, type ReactNode } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { ApiClientError } from "@society-hub/sdk";
-import { GoogleSignInButton, googleSignInMode } from "@society-hub/ui";
+import { GoogleSignInButton, googleSignInMode, SocietyHubLogo } from "@society-hub/ui";
 import { useAuth } from "../auth";
 import { LEGAL_LINKS } from "../lib/legal-links";
 
@@ -102,6 +102,55 @@ function FeatureIcon({ children }: Readonly<{ children: ReactNode }>) {
     >
       {children}
     </svg>
+  );
+}
+
+const LOGIN_METHODS: { id: Mode; label: string; hint: string }[] = [
+  { id: "password", label: "Email", hint: "Password" },
+  { id: "otp", label: "OTP", hint: "SMS code" },
+  { id: "pin", label: "PIN", hint: "Quick PIN" },
+  { id: "google", label: "Google", hint: "SSO" },
+];
+
+function LoginMethodTabs({
+  mode,
+  onChange,
+}: Readonly<{
+  mode: Mode;
+  onChange: (next: Mode) => void;
+}>) {
+  return (
+    <div
+      role="tablist"
+      aria-label="Sign-in method"
+      className="mt-6 grid grid-cols-4 gap-1 rounded-xl bg-[#f3f0eb] p-1"
+    >
+      {LOGIN_METHODS.map((item) => {
+        const active = mode === item.id;
+        return (
+          <button
+            key={item.id}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            data-testid={`login-mode-${item.id}`}
+            className={`rounded-lg px-1 py-2.5 text-center transition ${
+              active
+                ? "bg-white text-[var(--ink)] shadow-sm"
+                : "text-black/45 hover:text-[var(--ink)]"
+            }`}
+            onClick={() => onChange(item.id)}
+          >
+            <span className="block text-xs font-semibold">{item.label}</span>
+            <span
+              className={`mt-0.5 block text-[10px] ${active ? "text-black/45" : "text-black/30"}`}
+            >
+              {item.hint}
+            </span>
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -213,9 +262,7 @@ export function LoginPage() {
 
       <header className="relative z-10 flex items-center justify-between px-5 py-4 lg:px-10">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-[var(--saffron)] to-[var(--leaf-dark)] text-sm font-bold text-white">
-            SH
-          </div>
+          <SocietyHubLogo size={36} className="shrink-0" />
           <span className="font-display text-2xl text-[var(--leaf-dark)]">SocietyHub</span>
         </div>
         <a
@@ -262,9 +309,7 @@ export function LoginPage() {
             <p className="text-sm font-semibold text-black/45">Sign in</p>
 
             <div className="mt-5 flex flex-col items-center text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--saffron)] to-[var(--leaf-dark)] text-base font-bold text-white">
-                SH
-              </div>
+              <SocietyHubLogo size={52} className="mx-auto" />
               <p className="font-display mt-3 text-3xl leading-none text-[var(--leaf-dark)]">
                 SocietyHub
               </p>
@@ -273,22 +318,18 @@ export function LoginPage() {
               </p>
             </div>
 
-            {mode !== "password" && (
-              <button
-                type="button"
-                className="mt-5 text-sm font-medium text-[var(--leaf)]"
-                onClick={() => {
-                  setMode("password");
-                  setError(null);
-                  setDevHint(null);
-                }}
-              >
-                ← Back to email sign-in
-              </button>
-            )}
+            <LoginMethodTabs
+              mode={mode}
+              onChange={(next) => {
+                setMode(next);
+                setError(null);
+                setDevHint(null);
+                if (next !== "otp") setOtpSent(false);
+              }}
+            />
 
             {mode === "password" && (
-              <form className="mt-7 space-y-4" onSubmit={loginPassword}>
+              <form className="mt-6 space-y-4" onSubmit={loginPassword}>
                 <div>
                   <label className="label" htmlFor="email">
                     Email *
@@ -332,7 +373,7 @@ export function LoginPage() {
             )}
 
             {mode === "otp" && (
-              <form className="mt-7 space-y-4" onSubmit={otpSent ? verifyOtp : requestOtp}>
+              <form className="mt-6 space-y-4" onSubmit={otpSent ? verifyOtp : requestOtp}>
                 <div>
                   <label className="label" htmlFor="phone">
                     Mobile *
@@ -366,7 +407,7 @@ export function LoginPage() {
             )}
 
             {mode === "pin" && (
-              <form className="mt-7 space-y-4" onSubmit={loginPin}>
+              <form className="mt-6 space-y-4" onSubmit={loginPin}>
                 <div>
                   <label className="label" htmlFor="phone-pin">
                     Mobile *
@@ -400,7 +441,7 @@ export function LoginPage() {
             )}
 
             {mode === "google" && googleMode === "gis" && (
-              <div className="mt-7 space-y-4">
+              <div className="mt-6 space-y-4">
                 <p className="text-center text-sm text-black/55">
                   Continue with the Google account that matches your onboarded email.
                 </p>
@@ -413,7 +454,7 @@ export function LoginPage() {
             )}
 
             {mode === "google" && googleMode === "dev" && (
-              <form className="mt-7 space-y-4" onSubmit={loginGoogle}>
+              <form className="mt-6 space-y-4" onSubmit={loginGoogle}>
                 <p className="text-sm text-black/55">
                   Dev Google SSO uses your onboarded phone as <code>dev:&lt;phone&gt;</code>.
                 </p>
@@ -448,54 +489,20 @@ export function LoginPage() {
             )}
 
             {mode === "password" && (
-              <>
-                <div className="mt-6 flex items-center justify-between text-sm font-semibold">
-                  <Link
-                    to="/forgot-password"
-                    className="text-[var(--ink)] hover:text-[var(--leaf-dark)]"
-                  >
-                    Forgot password?
-                  </Link>
-                  <a
-                    href={`${MANAGE_URL}/onboard`}
-                    className="text-[var(--ink)] hover:text-[var(--leaf-dark)]"
-                  >
-                    Create society
-                  </a>
-                </div>
-
-                <div className="mt-6 border-t border-[var(--sand)] pt-4">
-                  <p className="mb-2 text-center text-xs uppercase tracking-wide text-black/35">
-                    Other ways
-                  </p>
-                  <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 text-sm font-medium">
-                    <button
-                      type="button"
-                      data-testid="login-mode-otp"
-                      className="text-[var(--leaf)] hover:underline"
-                      onClick={() => setMode("otp")}
-                    >
-                      OTP
-                    </button>
-                    <button
-                      type="button"
-                      data-testid="login-mode-pin"
-                      className="text-[var(--leaf)] hover:underline"
-                      onClick={() => setMode("pin")}
-                    >
-                      PIN
-                    </button>
-                    <button
-                      type="button"
-                      data-testid="login-mode-google"
-                      className="text-[var(--leaf)] hover:underline"
-                      onClick={() => setMode("google")}
-                    >
-                      Google
-                    </button>
-                  </div>
-                </div>
-              </>
+              <div className="mt-6 flex items-center justify-between text-sm font-semibold">
+                <Link
+                  to="/forgot-password"
+                  className="text-[var(--ink)] hover:text-[var(--leaf-dark)]"
+                >
+                  Forgot password?
+                </Link>
+                <a
+                  href={`${MANAGE_URL}/onboard`}
+                  className="text-[var(--ink)] hover:text-[var(--leaf-dark)]"
+                >
+                  Create society
+                </a>
+              </div>
             )}
           </div>
         </section>

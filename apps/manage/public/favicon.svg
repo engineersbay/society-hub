@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="SocietyHub">
+  <defs>
+    <linearGradient id="g" x1="6" y1="2" x2="60" y2="62" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#F2A65A"/>
+      <stop offset="45%" stop-color="#E87722"/>
+      <stop offset="100%" stop-color="#8B1E3F"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="15" fill="url(#g)"/>
+  <rect x="24" y="14" width="16" height="11" rx="2.5" fill="#fff"/>
+  <rect x="17" y="26" width="14.5" height="11" rx="2.5" fill="#fff"/>
+  <rect x="32.5" y="26" width="14.5" height="11" rx="2.5" fill="#fff"/>
+  <rect x="15" y="38" width="16" height="12" rx="2.5" fill="#fff"/>
+  <rect x="33" y="38" width="16" height="12" rx="2.5" fill="#fff"/>
+  <path fill="#fff" d="M32 42.2 37.2 47.4 32 52.6 26.8 47.4 32 42.2Z"/>
+  <path fill="url(#g)" d="M32 44.6c.55 1.35 1.7 2.5 3.05 3.05-1.35.55-2.5 1.7-3.05 3.05-.55-1.35-1.7-2.5-3.05-3.05 1.35-.55 2.5-1.7 3.05-3.05Z"/>
+</svg>

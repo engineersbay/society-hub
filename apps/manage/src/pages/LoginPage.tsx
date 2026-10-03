@@ -1,7 +1,7 @@
 import { FormEvent, useCallback, useState, type ReactNode } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { ApiClientError } from "@society-hub/sdk";
-import { GoogleSignInButton, googleSignInMode } from "@society-hub/ui";
+import { GoogleSignInButton, googleSignInMode, SocietyHubLogo } from "@society-hub/ui";
 import { useAuth } from "../auth";
 
 type Mode = "password" | "otp" | "pin" | "google";
@@ -107,6 +107,55 @@ function FeatureIcon({ children }: Readonly<{ children: ReactNode }>) {
   );
 }
 
+const LOGIN_METHODS: { id: Mode; label: string; hint: string }[] = [
+  { id: "password", label: "Email", hint: "Password" },
+  { id: "otp", label: "OTP", hint: "SMS code" },
+  { id: "pin", label: "PIN", hint: "Quick PIN" },
+  { id: "google", label: "Google", hint: "SSO" },
+];
+
+function LoginMethodTabs({
+  mode,
+  onChange,
+}: Readonly<{
+  mode: Mode;
+  onChange: (next: Mode) => void;
+}>) {
+  return (
+    <div
+      role="tablist"
+      aria-label="Sign-in method"
+      className="mt-6 grid grid-cols-4 gap-1 rounded-xl bg-[#f3f0eb] p-1"
+    >
+      {LOGIN_METHODS.map((item) => {
+        const active = mode === item.id;
+        return (
+          <button
+            key={item.id}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            data-testid={`login-mode-${item.id}`}
+            className={`rounded-lg px-1 py-2.5 text-center transition ${
+              active
+                ? "bg-white text-[var(--ink)] shadow-sm"
+                : "text-black/45 hover:text-[var(--ink)]"
+            }`}
+            onClick={() => onChange(item.id)}
+          >
+            <span className="block text-xs font-semibold">{item.label}</span>
+            <span
+              className={`mt-0.5 block text-[10px] ${active ? "text-black/45" : "text-black/30"}`}
+            >
+              {item.hint}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function LoginPage() {
   const { user, client, setSession, loading } = useAuth();
   const navigate = useNavigate();
@@ -197,12 +246,6 @@ export function LoginPage() {
     await applySession(() => client.loginGoogle(`dev:${phone}`));
   }
 
-  function backToPassword() {
-    setMode("password");
-    setError(null);
-    setDevHint(null);
-  }
-
   const canSubmitPassword = email.trim().length > 0 && password.length > 0 && !busy;
 
   return (
@@ -221,9 +264,7 @@ export function LoginPage() {
 
       <header className="relative z-10 flex items-center justify-between px-6 py-5 lg:px-10">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--leaf-dark)] text-[11px] font-bold text-white">
-            SH
-          </div>
+          <SocietyHubLogo size={32} className="shrink-0" />
           <span className="text-[15px] font-semibold tracking-tight text-[var(--leaf-dark)]">
             SocietyHub
           </span>
@@ -277,19 +318,18 @@ export function LoginPage() {
               </p>
             </div>
 
-            {mode !== "password" && (
-              <button
-                type="button"
-                data-testid="login-mode-password"
-                className="mt-5 text-sm font-medium text-[var(--leaf)]"
-                onClick={backToPassword}
-              >
-                ← Email sign-in
-              </button>
-            )}
+            <LoginMethodTabs
+              mode={mode}
+              onChange={(next) => {
+                setMode(next);
+                setError(null);
+                setDevHint(null);
+                if (next !== "otp") setOtpSent(false);
+              }}
+            />
 
             {mode === "password" && (
-              <form className="mt-8 space-y-4" onSubmit={loginPassword}>
+              <form className="mt-6 space-y-4" onSubmit={loginPassword}>
                 <div>
                   <label className="label" htmlFor="email">
                     Email *
@@ -332,7 +372,7 @@ export function LoginPage() {
             )}
 
             {mode === "otp" && (
-              <form className="mt-8 space-y-4" onSubmit={otpSent ? verifyOtp : requestOtp}>
+              <form className="mt-6 space-y-4" onSubmit={otpSent ? verifyOtp : requestOtp}>
                 <div>
                   <label className="label" htmlFor="phone">
                     Mobile *
@@ -367,7 +407,7 @@ export function LoginPage() {
             )}
 
             {mode === "pin" && (
-              <form className="mt-8 space-y-4" onSubmit={loginPin}>
+              <form className="mt-6 space-y-4" onSubmit={loginPin}>
                 <div>
                   <label className="label" htmlFor="phone-pin">
                     Mobile *
@@ -401,7 +441,7 @@ export function LoginPage() {
             )}
 
             {mode === "google" && googleMode === "gis" && (
-              <div className="mt-8 space-y-4">
+              <div className="mt-6 space-y-4">
                 <p className="text-center text-sm text-black/50">
                   Use the Google account tied to your platform employee login.
                 </p>
@@ -414,7 +454,7 @@ export function LoginPage() {
             )}
 
             {mode === "google" && googleMode === "dev" && (
-              <form className="mt-8 space-y-4" onSubmit={loginGoogle}>
+              <form className="mt-6 space-y-4" onSubmit={loginGoogle}>
                 <p className="text-sm text-black/50">
                   Dev Google SSO uses your onboarded phone as <code>dev:&lt;phone&gt;</code>.
                 </p>
@@ -447,51 +487,21 @@ export function LoginPage() {
             )}
 
             {mode === "password" && (
-              <>
-                <div className="mt-6 flex items-center justify-between text-sm font-semibold">
-                  <Link
-                    to="/forgot-password"
-                    className="text-[var(--ink)] hover:text-[var(--leaf-dark)]"
-                  >
-                    Forgot password?
-                  </Link>
-                  <Link
-                    to="/onboard"
-                    className="text-[var(--ink)] hover:text-[var(--leaf-dark)]"
-                    data-testid="login-create-society"
-                  >
-                    Create society
-                  </Link>
-                </div>
-                <p className="mt-5 text-center text-[12px] text-black/40">
-                  <button
-                    type="button"
-                    data-testid="login-mode-otp"
-                    className="hover:text-[var(--ink)]"
-                    onClick={() => setMode("otp")}
-                  >
-                    OTP
-                  </button>
-                  <span className="mx-2 text-black/20">·</span>
-                  <button
-                    type="button"
-                    data-testid="login-mode-pin"
-                    className="hover:text-[var(--ink)]"
-                    onClick={() => setMode("pin")}
-                  >
-                    PIN
-                  </button>
-                  <span className="mx-2 text-black/20">·</span>
-                  <button
-                    type="button"
-                    data-testid="login-mode-google"
-                    className="hover:text-[var(--ink)]"
-                    onClick={() => setMode("google")}
-                  >
-                    Google
-                  </button>
-                </p>
-              </>
+              <div className="mt-6 flex items-center justify-between text-sm font-semibold">
+                <Link
+                  to="/forgot-password"
+                  className="text-[var(--ink)] hover:text-[var(--leaf-dark)]"
+                >
+                  Forgot password?
+                </Link>
+                <Link
+                  to="/onboard"
+                  className="text-[var(--ink)] hover:text-[var(--leaf-dark)]"
+                  data-testid="login-create-society"
+                >
+                  Create society
+                </Link>
+              </div>
             )}
           </div>
         </section>

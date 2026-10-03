@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
+import { SocietyHubLogo } from "@society-hub/ui";
 import { useAuth } from "../auth";
 import { canUseAdminMode, useAppMode } from "../app-mode";
 import { Icon, type IconName } from "./icons";
@@ -281,23 +282,28 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-3 px-4 pb-4 pt-5" data-testid="client-brand-mark">
-        {brandActive && branding?.logoUrl ? (
-          <img
-            src={branding.logoUrl}
-            alt=""
-            className="h-10 w-10 rounded-xl object-cover"
-          />
-        ) : (
-          <div
-            className={[
-              "flex h-10 w-10 items-center justify-center rounded-xl text-sm font-bold text-white",
-              brandActive ? "" : "bg-gradient-to-br from-[var(--saffron)] to-[var(--leaf-dark)]",
-            ].join(" ")}
-            style={brandActive ? { background: branding?.color ?? DEFAULT_BRAND } : undefined}
-          >
-            {brandActive ? letter : "SH"}
-          </div>
-        )}
+        {(() => {
+          if (brandActive && branding?.logoUrl) {
+            return (
+              <img
+                src={branding.logoUrl}
+                alt=""
+                className="h-10 w-10 rounded-xl object-cover"
+              />
+            );
+          }
+          if (brandActive) {
+            return (
+              <div
+                className="flex h-10 w-10 items-center justify-center rounded-xl text-sm font-bold text-white"
+                style={{ background: branding?.color ?? DEFAULT_BRAND }}
+              >
+                {letter}
+              </div>
+            );
+          }
+          return <SocietyHubLogo size={40} className="shrink-0" />;
+        })()}
         <div>
           <p
             className={[
