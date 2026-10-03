@@ -42,6 +42,7 @@ const adminSections: NavSection[] = [
     title: "Society",
     items: [
       { to: "/visitors", label: "Visitors", icon: "visitors" },
+      { to: "/gate", label: "Gate", icon: "gate" },
       { to: "/parking", label: "Parking", icon: "parking" },
       { to: "/bookings", label: "Bookings", icon: "bookings" },
       { to: "/assets", label: "Assets", icon: "assets" },
@@ -100,6 +101,7 @@ const PATH_MODULE: Record<string, string> = {
   "/payments": "payments",
   "/notices": "notices",
   "/visitors": "visitors",
+  "/gate": "visitors",
   "/parking": "parking",
   "/bookings": "bookings",
   "/assets": "assets",

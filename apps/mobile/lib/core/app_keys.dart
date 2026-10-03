@@ -2,6 +2,9 @@ import 'package:flutter/foundation.dart';
 
 /// Stable keys for widget / integration tests (mirror web data-testid where useful).
 abstract final class AppKeys {
+  static const welcomeLogin = Key('welcome-login');
+  static const welcomePage = Key('welcome-page');
+  static const loginMethodsPage = Key('login-methods-page');
   static const loginModePassword = Key('login-mode-password');
   static const loginModeOtp = Key('login-mode-otp');
   static const loginModePin = Key('login-mode-pin');
@@ -16,6 +19,7 @@ abstract final class AppKeys {
   static const loginBusy = Key('login-busy');
   static const loginVersion = Key('login-version');
   static const loginUpdate = Key('login-update');
+  static const selectSocietyLogout = Key('select-society-logout');
   static const accountPrivacy = Key('account-privacy');
 
   static const modeAdmin = Key('app-mode-admin');

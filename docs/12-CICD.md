@@ -43,7 +43,7 @@ Web preview does **not** wait for Mobile CI. A mobile-only PR still runs **CI** 
 |-----|---------|--------|
 | Analyze + test | Every mobile PR/push | `flutter analyze` + `flutter test` |
 | Android AAB | **Manual** Mobile CI, or tag `mobile-v*` | Signed `app-release.aab` artifact (needs keystore secrets) |
-| Play internal | AAB job + `ENABLE_PLAY_UPLOAD=true` + `upload_play` | Upload + roll out **internal**. Never production |
+| Play internal | **Manual** Mobile CI with `upload_play` + `ENABLE_PLAY_UPLOAD=true` | Upload + roll out **internal**. Never production. Tags build AAB only — do not tag and dispatch upload together (Play “edit has expired”). |
 | iOS IPA | Same + `ENABLE_IOS_IPA=true` + `build_ios` | Skipped until Apple secrets |
 
 **Package / application id:** `com.societyhub.societyhub_mobile`
@@ -89,7 +89,11 @@ Repo + environments `staging`, `prod`, `production`. Mobile store jobs always us
 | Variable | `ENABLE_PLAY_UPLOAD` | Leave unset/`false` until Play app exists |
 | Variable | `ENABLE_IOS_IPA` | Leave unset until Apple |
 | Secret | `PLAY_SERVICE_ACCOUNT_JSON` | Only when Play upload is on |
+| Secret | `RESEND_API_KEY` | Transactional email (API / Azure later). **Never** put in Flutter |
+| Secret | `RESEND_FROM` | e.g. `SocietyHub <onboarding@resend.dev>` until domain verified |
 | Secret | Azure / `SWA_*` / OIDC | Idle until Azure |
+
+**Email / Resend:** configure with `scripts/configure-resend.sh` (local `.env` + GitHub secrets + Render API env). Mobile does **not** need Resend — AABs already call `MOBILE_API_BASE_URL` (Render API), which sends mail server-side.
 
 Upload keystore lives only on the operator Mac (`apps/mobile/android/upload-keystore.jks`) and in GitHub secrets. Never in git.
 

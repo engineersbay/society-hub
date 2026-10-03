@@ -281,7 +281,7 @@ Workflows:
 | `.github/workflows/ci.yml` | PR + push to `staging` / `main` | MySQL service, migrate, seed, `bun run quality`, Terraform fmt/validate |
 | `.github/workflows/promote-preview.yml` | **Manual** | Merge `staging` → `main` (Render preview) |
 | `.github/workflows/promote-guard.yml` | PR into `main` | Only `staging` may target `main` |
-| `.github/workflows/mobile.yml` | PR/push `apps/mobile/**`; dispatch; tags `mobile-v*` | Analyze + test; **Android AAB**; Play internal upload skipped until `ENABLE_PLAY_UPLOAD`; **iOS IPA** skipped until `ENABLE_IOS_IPA` |
+| `.github/workflows/mobile.yml` | PR/push `apps/mobile/**`; dispatch; tags `mobile-v*` | Analyze + test; **Android AAB** on dispatch/tag; Play internal only on dispatch + `upload_play`; **iOS IPA** skipped until `ENABLE_IOS_IPA` |
 | `.github/workflows/deploy-staging.yml` | **Manual** (`workflow_dispatch`) | Azure later — idle until secrets exist |
 | `.github/workflows/deploy-production.yml` | **Manual** + environment approval | Azure later — idle until secrets exist |
 

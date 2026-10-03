@@ -67,18 +67,26 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
             style: const TextStyle(color: Colors.black54),
           ),
           const SizedBox(height: 20),
-          KpiCard(
-            label: 'Dues outstanding',
-            value: _stats == null
-                ? '—'
-                : formatRupees(_stats!.duesOutstandingPaise),
-            onTap: () => context.go('/home/bills'),
-          ),
-          const SizedBox(height: 12),
-          KpiCard(
-            label: 'Open complaints',
-            value: _stats?.openComplaints.toString() ?? '—',
-            onTap: () => context.go('/home/complaints'),
+          Row(
+            children: [
+              Expanded(
+                child: KpiCard(
+                  label: 'Dues outstanding',
+                  value: _stats == null
+                      ? '—'
+                      : formatRupees(_stats!.duesOutstandingPaise),
+                  onTap: () => context.go('/home/bills'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: KpiCard(
+                  label: 'Open complaints',
+                  value: _stats?.openComplaints.toString() ?? '—',
+                  onTap: () => context.go('/home/complaints'),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
           KpiCard(
@@ -95,7 +103,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   children: [
                     Expanded(
                       child: Text(
-                        staffView ? 'Recent complaints' : 'Your recent complaints',
+                        staffView
+                            ? 'Recent complaints'
+                            : 'Your recent complaints',
                         style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                     ),
@@ -107,23 +117,23 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 ),
                 if (_recent.isEmpty)
                   const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 12),
-                    child: Text(
-                      'No complaints yet.',
-                      style: TextStyle(color: Colors.black54),
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: EmptyState(
+                      message: 'No complaints yet.',
+                      icon: Icons.report_problem_outlined,
                     ),
                   )
                 else
                   ..._recent.map(
                     (c) => ComplaintListTile(
                       complaint: c,
-                      onTap: () => context.go('/home/complaints/${c.id}'),
+                      onTap: () => context.push('/home/complaints/${c.id}'),
                     ),
                   ),
                 const SizedBox(height: 8),
                 ShPrimaryButton(
                   label: 'Raise complaint',
-                  onPressed: () => context.go('/home/complaints/new'),
+                  onPressed: () => context.push('/home/complaints/new'),
                 ),
               ],
             ),

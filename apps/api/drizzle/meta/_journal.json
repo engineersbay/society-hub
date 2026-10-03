@@ -120,6 +120,13 @@
       "when": 1789300000000,
       "tag": "0016_phase2_demo",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "5",
+      "when": 1789400000000,
+      "tag": "0017_visitor_pass",
+      "breakpoints": true
     }
   ]
 }

@@ -620,6 +620,24 @@ export const createVisitorSchema = z.object({
   expectedAt: z.string().optional().nullable(),
 });
 
+export const issueVisitorPassSchema = z.object({
+  expiresAt: z.string().optional().nullable(),
+  channels: z
+    .array(z.enum(["sms", "whatsapp"]))
+    .min(1)
+    .default(["sms", "whatsapp"]),
+});
+
+export const gateVerifySchema = z
+  .object({
+    qrPayload: z.string().min(8).optional(),
+    passToken: z.string().uuid().optional(),
+    otp: z.string().regex(/^\d{4,8}$/).optional(),
+  })
+  .refine((v) => Boolean(v.qrPayload || v.passToken), {
+    message: "qrPayload or passToken is required",
+  });
+
 export const createParkingSlotSchema = z.object({
   flatId: z.string().uuid().optional().nullable(),
   slotNumber: z.string().min(1).max(32),

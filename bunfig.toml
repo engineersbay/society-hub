@@ -13,6 +13,7 @@ coveragePathIgnorePatterns = [
   "apps/api/src/lib/messaging/email.ts",
   "apps/api/src/lib/messaging/onboard-welcome.ts",
   "apps/api/src/lib/messaging/whatsapp.ts",
+  "apps/api/src/lib/messaging/visitor-pass-delivery.ts",
   "apps/api/src/lib/mysql-connect.ts",
   "apps/api/src/lib/resident-lifecycle.ts",
   "apps/api/src/modules/admin/import-residents.ts",

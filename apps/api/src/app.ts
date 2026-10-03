@@ -47,6 +47,7 @@ import {
   assetRoutes,
   bookingRoutes,
   eventRoutes,
+  gateRoutes,
   parkingRoutes,
   vendorRoutes,
   visitorRoutes,
@@ -148,6 +149,7 @@ export function createApp() {
     .use(profileRoutes)
     .use(householdRoutes)
     .use(visitorRoutes)
+    .use(gateRoutes)
     .use(parkingRoutes)
     .use(bookingRoutes)
     .use(assetRoutes)

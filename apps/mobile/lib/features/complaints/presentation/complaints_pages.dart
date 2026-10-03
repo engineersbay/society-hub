@@ -61,68 +61,47 @@ class _ComplaintsPageState extends ConsumerState<ComplaintsPage> {
     return Scaffold(
       backgroundColor: AppColors.paper,
       body: RefreshIndicator(
-      onRefresh: _load,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Text('Complaints', style: displayStyle(size: 32)),
+        onRefresh: _load,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          children: [
+            TextField(
+              key: AppKeys.complaintsSearch,
+              decoration: InputDecoration(
+                hintText: staffView
+                    ? 'Search ticket, title or flat…'
+                    : 'Search your complaints…',
+                prefixIcon: const Icon(Icons.search),
               ),
-              FilledButton.icon(
-                key: AppKeys.newComplaintLink,
-                onPressed: () => context.go('/home/complaints/new'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.saffron,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                ),
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('New complaint'),
+              onChanged: (v) => setState(() => _search = v),
+            ),
+            const SizedBox(height: 16),
+            if (_loading) const Center(child: CircularProgressIndicator()),
+            if (_error != null)
+              Text(_error!, style: const TextStyle(color: AppColors.danger)),
+            if (!_loading && filtered.isEmpty)
+              const EmptyState(
+                key: AppKeys.complaintsEmpty,
+                message: 'No complaints yet.',
+                icon: Icons.report_problem_outlined,
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            key: AppKeys.complaintsSearch,
-            decoration: InputDecoration(
-              hintText: staffView
-                  ? 'Search ticket, title or flat…'
-                  : 'Search your complaints…',
-              prefixIcon: const Icon(Icons.search),
-            ),
-            onChanged: (v) => setState(() => _search = v),
-          ),
-          const SizedBox(height: 16),
-          if (_loading) const Center(child: CircularProgressIndicator()),
-          if (_error != null)
-            Text(_error!, style: const TextStyle(color: AppColors.danger)),
-          if (!_loading && filtered.isEmpty)
-            const EmptyState(
-              key: AppKeys.complaintsEmpty,
-              message: 'No complaints yet.',
-            ),
-          if (!_loading && filtered.isNotEmpty)
-            Column(
-              key: AppKeys.complaintsList,
-              children: [
-                for (var i = 0; i < filtered.length; i++) ...[
-                  ComplaintListTile(
-                    complaint: filtered[i],
-                    onTap: () => context.go('/home/complaints/${filtered[i].id}'),
-                  ),
-                  if (i != filtered.length - 1)
-                    const Divider(height: 1, color: AppColors.sand),
+            if (!_loading && filtered.isNotEmpty)
+              Column(
+                key: AppKeys.complaintsList,
+                children: [
+                  for (var i = 0; i < filtered.length; i++) ...[
+                    ComplaintListTile(
+                      complaint: filtered[i],
+                      onTap: () =>
+                          context.push('/home/complaints/${filtered[i].id}'),
+                    ),
+                    if (i != filtered.length - 1)
+                      const Divider(height: 1, color: AppColors.sand),
+                  ],
                 ],
-              ],
-            ),
-        ],
-      ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -249,7 +228,7 @@ class _NewComplaintPageState extends ConsumerState<NewComplaintPage> {
         );
       }
       if (!mounted) return;
-      context.go('/home/complaints/${c.id}?justCreated=1');
+      context.pushReplacement('/home/complaints/${c.id}?justCreated=1');
     } on ApiException catch (e) {
       setState(() => _error = e.message);
     } finally {
@@ -276,22 +255,10 @@ class _NewComplaintPageState extends ConsumerState<NewComplaintPage> {
             key: AppKeys.newComplaintForm,
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
             children: [
-              Row(
-                children: [
-                  IconButton(
-                    onPressed: () => context.go('/home/complaints'),
-                    icon: const Icon(Icons.arrow_back),
-                    color: AppColors.leafDark,
-                  ),
-                  Expanded(
-                    child: Text('New complaint', style: displayStyle(size: 28)),
-                  ),
-                ],
-              ),
               if (!staffPicker && user?.flatNumber != null)
                 Padding(
                   key: AppKeys.newComplaintLinkedFlat,
-                  padding: const EdgeInsets.only(left: 12, bottom: 8),
+                  padding: const EdgeInsets.only(bottom: 8),
                   child: Text(
                     'Filing for flat ${user!.flatNumber}',
                     style: const TextStyle(color: Colors.black54, fontSize: 13),
@@ -300,7 +267,7 @@ class _NewComplaintPageState extends ConsumerState<NewComplaintPage> {
               if (linkedFlatMissing)
                 const Padding(
                   key: AppKeys.newComplaintNoFlat,
-                  padding: EdgeInsets.only(left: 12, bottom: 8),
+                  padding: EdgeInsets.only(bottom: 8),
                   child: Text(
                     'Your account is not linked to a flat. Ask your society office to onboard you before raising a complaint.',
                     style: TextStyle(color: AppColors.danger, fontSize: 13),
@@ -611,7 +578,12 @@ class _ComplaintDetailPageState extends ConsumerState<ComplaintDetailPage> {
     });
     try {
       await ref.read(apiProvider).deleteComplaint(widget.id);
-      if (mounted) context.go('/home/complaints');
+      if (!mounted) return;
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go('/home/complaints');
+      }
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } finally {
@@ -638,18 +610,7 @@ class _ComplaintDetailPageState extends ConsumerState<ComplaintDetailPage> {
       body: ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Row(
-          children: [
-            IconButton(
-              onPressed: () => context.go('/home/complaints'),
-              icon: const Icon(Icons.arrow_back),
-              color: AppColors.leafDark,
-            ),
-            Expanded(
-              child: Text(c.ticketNumber, style: displayStyle(size: 22)),
-            ),
-          ],
-        ),
+        Text(c.ticketNumber, style: displayStyle(size: 22)),
         if (_error != null) ...[
           const SizedBox(height: 8),
           Text(_error!, style: const TextStyle(color: AppColors.danger)),

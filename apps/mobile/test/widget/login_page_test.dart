@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http_mock_adapter/http_mock_adapter.dart';
@@ -9,36 +10,110 @@ import 'package:societyhub_mobile/auth/session.dart';
 import 'package:societyhub_mobile/config/api_config.dart';
 import 'package:societyhub_mobile/core/app_keys.dart';
 import 'package:societyhub_mobile/core/app_version.dart';
+import 'package:societyhub_mobile/features/auth/presentation/login_methods_page.dart';
 import 'package:societyhub_mobile/features/auth/presentation/login_page.dart';
+import 'package:societyhub_mobile/features/auth/presentation/welcome_page.dart';
 
 import '../helpers/test_harness.dart';
 
 void attachApi(WidgetTester tester, SocietyHubApi api) {
   final element = tester.element(find.byType(LoginPage));
-  ProviderScope.containerOf(element).read(sessionProvider.notifier).replaceApiForTest(api);
+  ProviderScope.containerOf(element)
+      .read(sessionProvider.notifier)
+      .replaceApiForTest(api);
+}
+
+GoRouter authTestRouter({String initial = '/welcome'}) {
+  return GoRouter(
+    initialLocation: initial,
+    routes: [
+      GoRoute(
+        path: '/welcome',
+        builder: (_, _) => const WelcomePage(),
+      ),
+      GoRoute(
+        path: '/login',
+        builder: (_, _) => const LoginMethodsPage(),
+        routes: [
+          GoRoute(
+            path: ':mode',
+            builder: (context, state) {
+              final mode = loginModeFromPath(state.pathParameters['mode']);
+              if (mode == null) return const LoginMethodsPage();
+              return LoginPage(mode: mode);
+            },
+          ),
+        ],
+      ),
+      GoRoute(
+        path: '/select-society',
+        builder: (_, _) => const Scaffold(body: Text('SELECT_SOCIETY')),
+      ),
+    ],
+  );
+}
+
+Future<void> pumpAuthRouter(
+  WidgetTester tester, {
+  required GoRouter router,
+  List<Override> overrides = const [],
+  ApiConfig? config,
+  AppVersionSource versionSource = const FakeAppVersionSource(),
+}) async {
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        ...testSessionOverrides(
+          config: config ??
+              const ApiConfig(baseUrl: testApiBase, env: 'dev'),
+          versionSource: versionSource,
+        ),
+        ...overrides,
+      ],
+      child: MaterialApp.router(routerConfig: router),
+    ),
+  );
+  await tester.pumpAndSettle();
 }
 
 void main() {
-  testWidgets('shows OTP first and switches modes', (tester) async {
-    await tester.pumpWidget(wrapForWidgetTest(child: const LoginPage()));
-    await tester.pumpAndSettle();
+  testWidgets('welcome shows Login, not the phone field', (tester) async {
+    await pumpAuthRouter(tester, router: authTestRouter());
 
-    expect(find.byKey(AppKeys.loginPhone), findsOneWidget);
-    expect(find.text('Send OTP'), findsOneWidget);
-    expect(find.byKey(AppKeys.loginEmail), findsNothing);
-    expect(find.text('SocietyHub'), findsWidgets);
-
-    await tester.tap(find.byKey(AppKeys.loginModePassword));
-    await tester.pumpAndSettle();
-    expect(find.byKey(AppKeys.loginEmail), findsOneWidget);
-    expect(find.byKey(AppKeys.loginPassword), findsOneWidget);
-
-    await tester.tap(find.byKey(AppKeys.loginModePin));
-    await tester.pumpAndSettle();
-    expect(find.byKey(AppKeys.loginPin), findsOneWidget);
+    expect(find.byKey(AppKeys.welcomePage), findsOneWidget);
+    expect(find.byKey(AppKeys.welcomeLogin), findsOneWidget);
+    expect(find.text('Login'), findsOneWidget);
+    expect(find.byKey(AppKeys.loginPhone), findsNothing);
+    expect(find.text('Your society, in one place'), findsOneWidget);
   });
 
-  testWidgets('password login success navigates to select-society', (tester) async {
+  testWidgets('launcher → form → back returns to launchers → welcome',
+      (tester) async {
+    await pumpAuthRouter(tester, router: authTestRouter());
+
+    await tester.tap(find.byKey(AppKeys.welcomeLogin));
+    await tester.pumpAndSettle();
+    expect(find.byKey(AppKeys.loginMethodsPage), findsOneWidget);
+    expect(find.byKey(AppKeys.loginModeOtp), findsOneWidget);
+
+    await tester.tap(find.byKey(AppKeys.loginModeOtp));
+    await tester.pumpAndSettle();
+    expect(find.byKey(AppKeys.loginPhone), findsOneWidget);
+    expect(find.text('Send OTP'), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.arrow_back));
+    await tester.pumpAndSettle();
+    expect(find.byKey(AppKeys.loginMethodsPage), findsOneWidget);
+    expect(find.byKey(AppKeys.loginPhone), findsNothing);
+
+    await tester.tap(find.byIcon(Icons.arrow_back));
+    await tester.pumpAndSettle();
+    expect(find.byKey(AppKeys.welcomePage), findsOneWidget);
+    expect(find.byKey(AppKeys.welcomeLogin), findsOneWidget);
+  });
+
+  testWidgets('password login success navigates to select-society',
+      (tester) async {
     final bundle = MockApiBundle();
     bundle.adapter.onPost(
       '/v1/auth/password/login',
@@ -46,28 +121,10 @@ void main() {
       data: Matchers.any,
     );
 
-    final router = GoRouter(
-      initialLocation: '/login',
-      routes: [
-        GoRoute(path: '/login', builder: (_, _) => const LoginPage()),
-        GoRoute(
-          path: '/select-society',
-          builder: (_, _) => const Scaffold(body: Text('SELECT_SOCIETY')),
-        ),
-      ],
-    );
-
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: testSessionOverrides(),
-        child: MaterialApp.router(routerConfig: router),
-      ),
-    );
-    await tester.pumpAndSettle();
+    final router = authTestRouter(initial: '/login/password');
+    await pumpAuthRouter(tester, router: router);
     attachApi(tester, bundle.api);
 
-    await tester.tap(find.byKey(AppKeys.loginModePassword));
-    await tester.pumpAndSettle();
     await tester.enterText(find.byKey(AppKeys.loginEmail), 'a@b.com');
     await tester.enterText(find.byKey(AppKeys.loginPassword), 'secret');
     await tester.tap(find.byKey(AppKeys.loginSubmit));
@@ -87,12 +144,12 @@ void main() {
       data: Matchers.any,
     );
 
-    await tester.pumpWidget(wrapForWidgetTest(child: const LoginPage()));
+    await tester.pumpWidget(
+      wrapForWidgetTest(child: const LoginPage(mode: LoginMode.password)),
+    );
     await tester.pumpAndSettle();
     attachApi(tester, bundle.api);
 
-    await tester.tap(find.byKey(AppKeys.loginModePassword));
-    await tester.pumpAndSettle();
     await tester.enterText(find.byKey(AppKeys.loginEmail), 'a@b.com');
     await tester.enterText(find.byKey(AppKeys.loginPassword), 'bad');
     await tester.tap(find.byKey(AppKeys.loginSubmit));
@@ -110,28 +167,10 @@ void main() {
       data: Matchers.any,
     );
 
-    final router = GoRouter(
-      initialLocation: '/login',
-      routes: [
-        GoRoute(path: '/login', builder: (_, _) => const LoginPage()),
-        GoRoute(
-          path: '/select-society',
-          builder: (_, _) => const Scaffold(body: Text('SELECT_SOCIETY')),
-        ),
-      ],
-    );
-
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: testSessionOverrides(),
-        child: MaterialApp.router(routerConfig: router),
-      ),
-    );
-    await tester.pumpAndSettle();
+    final router = authTestRouter(initial: '/login/google');
+    await pumpAuthRouter(tester, router: router);
     attachApi(tester, bundle.api);
 
-    await tester.tap(find.byKey(AppKeys.loginModeGoogle));
-    await tester.pumpAndSettle();
     await tester.enterText(find.byKey(AppKeys.loginPhone), '8888888888');
     await tester.tap(find.byKey(AppKeys.loginSubmit));
     await tester.pumpAndSettle();
@@ -139,7 +178,8 @@ void main() {
     expect(find.text('SELECT_SOCIETY'), findsOneWidget);
   });
 
-  testWidgets('prod Google login posts a real idToken and hides the phone field',
+  testWidgets(
+      'prod Google login posts a real idToken and hides the phone field',
       (tester) async {
     final bundle = MockApiBundle();
     bundle.adapter.onPost(
@@ -148,39 +188,23 @@ void main() {
       data: {'idToken': 'ey.real.token'},
     );
 
-    final router = GoRouter(
-      initialLocation: '/login',
-      routes: [
-        GoRoute(path: '/login', builder: (_, _) => const LoginPage()),
-        GoRoute(
-          path: '/select-society',
-          builder: (_, _) => const Scaffold(body: Text('SELECT_SOCIETY')),
+    final router = authTestRouter(initial: '/login/google');
+    await pumpAuthRouter(
+      tester,
+      router: router,
+      config: const ApiConfig(
+        baseUrl: testApiBase,
+        env: 'prod',
+        googleServerClientId: 'web-client.apps.googleusercontent.com',
+      ),
+      overrides: [
+        googleIdTokenSourceProvider.overrideWithValue(
+          _FakeGoogleSource('ey.real.token'),
         ),
       ],
     );
-
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          ...testSessionOverrides(
-            config: const ApiConfig(
-              baseUrl: testApiBase,
-              env: 'prod',
-              googleServerClientId: 'web-client.apps.googleusercontent.com',
-            ),
-          ),
-          googleIdTokenSourceProvider.overrideWithValue(
-            _FakeGoogleSource('ey.real.token'),
-          ),
-        ],
-        child: MaterialApp.router(routerConfig: router),
-      ),
-    );
-    await tester.pumpAndSettle();
     attachApi(tester, bundle.api);
 
-    await tester.tap(find.byKey(AppKeys.loginModeGoogle));
-    await tester.pumpAndSettle();
     expect(find.byKey(AppKeys.loginPhone), findsNothing);
     expect(find.text('Continue with Google'), findsOneWidget);
 
@@ -206,13 +230,11 @@ void main() {
             const _FakeGoogleSource(null),
           ),
         ],
-        child: const MaterialApp(home: LoginPage()),
+        child: const MaterialApp(home: LoginPage(mode: LoginMode.google)),
       ),
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(AppKeys.loginModeGoogle));
-    await tester.pumpAndSettle();
     await tester.tap(find.byKey(AppKeys.loginSubmit));
     await tester.pumpAndSettle();
 
@@ -239,13 +261,11 @@ void main() {
             const _SlowGoogleSource(),
           ),
         ],
-        child: const MaterialApp(home: LoginPage()),
+        child: const MaterialApp(home: LoginPage(mode: LoginMode.google)),
       ),
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(AppKeys.loginModeGoogle));
-    await tester.pumpAndSettle();
     await tester.tap(find.byKey(AppKeys.loginSubmit));
     await tester.pump();
 
@@ -253,9 +273,8 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  testWidgets('login footer shows installed version', (tester) async {
-    await tester.pumpWidget(wrapForWidgetTest(child: const LoginPage()));
-    await tester.pumpAndSettle();
+  testWidgets('welcome footer shows installed version', (tester) async {
+    await pumpAuthRouter(tester, router: authTestRouter());
 
     expect(find.byKey(AppKeys.loginVersion), findsOneWidget);
     expect(find.text('Installed version 1.0.0 (1)'), findsOneWidget);
@@ -263,11 +282,12 @@ void main() {
     expect(find.text('Privacy'), findsOneWidget);
   });
 
-  testWidgets('login footer shows Update when Play has a newer build', (tester) async {
+  testWidgets('welcome footer shows Update when Play has a newer build',
+      (tester) async {
     var opened = false;
     await tester.pumpWidget(
       wrapForWidgetTest(
-        child: const LoginPage(),
+        child: const WelcomePage(),
         versionSource: FakeAppVersionSource(
           versionLabel: '1.0.0 (1)',
           updateAvailable: true,
@@ -283,6 +303,35 @@ void main() {
     await tester.tap(find.byKey(AppKeys.loginUpdate));
     await tester.pumpAndSettle();
     expect(opened, isTrue);
+  });
+
+  testWidgets('OTP form first back clears OTP step then leaves form',
+      (tester) async {
+    final bundle = MockApiBundle();
+    bundle.adapter.onPost(
+      '/v1/auth/otp/request',
+      (server) => server.reply(200, {'devCode': '123456'}),
+      data: Matchers.any,
+    );
+
+    final router = authTestRouter(initial: '/login/otp');
+    await pumpAuthRouter(tester, router: router);
+    attachApi(tester, bundle.api);
+
+    await tester.enterText(find.byKey(AppKeys.loginPhone), '8888888888');
+    await tester.tap(find.byKey(AppKeys.loginSubmit));
+    await tester.pumpAndSettle();
+    expect(find.byKey(AppKeys.loginOtpCode), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.arrow_back));
+    await tester.pumpAndSettle();
+    expect(find.byKey(AppKeys.loginOtpCode), findsNothing);
+    expect(find.text('Send OTP'), findsOneWidget);
+    expect(find.byType(LoginPage), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.arrow_back));
+    await tester.pumpAndSettle();
+    expect(find.byKey(AppKeys.loginMethodsPage), findsOneWidget);
   });
 }
 

@@ -14,6 +14,7 @@ export type IconName =
   | "audit"
   | "team"
   | "visitors"
+  | "gate"
   | "parking"
   | "bookings"
   | "assets"
@@ -117,6 +118,12 @@ const paths: Record<IconName, ReactElement> = {
       <circle cx="12" cy="8" r="3" />
       <path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6" />
       <path d="M19 4v4M17 6h4" strokeLinecap="round" />
+    </>
+  ),
+  gate: (
+    <>
+      <rect x="4" y="3" width="16" height="18" rx="1" />
+      <path d="M12 3v18M4 12h16" strokeLinecap="round" />
     </>
   ),
   parking: (
