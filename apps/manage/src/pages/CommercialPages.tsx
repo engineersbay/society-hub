@@ -10,8 +10,17 @@ import type {
   SupportTicketDto,
 } from "@society-hub/types";
 import { ApiClientError } from "@society-hub/sdk";
-import { Navigate } from "react-router-dom";
+import { Link, Navigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth";
+import { useSelectedSociety } from "../selected-society";
+import { useViewAs } from "../view-as";
+
+type SocietySettingsTab = "details" | "billing" | "access";
+
+function parseSocietySettingsTab(value: string | null): SocietySettingsTab {
+  if (value === "billing" || value === "access") return value;
+  return "details";
+}
 
 const MODULES = [
   "complaints",
@@ -102,63 +111,47 @@ export function SubscriptionsPage() {
 
 export function FeatureFlagsPage() {
   const { client, user } = useAuth();
+  const { viewAs } = useViewAs();
+  const { selectedSociety, selectedSocietyId, refreshSocieties } = useSelectedSociety();
   const allowed = user?.role === "superadmin";
-  const [societies, setSocieties] = useState<SocietyDto[]>([]);
-  const [tenantId, setTenantId] = useState("");
   const [flags, setFlags] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    client.listSocieties().then((soc) => {
-      setSocieties(soc);
-      if (soc[0]) {
-        setTenantId(soc[0].id);
-        const raw = soc[0].featureFlagsJson;
-        const list: string[] = raw ? JSON.parse(raw) : MODULES;
-        const next: Record<string, boolean> = {};
-        for (const m of MODULES) next[m] = list.includes(m);
-        setFlags(next);
-      }
-    });
-  }, [client]);
-
-  useEffect(() => {
-    const s = societies.find((x) => x.id === tenantId);
-    if (!s) return;
-    const raw = s.featureFlagsJson;
+    if (!selectedSociety) return;
+    const raw = selectedSociety.featureFlagsJson;
     const list: string[] = raw ? JSON.parse(raw) : MODULES;
     const next: Record<string, boolean> = {};
     for (const m of MODULES) next[m] = list.includes(m);
     setFlags(next);
-  }, [tenantId, societies]);
+  }, [selectedSociety]);
 
   async function save() {
+    if (!selectedSocietyId) return;
     setError(null);
     setMsg(null);
     try {
       const enabled = MODULES.filter((m) => flags[m]);
-      await client.updateManageSocietySettings(tenantId, {
+      await client.updateManageSocietySettings(selectedSocietyId, {
         featureFlagsJson: JSON.stringify(enabled),
       });
       setMsg("Flags saved");
-      const soc = await client.listSocieties();
-      setSocieties(soc);
+      await refreshSocieties();
     } catch (err) {
       setError(err instanceof ApiClientError ? err.body.message : "Failed");
     }
   }
 
   if (!allowed) return <Navigate to="/login" replace />;
+  if (viewAs !== "tenant") return <Navigate to="/dashboard" replace />;
+  if (!selectedSocietyId) return <Navigate to="/societies" replace />;
   return (
-    <div>
+    <div data-testid="feature-flags-page">
       <h1 className="font-display text-2xl">Feature flags</h1>
-      <p className="text-sm text-black/55">Modules enabled for a society in the Client App.</p>
-      <select className="input mt-4 max-w-md" value={tenantId} onChange={(e) => setTenantId(e.target.value)}>
-        {societies.map((s) => (
-          <option key={s.id} value={s.id}>{s.name}</option>
-        ))}
-      </select>
+      <p className="text-sm text-black/55">
+        Modules enabled for {selectedSociety?.name ?? "this society"} in the Client App.
+      </p>
       <ul className="card mt-4 divide-y divide-[var(--sand)] p-2">
         {MODULES.map((m) => (
           <li key={m} className="flex items-center justify-between px-3 py-2">
@@ -171,7 +164,9 @@ export function FeatureFlagsPage() {
           </li>
         ))}
       </ul>
-      <button type="button" className="btn btn-primary mt-3" onClick={save}>Save flags</button>
+      <button type="button" className="btn btn-primary mt-3" onClick={save} data-testid="feature-flags-save">
+        Save flags
+      </button>
       {msg && <p className="mt-2 text-sm text-[var(--leaf)]">{msg}</p>}
       {error && <p className="mt-2 text-sm text-[var(--danger)]">{error}</p>}
     </div>
@@ -180,62 +175,234 @@ export function FeatureFlagsPage() {
 
 export function SocietySettingsManagePage() {
   const { client, user } = useAuth();
+  const { viewAs } = useViewAs();
+  const { selectedSociety, selectedSocietyId, refreshSocieties } = useSelectedSociety();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = parseSocietySettingsTab(searchParams.get("tab"));
   const allowed = user?.role === "superadmin";
-  const [societies, setSocieties] = useState<SocietyDto[]>([]);
-  const [tenantId, setTenantId] = useState("");
+  const rootDomain = import.meta.env.VITE_SOCIETYHUB_ROOT_DOMAIN ?? "localhost:5173";
+  const [name, setName] = useState("");
+  const [slug, setSlug] = useState("");
+  const [customDomain, setCustomDomain] = useState("");
   const [slaDays, setSlaDays] = useState(3);
   const [status, setStatus] = useState<"active" | "suspended">("active");
+  const [saved, setSaved] = useState({
+    name: "",
+    slug: "",
+    customDomain: "",
+    slaDays: 3,
+    status: "active" as "active" | "suspended",
+  });
   const [msg, setMsg] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  function setTab(next: SocietySettingsTab) {
+    const params = new URLSearchParams(searchParams);
+    if (next === "details") params.delete("tab");
+    else params.set("tab", next);
+    setSearchParams(params, { replace: true });
+  }
 
   useEffect(() => {
-    client.listSocieties().then((soc) => {
-      setSocieties(soc);
-      if (soc[0]) {
-        setTenantId(soc[0].id);
-        setSlaDays(soc[0].slaDays ?? 3);
-        setStatus(soc[0].status ?? "active");
-      }
-    });
-  }, [client]);
+    if (!selectedSociety) return;
+    const next = {
+      name: selectedSociety.name,
+      slug: selectedSociety.slug ?? "",
+      customDomain: selectedSociety.customDomain ?? "",
+      slaDays: selectedSociety.slaDays ?? 3,
+      status: (selectedSociety.status ?? "active") as "active" | "suspended",
+    };
+    setName(next.name);
+    setSlug(next.slug);
+    setCustomDomain(next.customDomain);
+    setSlaDays(next.slaDays);
+    setStatus(next.status);
+    setSaved(next);
+  }, [selectedSociety]);
 
-  useEffect(() => {
-    const s = societies.find((x) => x.id === tenantId);
-    if (!s) return;
-    setSlaDays(s.slaDays ?? 3);
-    setStatus(s.status ?? "active");
-  }, [tenantId, societies]);
+  const dirty =
+    name !== saved.name ||
+    slug !== saved.slug ||
+    customDomain !== saved.customDomain ||
+    slaDays !== saved.slaDays ||
+    status !== saved.status;
 
   async function save() {
-    await client.updateManageSocietySettings(tenantId, { slaDays, status });
-    setMsg("Saved");
-    setSocieties(await client.listSocieties());
+    if (!selectedSocietyId || !dirty) return;
+    setError(null);
+    setMsg(null);
+    try {
+      await client.updateSociety(selectedSocietyId, {
+        name,
+        slug: slug || null,
+        customDomain: customDomain || null,
+      });
+      await client.updateManageSocietySettings(selectedSocietyId, {
+        slaDays,
+        status,
+        slug: slug || null,
+        customDomain: customDomain || null,
+      });
+      setSaved({ name, slug, customDomain, slaDays, status });
+      setMsg("Settings updated");
+      await refreshSocieties();
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.body.message : "Failed");
+    }
   }
 
   if (!allowed) return <Navigate to="/login" replace />;
+  if (viewAs !== "tenant") return <Navigate to="/dashboard" replace />;
+  if (!selectedSocietyId) return <Navigate to="/societies" replace />;
+
   return (
-    <div>
-      <h1 className="font-display text-2xl">Society settings</h1>
-      <p className="text-sm text-black/55">SLA defaults and suspend access.</p>
-      <div className="card mt-4 grid max-w-lg gap-3 p-4">
-        <select className="input" value={tenantId} onChange={(e) => setTenantId(e.target.value)}>
-          {societies.map((s) => (
-            <option key={s.id} value={s.id}>{s.name}</option>
-          ))}
-        </select>
+    <div data-testid="society-settings-page">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <label className="label">Complaint SLA (days)</label>
-          <input className="input" type="number" min={1} value={slaDays} onChange={(e) => setSlaDays(Number(e.target.value))} />
+          <h1 className="font-display text-2xl">Society settings</h1>
+          <p className="mt-1 text-sm text-black/55">
+            View and edit society details, billing, and access — like Fassport Tenant Settings.
+          </p>
         </div>
-        <div>
-          <label className="label">Status</label>
-          <select className="input" value={status} onChange={(e) => setStatus(e.target.value as "active" | "suspended")}>
-            <option value="active">Active</option>
-            <option value="suspended">Suspended</option>
-          </select>
-        </div>
-        <button type="button" className="btn btn-primary" onClick={save}>Save</button>
-        {msg && <p className="text-sm text-[var(--leaf)]">{msg}</p>}
+        {dirty && tab !== "billing" && (
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={save}
+            data-testid="society-settings-save"
+          >
+            Update settings
+          </button>
+        )}
       </div>
+
+      <div className="mt-4 flex gap-1 border-b border-[var(--sand)]">
+        {(
+          [
+            ["details", "Details"],
+            ["billing", "Billing"],
+            ["access", "Access"],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            data-testid={`society-settings-tab-${id}`}
+            className={[
+              "px-4 py-2 text-sm font-medium",
+              tab === id
+                ? "border-b-2 border-[var(--leaf)] text-[var(--leaf-dark)]"
+                : "text-black/50 hover:text-[var(--leaf-dark)]",
+            ].join(" ")}
+            onClick={() => setTab(id)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {error && <p className="mt-3 text-sm text-[var(--danger)]">{error}</p>}
+      {msg && <p className="mt-3 text-sm text-[var(--leaf)]">{msg}</p>}
+
+      {tab === "details" && (
+        <div className="card mt-4 grid max-w-xl gap-4 p-5" data-testid="society-settings-details">
+          <div>
+            <label className="label" htmlFor="soc-detail-name">
+              Name
+            </label>
+            <input
+              id="soc-detail-name"
+              className="input"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+          </div>
+          <div>
+            <label className="label" htmlFor="soc-detail-domain">
+              Custom domain
+            </label>
+            <input
+              id="soc-detail-domain"
+              className="input"
+              value={customDomain}
+              onChange={(e) => setCustomDomain(e.target.value)}
+              placeholder="app.yoursociety.com"
+              data-testid="society-custom-domain"
+            />
+            <p className="mt-1 text-xs text-black/45">
+              Residents use this host to open the Client App. If you change it, update DNS as well.
+              Contact support before pointing a live production domain.
+            </p>
+          </div>
+          <div>
+            <label className="label" htmlFor="soc-detail-slug">
+              Slug
+            </label>
+            <input
+              id="soc-detail-slug"
+              className="input"
+              value={slug}
+              onChange={(e) => setSlug(e.target.value)}
+              data-testid="society-slug"
+              required
+            />
+            <p className="mt-1 text-xs text-black/45">
+              Unique identifier for this society. Example:{" "}
+              {(slug || "your-slug").toLowerCase()}.{rootDomain}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {tab === "billing" && (
+        <div className="card mt-4 max-w-xl space-y-3 p-5" data-testid="society-settings-billing">
+          <p className="font-semibold">Platform subscription</p>
+          <p className="text-sm text-black/55">
+            Pay or reconcile the platform fee for {selectedSociety?.name ?? "this society"}. Coupons
+            and offline / Razorpay checkout live on the billing screen.
+          </p>
+          <Link
+            className="btn btn-primary inline-flex w-fit"
+            to="/society-billing"
+            data-testid="society-settings-open-billing"
+          >
+            Open billing
+          </Link>
+        </div>
+      )}
+
+      {tab === "access" && (
+        <div className="card mt-4 grid max-w-xl gap-4 p-5" data-testid="society-settings-access">
+          <div>
+            <label className="label" htmlFor="soc-detail-sla">
+              Complaint SLA (days)
+            </label>
+            <input
+              id="soc-detail-sla"
+              className="input"
+              type="number"
+              min={1}
+              value={slaDays}
+              onChange={(e) => setSlaDays(Number(e.target.value))}
+            />
+          </div>
+          <div>
+            <label className="label" htmlFor="soc-detail-status">
+              Status
+            </label>
+            <select
+              id="soc-detail-status"
+              className="input"
+              value={status}
+              onChange={(e) => setStatus(e.target.value as "active" | "suspended")}
+            >
+              <option value="active">Active</option>
+              <option value="suspended">Suspended</option>
+            </select>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -352,15 +519,94 @@ export function PlatformPaymentsPage() {
   const { client, user } = useAuth();
   const allowed = user?.role === "superadmin";
   const [bills, setBills] = useState<PlatformBillDto[]>([]);
+  const [detailRef, setDetailRef] = useState("");
+  const [detail, setDetail] = useState<{
+    paymentReference: string;
+    status: string;
+    amountPaise: number;
+    method: string | null;
+    timeline: Array<{ at: string; label: string }>;
+  } | null>(null);
+  const [detailError, setDetailError] = useState<string | null>(null);
+
   useEffect(() => {
     client.listPlatformBills().then(setBills);
   }, [client]);
+
   const paid = bills.filter((b) => b.status === "paid");
   if (!allowed) return <Navigate to="/login" replace />;
+
+  async function loadDetail(e: FormEvent) {
+    e.preventDefault();
+    if (!detailRef.trim()) return;
+    setDetailError(null);
+    try {
+      const row = await client.getPlatformPayment(detailRef.trim());
+      setDetail({
+        paymentReference: row.paymentReference,
+        status: row.status,
+        amountPaise: row.amountPaise,
+        method: row.method,
+        timeline: [
+          { at: row.createdAt, label: `initiated (${row.status})` },
+          ...(row.providerOrderId
+            ? [{ at: row.createdAt, label: `order ${row.providerOrderId}` }]
+            : []),
+          ...(row.providerPaymentId
+            ? [{ at: row.completedAt ?? row.createdAt, label: `payment ${row.providerPaymentId}` }]
+            : []),
+          ...(row.completedAt
+            ? [{ at: row.completedAt, label: "captured / bill marked paid" }]
+            : []),
+          ...(row.failedAt
+            ? [
+                {
+                  at: row.failedAt,
+                  label: row.failureReason
+                    ? `failed: ${row.failureReason}`
+                    : "failed",
+                },
+              ]
+            : []),
+          ...row.webhooks.map((w) => ({
+            at: w.receivedAt,
+            label: `webhook ${w.eventType} (${w.processingStatus})`,
+          })),
+        ].sort((a, b) => a.at.localeCompare(b.at)),
+      });
+    } catch (err) {
+      setDetail(null);
+      setDetailError(err instanceof ApiClientError ? err.body.message : "Not found");
+    }
+  }
+
+  async function reconcile() {
+    if (!detailRef.trim()) return;
+    try {
+      const res = await client.reconcilePlatformPayment(detailRef.trim());
+      setDetailError(null);
+      setDetail((d) =>
+        d
+          ? {
+              ...d,
+              timeline: [
+                ...d.timeline,
+                { at: new Date().toISOString(), label: `reconcile: ${res.result}` },
+              ],
+            }
+          : d,
+      );
+    } catch (err) {
+      setDetailError(err instanceof ApiClientError ? err.body.message : "Reconcile failed");
+    }
+  }
+
   return (
-    <div>
+    <div data-testid="platform-payments-page">
       <h1 className="font-display text-2xl">Payments</h1>
-      <p className="text-sm text-black/55">Paid platform invoices (offline).</p>
+      <p className="text-sm text-black/55">
+        Platform subscription payments — offline receipts and Razorpay when configured.
+      </p>
       <ul className="mt-4 space-y-2">
         {paid.length === 0 ? (
           <li className="empty-state">No paid platform invoices yet.</li>
@@ -372,6 +618,38 @@ export function PlatformPaymentsPage() {
           ))
         )}
       </ul>
+
+      <form className="card mt-6 flex flex-wrap gap-2 p-4" onSubmit={loadDetail}>
+        <input
+          className="input max-w-md flex-1"
+          placeholder="Payment reference SH-PAY-…"
+          value={detailRef}
+          onChange={(e) => setDetailRef(e.target.value)}
+          data-testid="payment-ref-input"
+        />
+        <button className="btn btn-primary" type="submit">
+          Open timeline
+        </button>
+        <button className="btn btn-ghost" type="button" onClick={reconcile} disabled={!detailRef.trim()}>
+          Reconcile
+        </button>
+      </form>
+      {detailError && <p className="mt-2 text-sm text-[var(--danger)]">{detailError}</p>}
+      {detail && (
+        <div className="card mt-3 p-4" data-testid="payment-timeline">
+          <p className="font-medium">
+            {detail.paymentReference} · ₹{(detail.amountPaise / 100).toFixed(0)} · {detail.status}
+            {detail.method ? ` · ${detail.method}` : ""}
+          </p>
+          <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-black/70">
+            {detail.timeline.map((t, i) => (
+              <li key={`${t.at}-${i}`}>
+                {t.label} <span className="text-black/40">({t.at})</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
     </div>
   );
 }

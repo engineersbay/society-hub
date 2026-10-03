@@ -26,27 +26,47 @@ const timestamps = {
   isDeleted: boolean("is_deleted").notNull().default(false),
 };
 
-export const societies = mysqlTable("societies", {
-  id: id(),
-  name: varchar("name", { length: 200 }).notNull(),
-  address: varchar("address", { length: 500 }),
-  city: varchar("city", { length: 120 }),
-  pincode: varchar("pincode", { length: 12 }),
-  timezone: varchar("timezone", { length: 64 }).notNull().default("Asia/Kolkata"),
-  slaDays: int("sla_days").notNull().default(3),
-  billingDefaults: text("billing_defaults"),
-  status: mysqlEnum("status", ["active", "suspended"]).notNull().default("active"),
-  featureFlagsJson: text("feature_flags_json"),
-  planId: char("plan_id", { length: 36 }),
-  /** Offline UPI / bank details residents use to pay (Razorpay is future). */
-  upiId: varchar("upi_id", { length: 80 }),
-  accountName: varchar("account_name", { length: 120 }),
-  accountNumber: varchar("account_number", { length: 40 }),
-  ifsc: varchar("ifsc", { length: 20 }),
-  qrBlobPath: varchar("qr_blob_path", { length: 500 }),
-  qrContentType: varchar("qr_content_type", { length: 120 }),
-  ...timestamps,
-});
+export const societies = mysqlTable(
+  "societies",
+  {
+    id: id(),
+    name: varchar("name", { length: 200 }).notNull(),
+    /** Unique subdomain label: {slug}.{SOCIETYHUB_ROOT_DOMAIN} */
+    slug: varchar("slug", { length: 80 }),
+    /** Optional custom host for the Client App (normalized, no scheme). */
+    customDomain: varchar("custom_domain", { length: 255 }),
+    address: varchar("address", { length: 500 }),
+    city: varchar("city", { length: 120 }),
+    pincode: varchar("pincode", { length: 12 }),
+    timezone: varchar("timezone", { length: 64 }).notNull().default("Asia/Kolkata"),
+    slaDays: int("sla_days").notNull().default(3),
+    billingDefaults: text("billing_defaults"),
+    status: mysqlEnum("status", ["active", "suspended"]).notNull().default("active"),
+    featureFlagsJson: text("feature_flags_json"),
+    planId: char("plan_id", { length: 36 }),
+    /** Client App white-label: logos + brand colors (Fassport Theme / Media). */
+    brandLogoBlobPath: varchar("brand_logo_blob_path", { length: 500 }),
+    brandLogoContentType: varchar("brand_logo_content_type", { length: 120 }),
+    brandLogoDarkBlobPath: varchar("brand_logo_dark_blob_path", { length: 500 }),
+    brandIconBlobPath: varchar("brand_icon_blob_path", { length: 500 }),
+    brandColor: varchar("brand_color", { length: 32 }),
+    brandSecondaryColor: varchar("brand_secondary_color", { length: 32 }),
+    brandTertiaryColor: varchar("brand_tertiary_color", { length: 32 }),
+    brandingEnabled: boolean("branding_enabled").notNull().default(false),
+    /** Offline UPI / bank details residents use to pay (Razorpay is future). */
+    upiId: varchar("upi_id", { length: 80 }),
+    accountName: varchar("account_name", { length: 120 }),
+    accountNumber: varchar("account_number", { length: 40 }),
+    ifsc: varchar("ifsc", { length: 20 }),
+    qrBlobPath: varchar("qr_blob_path", { length: 500 }),
+    qrContentType: varchar("qr_content_type", { length: 120 }),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex("societies_slug_uidx").on(t.slug),
+    uniqueIndex("societies_custom_domain_uidx").on(t.customDomain),
+  ],
+);
 
 export const buildings = mysqlTable(
   "buildings",
@@ -899,3 +919,174 @@ export const supportTickets = mysqlTable(
   },
   (t) => [index("support_tickets_tenant_idx").on(t.tenantId)],
 );
+
+const platformPayStatus = [
+  "initiated",
+  "order_pending",
+  "order_created",
+  "checkout_started",
+  "payment_pending",
+  "authorized",
+  "captured",
+  "failed",
+  "cancelled",
+  "expired",
+  "refund_pending",
+  "partially_refunded",
+  "refunded",
+  "reconciliation_required",
+] as const;
+
+/** Platform subscription fee payments (Manage), separate from resident flat payments. */
+export const platformPaymentTransactions = mysqlTable(
+  "platform_payment_transactions",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    billId: char("bill_id", { length: 36 }).notNull(),
+    paymentReference: varchar("payment_reference", { length: 64 }).notNull(),
+    correlationId: varchar("correlation_id", { length: 64 }).notNull(),
+    idempotencyKey: varchar("idempotency_key", { length: 200 }).notNull(),
+    purpose: varchar("purpose", { length: 64 }).notNull().default("platform_subscription"),
+    onboardingId: char("onboarding_id", { length: 36 }),
+    currency: varchar("currency", { length: 8 }).notNull().default("INR"),
+    amountPaise: int("amount_paise").notNull(),
+    discountCode: varchar("discount_code", { length: 40 }),
+    status: mysqlEnum("status", [...platformPayStatus]).notNull().default("initiated"),
+    provider: varchar("provider", { length: 32 }).notNull().default("razorpay"),
+    providerOrderId: varchar("provider_order_id", { length: 120 }),
+    providerPaymentId: varchar("provider_payment_id", { length: 120 }),
+    failureCode: varchar("failure_code", { length: 80 }),
+    failureReason: varchar("failure_reason", { length: 500 }),
+    method: varchar("method", { length: 40 }),
+    completedAt: datetime("completed_at", { mode: "string", fsp: 3 }),
+    failedAt: datetime("failed_at", { mode: "string", fsp: 3 }),
+    ...timestamps,
+  },
+  (t) => [
+    index("platform_pay_txn_tenant_idx").on(t.tenantId),
+    uniqueIndex("platform_pay_txn_ref_uidx").on(t.paymentReference),
+    uniqueIndex("platform_pay_txn_idem_uidx").on(t.idempotencyKey),
+    uniqueIndex("platform_pay_txn_provider_order_uidx").on(t.providerOrderId),
+  ],
+);
+
+export const platformPaymentWebhookEvents = mysqlTable(
+  "platform_payment_webhook_events",
+  {
+    id: id(),
+    provider: varchar("provider", { length: 32 }).notNull().default("razorpay"),
+    providerEventId: varchar("provider_event_id", { length: 120 }).notNull(),
+    eventType: varchar("event_type", { length: 80 }).notNull(),
+    paymentTransactionId: char("payment_transaction_id", { length: 36 }),
+    providerOrderId: varchar("provider_order_id", { length: 120 }),
+    providerPaymentId: varchar("provider_payment_id", { length: 120 }),
+    correlationId: varchar("correlation_id", { length: 64 }),
+    signatureValid: boolean("signature_valid").notNull().default(false),
+    processingStatus: mysqlEnum("processing_status", [
+      "received",
+      "processed",
+      "already_processed",
+      "failed",
+      "ignored",
+    ])
+      .notNull()
+      .default("received"),
+    payloadHash: varchar("payload_hash", { length: 128 }),
+    retryCount: int("retry_count").notNull().default(0),
+    errorCode: varchar("error_code", { length: 80 }),
+    errorMessage: varchar("error_message", { length: 500 }),
+    receivedAt: datetime("received_at", { mode: "string", fsp: 3 }).notNull(),
+    processedAt: datetime("processed_at", { mode: "string", fsp: 3 }),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("platform_pay_wh_event_uidx").on(t.providerEventId)],
+);
+
+export const platformPaymentRefunds = mysqlTable(
+  "platform_payment_refunds",
+  {
+    id: id(),
+    paymentTransactionId: char("payment_transaction_id", { length: 36 }).notNull(),
+    providerRefundId: varchar("provider_refund_id", { length: 120 }),
+    amountPaise: int("amount_paise").notNull(),
+    currency: varchar("currency", { length: 8 }).notNull().default("INR"),
+    reason: varchar("reason", { length: 500 }),
+    status: mysqlEnum("status", ["requested", "processing", "processed", "failed"])
+      .notNull()
+      .default("requested"),
+    correlationId: varchar("correlation_id", { length: 64 }),
+    idempotencyKey: varchar("idempotency_key", { length: 200 }).notNull(),
+    failureCode: varchar("failure_code", { length: 80 }),
+    failureReason: varchar("failure_reason", { length: 500 }),
+    requestedAt: datetime("requested_at", { mode: "string", fsp: 3 }).notNull(),
+    processedAt: datetime("processed_at", { mode: "string", fsp: 3 }),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex("platform_pay_refund_idem_uidx").on(t.idempotencyKey),
+    uniqueIndex("platform_pay_refund_provider_uidx").on(t.providerRefundId),
+  ],
+);
+
+export const platformPaymentApiLogs = mysqlTable("platform_payment_api_logs", {
+  id: id(),
+  paymentTransactionId: char("payment_transaction_id", { length: 36 }),
+  correlationId: varchar("correlation_id", { length: 64 }),
+  provider: varchar("provider", { length: 32 }).notNull().default("razorpay"),
+  operation: varchar("operation", { length: 80 }).notNull(),
+  httpMethod: varchar("http_method", { length: 12 }),
+  endpoint: varchar("endpoint", { length: 255 }),
+  durationMs: int("duration_ms"),
+  httpStatus: int("http_status"),
+  attemptNumber: int("attempt_number").notNull().default(1),
+  success: boolean("success").notNull().default(false),
+  errorCode: varchar("error_code", { length: 80 }),
+  errorMessage: varchar("error_message", { length: 500 }),
+  requestPayloadHash: varchar("request_payload_hash", { length: 128 }),
+  responsePayloadHash: varchar("response_payload_hash", { length: 128 }),
+  ...timestamps,
+});
+
+const societyOnboardStatus = [
+  "started",
+  "payment_pending",
+  "paid",
+  "provisioned",
+  "failed",
+] as const;
+
+/** Self-serve society signup. Society row is created only after payment is captured or marked offline. */
+export const societyOnboardings = mysqlTable(
+  "society_onboardings",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    planId: char("plan_id", { length: 36 }).notNull(),
+    billId: char("bill_id", { length: 36 }).notNull(),
+    resumeTokenHash: varchar("resume_token_hash", { length: 64 }).notNull(),
+    status: mysqlEnum("status", [...societyOnboardStatus]).notNull().default("started"),
+    name: varchar("name", { length: 200 }).notNull(),
+    slug: varchar("slug", { length: 80 }).notNull(),
+    customDomain: varchar("custom_domain", { length: 255 }),
+    address: varchar("address", { length: 500 }),
+    city: varchar("city", { length: 120 }),
+    pincode: varchar("pincode", { length: 12 }),
+    chairpersonName: varchar("chairperson_name", { length: 120 }),
+    chairpersonEmail: varchar("chairperson_email", { length: 200 }).notNull(),
+    chairpersonPhone: varchar("chairperson_phone", { length: 20 }).notNull(),
+    chairpersonPasswordHash: varchar("chairperson_password_hash", { length: 255 }).notNull(),
+    originalAmountPaise: int("original_amount_paise").notNull(),
+    dueAmountPaise: int("due_amount_paise").notNull(),
+    discountCode: varchar("discount_code", { length: 40 }),
+    paymentTransactionId: char("payment_transaction_id", { length: 36 }),
+    provisionedAt: datetime("provisioned_at", { mode: "string", fsp: 3 }),
+    lastError: varchar("last_error", { length: 500 }),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex("society_onboard_resume_uidx").on(t.resumeTokenHash),
+    index("society_onboard_tenant_idx").on(t.tenantId),
+  ],
+);
+

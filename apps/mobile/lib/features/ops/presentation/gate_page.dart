@@ -127,26 +127,35 @@ class _GatePageState extends ConsumerState<GatePage> {
       body: ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       children: [
+        Text('Gate verify', style: displayStyle(size: 22)),
+        const SizedBox(height: 4),
         const Text(
-          'Scan or paste a visitor pass, preview, then confirm entry.',
+          'Paste a pass token or QR payload, preview, then confirm entry.',
           style: TextStyle(color: Colors.black54, height: 1.4),
         ),
         const SizedBox(height: 16),
-        TextField(
-          controller: _tokenCtrl,
-          decoration: const InputDecoration(
-            labelText: 'Pass token or QR payload',
+        ShCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextField(
+                controller: _tokenCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Pass token or QR payload',
+                ),
+                minLines: 1,
+                maxLines: 3,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _otpCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'OTP (optional if QR scanned)',
+                ),
+                keyboardType: TextInputType.number,
+              ),
+            ],
           ),
-          minLines: 1,
-          maxLines: 3,
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _otpCtrl,
-          decoration: const InputDecoration(
-            labelText: 'OTP (optional if QR scanned)',
-          ),
-          keyboardType: TextInputType.number,
         ),
         const SizedBox(height: 16),
         Row(

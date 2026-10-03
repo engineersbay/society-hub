@@ -45,6 +45,8 @@ class LoginMethodsPage extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  const Center(child: BrandMark()),
+                  const SizedBox(height: 20),
                   Text(
                     'How would you like to sign in?',
                     style: displayStyle(size: 22),

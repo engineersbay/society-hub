@@ -74,6 +74,21 @@ async function membershipsForUsers(
   return map;
 }
 
+async function userHasPlatformRole(userId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ id: userRoles.id })
+    .from(userRoles)
+    .where(
+      and(
+        eq(userRoles.userId, userId),
+        eq(userRoles.role, "superadmin"),
+        eq(userRoles.isDeleted, false),
+      ),
+    )
+    .limit(1);
+  return Boolean(row);
+}
+
 async function buildPlatformUser(userId: string): Promise<PlatformUserDto> {
   const [user] = await db
     .select()
@@ -81,6 +96,9 @@ async function buildPlatformUser(userId: string): Promise<PlatformUserDto> {
     .where(and(eq(users.id, userId), eq(users.isDeleted, false)))
     .limit(1);
   if (!user) throw new AppError(404, "not_found", "User not found");
+  if (!(await userHasPlatformRole(userId))) {
+    throw new AppError(404, "not_found", "User not found");
+  }
 
   const memberships = await membershipsForUsers([userId]);
   const last = await latestActivityAtForUsers([userId]);
@@ -120,6 +138,15 @@ export const manageUserRoutes = new Elysia({ prefix: "/v1/manage/users" })
       );
     }
 
+    const platformUserIds = await db
+      .selectDistinct({ userId: userRoles.userId })
+      .from(userRoles)
+      .where(
+        and(eq(userRoles.role, "superadmin"), eq(userRoles.isDeleted, false)),
+      );
+    const platformSet = new Set(platformUserIds.map((r) => r.userId));
+    if (platformSet.size === 0) return [];
+
     const rows = await db
       .select({
         id: users.id,
@@ -130,7 +157,7 @@ export const manageUserRoutes = new Elysia({ prefix: "/v1/manage/users" })
         createdAt: users.createdAt,
       })
       .from(users)
-      .where(and(...conditions))
+      .where(and(...conditions, inArray(users.id, [...platformSet])))
       .orderBy(desc(users.createdAt))
       .limit(q ? 100 : 500);
 
@@ -161,12 +188,9 @@ export const manageUserRoutes = new Elysia({ prefix: "/v1/manage/users" })
   .get("/:id/activity", async ({ auth, params }) => {
     const claims = requireAuth(auth);
     requirePlatform(claims);
-    const [user] = await db
-      .select({ id: users.id })
-      .from(users)
-      .where(and(eq(users.id, params.id), eq(users.isDeleted, false)))
-      .limit(1);
-    if (!user) throw new AppError(404, "not_found", "User not found");
+    if (!(await userHasPlatformRole(params.id))) {
+      throw new AppError(404, "not_found", "User not found");
+    }
     const rows = await listUserActivity(params.id, 100);
     return rows.map(toActivityDto);
   });

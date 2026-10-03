@@ -65,6 +65,18 @@ class _ComplaintsPageState extends ConsumerState<ComplaintsPage> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
+            Text(
+              staffView ? 'Society queue' : 'Your complaints',
+              style: displayStyle(size: 22),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              staffView
+                  ? 'Search and open tickets across the society.'
+                  : 'Raise and track issues for your flat.',
+              style: TextStyle(color: Colors.black.withValues(alpha: 0.5)),
+            ),
+            const SizedBox(height: 14),
             TextField(
               key: AppKeys.complaintsSearch,
               decoration: InputDecoration(
@@ -317,46 +329,42 @@ class _NewComplaintPageState extends ConsumerState<NewComplaintPage> {
                   ],
                 ),
               ],
-              DropdownButtonFormField<String>(
-                // ignore: deprecated_member_use
-                value: _type,
-                decoration: underlineFieldDecoration('Type'),
-                items: [
+              const ShFormLabel('Type'),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
                   for (final t in _types)
-                    DropdownMenuItem(
-                      value: t,
-                      child: Text(complaintTypeLabels[t] ?? t),
+                    ShChoiceChip(
+                      label: complaintTypeLabels[t] ?? t,
+                      selected: _type == t,
+                      onTap: () => setState(() => _type = t),
                     ),
                 ],
-                onChanged: (v) {
-                  if (v != null) setState(() => _type = v);
-                },
               ),
               if (_type == 'other') ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 TextField(
                   controller: _typeOther,
                   decoration: underlineFieldDecoration('Describe the type'),
                 ),
               ],
-              const SizedBox(height: 8),
+              const SizedBox(height: 16),
               TextField(
                 controller: _title,
                 decoration: underlineFieldDecoration('Title'),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               TextField(
                 controller: _description,
                 maxLines: 5,
-                decoration: underlineFieldDecoration('Description').copyWith(
+                decoration: underlineFieldDecoration('What happened?').copyWith(
                   alignLabelWithHint: true,
+                  hintText: 'Short details help staff act faster',
                 ),
               ),
               const SizedBox(height: 20),
-              const Text(
-                'Add photos (optional)',
-                style: TextStyle(color: Colors.black54, fontSize: 13),
-              ),
+              const ShFormLabel('Photos (optional)'),
               const SizedBox(height: 8),
               PhotoDropzone(
                 onTap: _busy ? () {} : _pickPhotos,

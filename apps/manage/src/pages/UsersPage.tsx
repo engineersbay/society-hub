@@ -46,7 +46,8 @@ export function UsersPage() {
         <div>
           <h1 className="font-display text-2xl">Users</h1>
           <p className="mt-1 text-sm text-black/55">
-            Platform directory — search members and open their activity history.
+            Platform employees who can sign in to Manage. Society admins and residents stay in the
+            Client App; society team is on each society&apos;s Team tab.
           </p>
         </div>
       </div>

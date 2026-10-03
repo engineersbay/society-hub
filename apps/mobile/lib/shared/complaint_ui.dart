@@ -102,19 +102,11 @@ String formatComplaintTimelineWhen(String iso) {
 }
 
 InputDecoration underlineFieldDecoration(String label, {String? hint}) {
-  const border = UnderlineInputBorder(
-    borderSide: BorderSide(color: AppColors.sand),
-  );
   return InputDecoration(
     labelText: label,
     hintText: hint,
-    filled: false,
-    border: border,
-    enabledBorder: border,
-    focusedBorder: const UnderlineInputBorder(
-      borderSide: BorderSide(color: AppColors.leaf, width: 1.5),
-    ),
-    contentPadding: const EdgeInsets.symmetric(vertical: 12),
+    filled: true,
+    fillColor: Colors.white,
   );
 }
 

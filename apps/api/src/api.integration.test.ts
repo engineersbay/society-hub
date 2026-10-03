@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 import { createApp } from "./app";
 import { db } from "./db/client";
-import { residents } from "./db/schema";
+import { flats as flatsTable, residents } from "./db/schema";
 
 /** In-process base URL — set in beforeAll so Bun coverage instruments route modules. */
 let base = "";
@@ -145,6 +145,16 @@ describe("api integration", () => {
     expect(patch.ok).toBe(true);
     const updated = (await patch.json()) as { status: string };
     expect(updated.status).toBe("in_progress");
+
+    const missingNote = await fetch(`${base}/v1/complaints/${complaint.id}/status`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${admin.tokens.accessToken}`,
+      },
+      body: JSON.stringify({ status: "closed" }),
+    });
+    expect(missingNote.status).toBe(400);
 
     const closed = await fetch(`${base}/v1/complaints/${complaint.id}/status`, {
       method: "PATCH",
@@ -1357,6 +1367,100 @@ describe("api integration", () => {
       headers: { Authorization: `Bearer ${session.tokens.accessToken}` },
     });
     expect(getRes.ok).toBe(true);
+
+    const domainHost = `cov-${suffix}.example.com`;
+    const withDomain = await fetch(`${base}/v1/societies`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.tokens.accessToken}`,
+      },
+      body: JSON.stringify({
+        name: `Domain Society ${suffix}`,
+        slug: `domain-society-${suffix}`,
+        customDomain: `https://${domainHost}/welcome`,
+      }),
+    });
+    expect(withDomain.ok).toBe(true);
+    const domainSociety = (await withDomain.json()) as {
+      id: string;
+      customDomain: string | null;
+    };
+    expect(domainSociety.customDomain).toBe(domainHost);
+
+    const clashSlug = await fetch(`${base}/v1/societies`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.tokens.accessToken}`,
+      },
+      body: JSON.stringify({
+        name: `Clash ${suffix}`,
+        slug: `domain-society-${suffix}`,
+      }),
+    });
+    expect(clashSlug.status).toBe(409);
+
+    const clashDomain = await fetch(`${base}/v1/societies`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.tokens.accessToken}`,
+      },
+      body: JSON.stringify({
+        name: `Clash Domain ${suffix}`,
+        customDomain: domainHost,
+      }),
+    });
+    expect(clashDomain.status).toBe(409);
+
+    const patchedSociety = await fetch(`${base}/v1/societies/${society.id}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.tokens.accessToken}`,
+      },
+      body: JSON.stringify({
+        name: `Coverage Society ${suffix}`,
+        slug: `coverage-society-${suffix}`,
+        customDomain: `alt-${domainHost}`,
+        city: "Pune",
+      }),
+    });
+    expect(patchedSociety.ok).toBe(true);
+
+    const missingSociety = await fetch(
+      `${base}/v1/societies/${crypto.randomUUID()}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.tokens.accessToken}`,
+        },
+        body: JSON.stringify({ name: "Nope" }),
+      },
+    );
+    expect(missingSociety.status).toBe(404);
+
+    const residentSession = await otpLogin("8888888888");
+    const residentForbidden = await fetch(`${base}/v1/societies/${society.id}`, {
+      headers: { Authorization: `Bearer ${residentSession.tokens.accessToken}` },
+    });
+    expect(residentForbidden.status).toBe(403);
+
+    const phoneOnly = await fetch(`${base}/v1/societies`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.tokens.accessToken}`,
+      },
+      body: JSON.stringify({
+        name: `Phone Chair ${suffix}`,
+        chairpersonName: "Phone Chair",
+        chairpersonPhone: `6${String(suffix).slice(-9)}`,
+      }),
+    });
+    expect(phoneOnly.ok).toBe(true);
 
     const existingFlats = await fetch(
       `${base}/v1/manage/societies/${society.id}/flats`,
@@ -3046,6 +3150,15 @@ describe("api integration", () => {
     );
     expect(createFlat.ok).toBe(true);
     const flatBody = (await createFlat.json()) as { id: string };
+    await db
+      .update(flatsTable)
+      .set({ detailsJson: "not-json" })
+      .where(eq(flatsTable.id, flatBody.id));
+    const listedCorrupt = await fetch(
+      `${base}/v1/wings/${wingList[0]!.id}/flats`,
+      { headers: auth },
+    );
+    expect(listedCorrupt.ok).toBe(true);
 
     const createBuilding = await fetch(
       `${base}/v1/societies/${user.tenantId}/buildings`,

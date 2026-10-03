@@ -55,6 +55,7 @@ import {
   updateComplaintStatusSchema,
   updateNoticeSchema,
   updateResidentProfileSchema,
+  startSocietyOnboardingSchema,
   verifyOtpSchema,
   voidBillSchema,
 } from "./index";
@@ -301,6 +302,19 @@ describe("validation schemas", () => {
     expect(
       createSocietySchema.parse({ name: "Keshav Heights", city: "Pune" }).name,
     ).toBe("Keshav Heights");
+    expect(
+      createSocietySchema.parse({
+        name: "Keshav Heights",
+        slug: "Keshav-Heights",
+        customDomain: "https://www.keshav.example:443/path",
+      }).customDomain,
+    ).toBe("www.keshav.example");
+    expect(() =>
+      createSocietySchema.parse({
+        name: "Keshav Heights",
+        customDomain: "not a domain!!",
+      }),
+    ).toThrow();
     expect(createBuildingSchema.parse({ name: "Tower A" }).name).toBe("Tower A");
     expect(createWingSchema.parse({ name: "A" }).name).toBe("A");
     expect(createFlatSchema.parse({ number: "101" }).number).toBe("101");
@@ -649,5 +663,27 @@ describe("validation schemas", () => {
         allowPartial: true,
       }).rows[0]!.residentType,
     ).toBe("tenant");
+  });
+
+  test("startSocietyOnboardingSchema requires plan and chairperson login", () => {
+    const parsed = startSocietyOnboardingSchema.parse({
+      name: "Keshav Heights",
+      chairpersonName: "Asha",
+      chairpersonEmail: "asha@example.com",
+      chairpersonPhone: "9876543210",
+      chairpersonPassword: "Test@1234",
+      planId: "11111111-1111-1111-1111-111111111111",
+    });
+    expect(parsed.name).toBe("Keshav Heights");
+    expect(() =>
+      startSocietyOnboardingSchema.parse({
+        name: "Keshav Heights",
+        chairpersonName: "Asha",
+        chairpersonEmail: "bad",
+        chairpersonPhone: "9876543210",
+        chairpersonPassword: "short",
+        planId: "11111111-1111-1111-1111-111111111111",
+      }),
+    ).toThrow();
   });
 });
