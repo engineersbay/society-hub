@@ -32,12 +32,8 @@ export function TenantSocietyDashboard() {
           <p className="mt-1 text-sm text-black/55">Logo and brand color</p>
         </Link>
         <Link className="card block p-4 hover:-translate-y-0.5 transition-transform" to="/society-settings">
-          <p className="font-semibold">Society details</p>
-          <p className="mt-1 text-sm text-black/55">Slug, custom domain, SLA, status</p>
-        </Link>
-        <Link className="card block p-4 hover:-translate-y-0.5 transition-transform" to="/society-billing">
-          <p className="font-semibold">Platform fee</p>
-          <p className="mt-1 text-sm text-black/55">Pay or reconcile the subscription invoice</p>
+          <p className="font-semibold">Society settings</p>
+          <p className="mt-1 text-sm text-black/55">Details, billing, and access</p>
         </Link>
       </div>
     </div>

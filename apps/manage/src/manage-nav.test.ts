@@ -30,8 +30,11 @@ describe("manage-nav", () => {
     expect(live).toContain("/feature-flags");
     expect(live).toContain("/branding");
     expect(live).toContain("/society-settings");
-    expect(live).toContain("/society-billing");
+    expect(live).not.toContain("/society-billing");
     expect(live).not.toContain("/users");
+    expect(TENANT_NAV.find((n) => n.to === "/society-settings")?.label).toBe(
+      "Society settings",
+    );
   });
 
   it("has no coming-soon nav items in the demo commercial layer", () => {

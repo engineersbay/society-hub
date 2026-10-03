@@ -128,21 +128,14 @@ export const TENANT_NAV: ManageNavItem[] = [
     label: "Branding",
     icon: "settings",
     status: "live",
-    blurb: "Society logo and brand color for the Client App.",
+    blurb: "Fassport-style Theme and Media — primary color and logos for the Client App.",
   },
   {
     to: "/society-settings",
-    label: "Society details",
+    label: "Society settings",
     icon: "settings",
     status: "live",
-    blurb: "Name, slug, custom domain, SLA defaults, and suspend access.",
-  },
-  {
-    to: "/society-billing",
-    label: "Platform fee",
-    icon: "payments",
-    status: "live",
-    blurb: "Pay or reconcile this society’s platform subscription invoice.",
+    blurb: "Fassport-style society settings — details, billing, and access.",
   },
 ];
 

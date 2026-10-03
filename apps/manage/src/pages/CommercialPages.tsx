@@ -10,10 +10,17 @@ import type {
   SupportTicketDto,
 } from "@society-hub/types";
 import { ApiClientError } from "@society-hub/sdk";
-import { Navigate } from "react-router-dom";
+import { Link, Navigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth";
 import { useSelectedSociety } from "../selected-society";
 import { useViewAs } from "../view-as";
+
+type SocietySettingsTab = "details" | "billing" | "access";
+
+function parseSocietySettingsTab(value: string | null): SocietySettingsTab {
+  if (value === "billing" || value === "access") return value;
+  return "details";
+}
 
 const MODULES = [
   "complaints",
@@ -170,26 +177,58 @@ export function SocietySettingsManagePage() {
   const { client, user } = useAuth();
   const { viewAs } = useViewAs();
   const { selectedSociety, selectedSocietyId, refreshSocieties } = useSelectedSociety();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = parseSocietySettingsTab(searchParams.get("tab"));
   const allowed = user?.role === "superadmin";
+  const rootDomain = import.meta.env.VITE_SOCIETYHUB_ROOT_DOMAIN ?? "localhost:5173";
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [customDomain, setCustomDomain] = useState("");
   const [slaDays, setSlaDays] = useState(3);
   const [status, setStatus] = useState<"active" | "suspended">("active");
+  const [saved, setSaved] = useState({
+    name: "",
+    slug: "",
+    customDomain: "",
+    slaDays: 3,
+    status: "active" as "active" | "suspended",
+  });
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  function setTab(next: SocietySettingsTab) {
+    const params = new URLSearchParams(searchParams);
+    if (next === "details") params.delete("tab");
+    else params.set("tab", next);
+    setSearchParams(params, { replace: true });
+  }
+
   useEffect(() => {
     if (!selectedSociety) return;
-    setName(selectedSociety.name);
-    setSlug(selectedSociety.slug ?? "");
-    setCustomDomain(selectedSociety.customDomain ?? "");
-    setSlaDays(selectedSociety.slaDays ?? 3);
-    setStatus(selectedSociety.status ?? "active");
+    const next = {
+      name: selectedSociety.name,
+      slug: selectedSociety.slug ?? "",
+      customDomain: selectedSociety.customDomain ?? "",
+      slaDays: selectedSociety.slaDays ?? 3,
+      status: (selectedSociety.status ?? "active") as "active" | "suspended",
+    };
+    setName(next.name);
+    setSlug(next.slug);
+    setCustomDomain(next.customDomain);
+    setSlaDays(next.slaDays);
+    setStatus(next.status);
+    setSaved(next);
   }, [selectedSociety]);
 
+  const dirty =
+    name !== saved.name ||
+    slug !== saved.slug ||
+    customDomain !== saved.customDomain ||
+    slaDays !== saved.slaDays ||
+    status !== saved.status;
+
   async function save() {
-    if (!selectedSocietyId) return;
+    if (!selectedSocietyId || !dirty) return;
     setError(null);
     setMsg(null);
     try {
@@ -204,7 +243,8 @@ export function SocietySettingsManagePage() {
         slug: slug || null,
         customDomain: customDomain || null,
       });
-      setMsg("Saved");
+      setSaved({ name, slug, customDomain, slaDays, status });
+      setMsg("Settings updated");
       await refreshSocieties();
     } catch (err) {
       setError(err instanceof ApiClientError ? err.body.message : "Failed");
@@ -214,59 +254,155 @@ export function SocietySettingsManagePage() {
   if (!allowed) return <Navigate to="/login" replace />;
   if (viewAs !== "tenant") return <Navigate to="/dashboard" replace />;
   if (!selectedSocietyId) return <Navigate to="/societies" replace />;
+
   return (
-    <div data-testid="society-details-page">
-      <h1 className="font-display text-2xl">Society details</h1>
-      <p className="text-sm text-black/55">
-        Name, slug, custom domain, SLA defaults, and suspend access.
-      </p>
-      <div className="card mt-4 grid max-w-lg gap-3 p-4">
+    <div data-testid="society-settings-page">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <label className="label">Name</label>
-          <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
-        </div>
-        <div>
-          <label className="label">Slug</label>
-          <input
-            className="input"
-            value={slug}
-            onChange={(e) => setSlug(e.target.value)}
-            data-testid="society-slug"
-          />
-          <p className="mt-1 text-xs text-black/45">
-            Example: {slug || "your-slug"}.{import.meta.env.VITE_SOCIETYHUB_ROOT_DOMAIN ?? "localhost:5173"}
+          <h1 className="font-display text-2xl">Society settings</h1>
+          <p className="mt-1 text-sm text-black/55">
+            View and edit society details, billing, and access — like Fassport Tenant Settings.
           </p>
         </div>
-        <div>
-          <label className="label">Custom domain</label>
-          <input
-            className="input"
-            value={customDomain}
-            onChange={(e) => setCustomDomain(e.target.value)}
-            placeholder="app.yoursociety.com"
-            data-testid="society-custom-domain"
-          />
-          <p className="mt-1 text-xs text-black/45">
-            Residents use this host. Point DNS at the Client App before saving a live domain.
-          </p>
-        </div>
-        <div>
-          <label className="label">Complaint SLA (days)</label>
-          <input className="input" type="number" min={1} value={slaDays} onChange={(e) => setSlaDays(Number(e.target.value))} />
-        </div>
-        <div>
-          <label className="label">Status</label>
-          <select className="input" value={status} onChange={(e) => setStatus(e.target.value as "active" | "suspended")}>
-            <option value="active">Active</option>
-            <option value="suspended">Suspended</option>
-          </select>
-        </div>
-        <button type="button" className="btn btn-primary" onClick={save} data-testid="society-details-save">
-          Save
-        </button>
-        {msg && <p className="text-sm text-[var(--leaf)]">{msg}</p>}
-        {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
+        {dirty && tab !== "billing" && (
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={save}
+            data-testid="society-settings-save"
+          >
+            Update settings
+          </button>
+        )}
       </div>
+
+      <div className="mt-4 flex gap-1 border-b border-[var(--sand)]">
+        {(
+          [
+            ["details", "Details"],
+            ["billing", "Billing"],
+            ["access", "Access"],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            data-testid={`society-settings-tab-${id}`}
+            className={[
+              "px-4 py-2 text-sm font-medium",
+              tab === id
+                ? "border-b-2 border-[var(--leaf)] text-[var(--leaf-dark)]"
+                : "text-black/50 hover:text-[var(--leaf-dark)]",
+            ].join(" ")}
+            onClick={() => setTab(id)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {error && <p className="mt-3 text-sm text-[var(--danger)]">{error}</p>}
+      {msg && <p className="mt-3 text-sm text-[var(--leaf)]">{msg}</p>}
+
+      {tab === "details" && (
+        <div className="card mt-4 grid max-w-xl gap-4 p-5" data-testid="society-settings-details">
+          <div>
+            <label className="label" htmlFor="soc-detail-name">
+              Name
+            </label>
+            <input
+              id="soc-detail-name"
+              className="input"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+          </div>
+          <div>
+            <label className="label" htmlFor="soc-detail-domain">
+              Custom domain
+            </label>
+            <input
+              id="soc-detail-domain"
+              className="input"
+              value={customDomain}
+              onChange={(e) => setCustomDomain(e.target.value)}
+              placeholder="app.yoursociety.com"
+              data-testid="society-custom-domain"
+            />
+            <p className="mt-1 text-xs text-black/45">
+              Residents use this host to open the Client App. If you change it, update DNS as well.
+              Contact support before pointing a live production domain.
+            </p>
+          </div>
+          <div>
+            <label className="label" htmlFor="soc-detail-slug">
+              Slug
+            </label>
+            <input
+              id="soc-detail-slug"
+              className="input"
+              value={slug}
+              onChange={(e) => setSlug(e.target.value)}
+              data-testid="society-slug"
+              required
+            />
+            <p className="mt-1 text-xs text-black/45">
+              Unique identifier for this society. Example:{" "}
+              {(slug || "your-slug").toLowerCase()}.{rootDomain}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {tab === "billing" && (
+        <div className="card mt-4 max-w-xl space-y-3 p-5" data-testid="society-settings-billing">
+          <p className="font-semibold">Platform subscription</p>
+          <p className="text-sm text-black/55">
+            Pay or reconcile the platform fee for {selectedSociety?.name ?? "this society"}. Coupons
+            and offline / Razorpay checkout live on the billing screen.
+          </p>
+          <Link
+            className="btn btn-primary inline-flex w-fit"
+            to="/society-billing"
+            data-testid="society-settings-open-billing"
+          >
+            Open billing
+          </Link>
+        </div>
+      )}
+
+      {tab === "access" && (
+        <div className="card mt-4 grid max-w-xl gap-4 p-5" data-testid="society-settings-access">
+          <div>
+            <label className="label" htmlFor="soc-detail-sla">
+              Complaint SLA (days)
+            </label>
+            <input
+              id="soc-detail-sla"
+              className="input"
+              type="number"
+              min={1}
+              value={slaDays}
+              onChange={(e) => setSlaDays(Number(e.target.value))}
+            />
+          </div>
+          <div>
+            <label className="label" htmlFor="soc-detail-status">
+              Status
+            </label>
+            <select
+              id="soc-detail-status"
+              className="input"
+              value={status}
+              onChange={(e) => setStatus(e.target.value as "active" | "suspended")}
+            >
+              <option value="active">Active</option>
+              <option value="suspended">Suspended</option>
+            </select>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

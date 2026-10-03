@@ -547,11 +547,23 @@ export const manageCommercialRoutes = new Elysia({ prefix: "/v1/manage" })
         ...(parsed.brandColor !== undefined
           ? { brandColor: parsed.brandColor }
           : {}),
+        ...(parsed.brandSecondaryColor !== undefined
+          ? { brandSecondaryColor: parsed.brandSecondaryColor }
+          : {}),
+        ...(parsed.brandTertiaryColor !== undefined
+          ? { brandTertiaryColor: parsed.brandTertiaryColor }
+          : {}),
         ...(parsed.brandLogoBlobPath !== undefined
           ? { brandLogoBlobPath: parsed.brandLogoBlobPath }
           : {}),
         ...(parsed.brandLogoContentType !== undefined
           ? { brandLogoContentType: parsed.brandLogoContentType }
+          : {}),
+        ...(parsed.brandLogoDarkBlobPath !== undefined
+          ? { brandLogoDarkBlobPath: parsed.brandLogoDarkBlobPath }
+          : {}),
+        ...(parsed.brandIconBlobPath !== undefined
+          ? { brandIconBlobPath: parsed.brandIconBlobPath }
           : {}),
         updatedBy: claims.sub,
       })
@@ -650,7 +662,11 @@ export const societyFlagsRoutes = new Elysia({ prefix: "/v1/society" })
       planId: society.planId,
       brandingEnabled: society.brandingEnabled,
       brandColor: society.brandColor,
+      brandSecondaryColor: society.brandSecondaryColor,
+      brandTertiaryColor: society.brandTertiaryColor,
       brandLogoBlobPath: society.brandLogoBlobPath,
+      brandLogoDarkBlobPath: society.brandLogoDarkBlobPath,
+      brandIconBlobPath: society.brandIconBlobPath,
     };
   })
   .patch("/settings", async ({ auth, body }) => {

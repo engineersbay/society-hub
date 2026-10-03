@@ -213,7 +213,11 @@ export type SocietyDto = {
   planId?: string | null;
   brandingEnabled?: boolean;
   brandColor?: string | null;
+  brandSecondaryColor?: string | null;
+  brandTertiaryColor?: string | null;
   brandLogoBlobPath?: string | null;
+  brandLogoDarkBlobPath?: string | null;
+  brandIconBlobPath?: string | null;
   brandLogoUrl?: string | null;
   createdAt: string;
 };

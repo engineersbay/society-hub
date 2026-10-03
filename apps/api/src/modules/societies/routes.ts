@@ -116,7 +116,11 @@ async function buildSocietyDto(societyId: string): Promise<SocietyDto> {
     planId: society.planId,
     brandingEnabled: society.brandingEnabled,
     brandColor: society.brandColor,
+    brandSecondaryColor: society.brandSecondaryColor,
+    brandTertiaryColor: society.brandTertiaryColor,
     brandLogoBlobPath: society.brandLogoBlobPath,
+    brandLogoDarkBlobPath: society.brandLogoDarkBlobPath,
+    brandIconBlobPath: society.brandIconBlobPath,
     createdAt: society.createdAt,
   };
 }

@@ -1123,7 +1123,11 @@ export function createSocietyHubClient(opts: SocietyHubClientOptions) {
         planId: string | null;
         brandingEnabled?: boolean;
         brandColor?: string | null;
+        brandSecondaryColor?: string | null;
+        brandTertiaryColor?: string | null;
         brandLogoBlobPath?: string | null;
+        brandLogoDarkBlobPath?: string | null;
+        brandIconBlobPath?: string | null;
       }>("/v1/society/settings"),
     updateSocietySettings: (body: {
       slaDays?: number;
@@ -1420,8 +1424,12 @@ export function createSocietyHubClient(opts: SocietyHubClientOptions) {
         customDomain?: string | null;
         brandingEnabled?: boolean;
         brandColor?: string | null;
+        brandSecondaryColor?: string | null;
+        brandTertiaryColor?: string | null;
         brandLogoBlobPath?: string | null;
         brandLogoContentType?: string | null;
+        brandLogoDarkBlobPath?: string | null;
+        brandIconBlobPath?: string | null;
       },
     ) =>
       request<{ ok: true }>(`/v1/manage/societies/${id}/settings`, {

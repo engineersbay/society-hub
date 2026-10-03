@@ -730,8 +730,22 @@ export const updateSocietySettingsSchema = z.object({
     .regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, "Use a hex color like #1A3A65")
     .optional()
     .nullable(),
+  brandSecondaryColor: z
+    .string()
+    .trim()
+    .regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, "Use a hex color like #C4A880")
+    .optional()
+    .nullable(),
+  brandTertiaryColor: z
+    .string()
+    .trim()
+    .regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, "Use a hex color like #616161")
+    .optional()
+    .nullable(),
   brandLogoBlobPath: z.string().max(500).optional().nullable(),
   brandLogoContentType: z.string().max(120).optional().nullable(),
+  brandLogoDarkBlobPath: z.string().max(500).optional().nullable(),
+  brandIconBlobPath: z.string().max(500).optional().nullable(),
 });
 
 export const applyPlatformCouponSchema = z.object({

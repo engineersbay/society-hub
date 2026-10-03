@@ -44,10 +44,14 @@ export const societies = mysqlTable(
     status: mysqlEnum("status", ["active", "suspended"]).notNull().default("active"),
     featureFlagsJson: text("feature_flags_json"),
     planId: char("plan_id", { length: 36 }),
-    /** Client App white-label: logo blob + primary brand color. */
+    /** Client App white-label: logos + brand colors (Fassport Theme / Media). */
     brandLogoBlobPath: varchar("brand_logo_blob_path", { length: 500 }),
     brandLogoContentType: varchar("brand_logo_content_type", { length: 120 }),
+    brandLogoDarkBlobPath: varchar("brand_logo_dark_blob_path", { length: 500 }),
+    brandIconBlobPath: varchar("brand_icon_blob_path", { length: 500 }),
     brandColor: varchar("brand_color", { length: 32 }),
+    brandSecondaryColor: varchar("brand_secondary_color", { length: 32 }),
+    brandTertiaryColor: varchar("brand_tertiary_color", { length: 32 }),
     brandingEnabled: boolean("branding_enabled").notNull().default(false),
     /** Offline UPI / bank details residents use to pay (Razorpay is future). */
     upiId: varchar("upi_id", { length: 80 }),
