@@ -186,7 +186,8 @@ jobs:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: com.societyhub.societyhub_mobile
           releaseFiles: ${{ steps.aab.outputs.path }}
-          tracks: internal
+          # Must be `track` (singular). `tracks` is ignored and defaults to production.
+          track: internal
           status: completed
           changesNotSentForReview: true
 
