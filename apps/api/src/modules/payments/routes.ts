@@ -11,10 +11,11 @@ import {
 } from "@society-hub/validation";
 import { env } from "../../config";
 import { db } from "../../db/client";
-import { bills, flats, payments, societies } from "../../db/schema";
+import { bills, flats, payments, societies, users } from "../../db/schema";
 import { AppError } from "../../lib/errors";
 import { recordAudit } from "../../lib/audit";
 import { notifyUser } from "../../lib/notify";
+import { enqueueWhatsApp } from "../../lib/messaging/communication-service";
 import {
   authPlugin,
   isStaffRole,
@@ -482,6 +483,28 @@ export const paymentRoutes = new Elysia({ prefix: "/v1/payments" })
         kind: "payment",
         linkPath: "/payments",
       });
+      const [payer] = await db
+        .select({ phone: users.phone })
+        .from(users)
+        .where(eq(users.id, row.createdBy))
+        .limit(1);
+      if (payer?.phone) {
+        await enqueueWhatsApp({
+          tenantId: claims.tenantId,
+          actorUserId: claims.sub,
+          userId: row.createdBy,
+          phone: payer.phone,
+          templateKey: "payment_credited_v1",
+          variables: {
+            amount: `₹${(row.amountPaise / 100).toFixed(2)}`,
+            receiptNumber,
+          },
+          businessEntityType: "payment",
+          businessEntityId: row.id,
+          businessEventType: "payment_credited",
+          preferenceMode: "opt_in",
+        });
+      }
     }
 
     const [flat] = await db.select().from(flats).where(eq(flats.id, row.flatId)).limit(1);
@@ -535,6 +558,27 @@ export const paymentRoutes = new Elysia({ prefix: "/v1/payments" })
         kind: "payment",
         linkPath: "/bills",
       });
+      const [payer] = await db
+        .select({ phone: users.phone })
+        .from(users)
+        .where(eq(users.id, row.createdBy))
+        .limit(1);
+      if (payer?.phone) {
+        await enqueueWhatsApp({
+          tenantId: claims.tenantId,
+          actorUserId: claims.sub,
+          userId: row.createdBy,
+          phone: payer.phone,
+          templateKey: "payment_rejected_v1",
+          variables: {
+            note: parsed.note || "Your payment screenshot was not accepted.",
+          },
+          businessEntityType: "payment",
+          businessEntityId: row.id,
+          businessEventType: "payment_rejected",
+          preferenceMode: "opt_in",
+        });
+      }
     }
 
     const [flat] = await db.select().from(flats).where(eq(flats.id, row.flatId)).limit(1);

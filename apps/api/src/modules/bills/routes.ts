@@ -8,6 +8,7 @@ import { toApiIsoDateTime } from "../../lib/api-datetime";
 import { AppError } from "../../lib/errors";
 import { ActivityType, recordAudit } from "../../lib/audit";
 import { notifyUser } from "../../lib/notify";
+import { enqueueWhatsApp } from "../../lib/messaging/communication-service";
 import {
   authPlugin,
   isStaffRole,
@@ -296,6 +297,20 @@ export const billRoutes = new Elysia({ prefix: "/v1/bills" })
         kind: "payment",
         linkPath: "/bills",
       });
+      if (occ.phone) {
+        await enqueueWhatsApp({
+          tenantId: claims.tenantId,
+          actorUserId: claims.sub,
+          userId: occ.userId,
+          phone: occ.phone,
+          templateKey: "bill_ready_v1",
+          variables: { amount, period: bill.periodYm },
+          businessEntityType: "bill",
+          businessEntityId: bill.id,
+          businessEventType: "bill_ready",
+          preferenceMode: "opt_in",
+        });
+      }
     }
 
     await recordAudit({

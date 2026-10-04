@@ -846,3 +846,52 @@ export const replySupportTicketSchema = z.object({
   reply: z.string().min(1).max(5000),
   close: z.boolean().optional(),
 });
+
+const templateSidMap = z.record(z.string().max(80)).optional();
+
+export const updateWhatsAppIntegrationSchema = z.object({
+  provider: z.enum(["stub", "twilio", "gupshup", "meta"]).optional(),
+  dailySendCap: z.number().int().min(1).max(100_000).optional(),
+  statusCallbackBaseUrl: z.string().max(300).nullable().optional(),
+  twilio: z
+    .object({
+      accountSid: z.string().max(40).nullable().optional(),
+      apiKeySid: z.string().max(40).nullable().optional(),
+      apiKeySecret: z.string().max(200).nullable().optional(),
+      authToken: z.string().max(200).nullable().optional(),
+      whatsappFrom: z.string().max(32).nullable().optional(),
+      contentSids: templateSidMap,
+    })
+    .optional(),
+  gupshup: z
+    .object({
+      source: z.string().max(20).nullable().optional(),
+      appName: z.string().max(80).nullable().optional(),
+      apiKey: z.string().max(200).nullable().optional(),
+      templateIds: templateSidMap,
+    })
+    .optional(),
+  meta: z
+    .object({
+      phoneNumberId: z.string().max(40).nullable().optional(),
+      token: z.string().max(500).nullable().optional(),
+      appSecret: z.string().max(200).nullable().optional(),
+      verifyToken: z.string().max(200).nullable().optional(),
+      templateNames: templateSidMap,
+    })
+    .optional(),
+});
+
+export const communicationListQuerySchema = listQuerySchema.extend({
+  reference: z.string().max(40).optional(),
+  correlationId: z.string().max(64).optional(),
+  userId: z.string().uuid().optional(),
+  businessEntityId: z.string().max(64).optional(),
+  providerMessageId: z.string().max(128).optional(),
+  provider: z.enum(["stub", "twilio", "gupshup", "meta"]).optional(),
+  status: z.string().max(32).optional(),
+  templateKey: z.string().max(80).optional(),
+  phone: z.string().max(20).optional(),
+  from: z.string().max(40).optional(),
+  to: z.string().max(40).optional(),
+});

@@ -148,6 +148,13 @@
       "when": 1789700000000,
       "tag": "0020_society_branding_theme_media",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "5",
+      "when": 1789800000000,
+      "tag": "0021_whatsapp_communications",
+      "breakpoints": true
     }
   ]
 }

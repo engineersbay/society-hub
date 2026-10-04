@@ -178,6 +178,7 @@ export async function createInvitationForTenant(
     phone,
     channels: parsed.channels,
     societyName: parsed.societyName,
+    invitationId: id,
   });
 
   await recordAudit({
@@ -202,6 +203,7 @@ async function sendInvite(
     phone: string | null;
     channels?: Array<"email" | "whatsapp">;
     societyName?: string;
+    invitationId?: string;
   },
 ) {
   let societyName = opts.societyName;
@@ -222,6 +224,8 @@ async function sendInvite(
       ];
 
   return deliverResidentInvite({
+    tenantId,
+    invitationId: opts.invitationId,
     societyName,
     inviteToken: token,
     email: opts.email,
@@ -311,6 +315,7 @@ export const invitationRoutes = new Elysia({ prefix: "/v1/invitations" })
     const delivery = await sendInvite(claims.tenantId, row.token, {
       email: row.email,
       phone: row.phone,
+      invitationId: row.id,
     });
     await recordAudit({
       tenantId: claims.tenantId,

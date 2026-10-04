@@ -181,7 +181,7 @@ Facts relevant to any scaling or feature plan.
 
 ### Integrations
 
-- Email (Resend) and WhatsApp (Gupshup) are **stub adapters** that log and return success unless API keys are configured
+- Email (Resend) is a stub adapter unless `RESEND_API_KEY` is set. WhatsApp goes through `communication_transactions`. The provider (`stub`, `twilio`, `gupshup`, `meta`) is chosen in Manage → Integrations. Default is `stub` (no paid send).
 - SMS OTP (MSG91) is planned; OTP currently works via a dev bypass that returns the code in the API response
 - **The Razorpay webhook does not verify the signature header** — it accepts any well-formed payload. This is explicitly marked dev-only in the code and is a hard blocker for taking real money
 - Google SSO falls back to accepting `dev:<phone>` tokens when no client ID is set

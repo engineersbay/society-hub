@@ -218,6 +218,8 @@ export const adminResidentRoutes = new Elysia({ prefix: "/v1/admin/residents" })
         .where(eq(societies.id, claims.tenantId))
         .limit(1);
       delivery = await deliverOnboardWelcome({
+        tenantId: claims.tenantId,
+        userId: result.user.id,
         societyName: society?.name ?? "your society",
         residentName: parsed.name,
         email: parsed.email ?? result.user.email,

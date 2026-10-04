@@ -12,6 +12,7 @@ import { SocietyDetailPage } from "./pages/SocietyDetailPage";
 import { UsersPage } from "./pages/UsersPage";
 import { UserDetailPage } from "./pages/UserDetailPage";
 import { AuditPage } from "./pages/AuditPage";
+import { CommunicationsPage } from "./pages/CommunicationsPage";
 import { BrandingPage } from "./pages/BrandingPage";
 import { SocietyBillingPage } from "./pages/SocietyBillingPage";
 import {
@@ -61,6 +62,7 @@ export function App() {
         <Route path="users" element={<UsersPage />} />
         <Route path="users/:id" element={<UserDetailPage />} />
         <Route path="audit" element={<AuditPage />} />
+        <Route path="communications" element={<CommunicationsPage />} />
         <Route path="account" element={<AccountPage />} />
         <Route path="feature-flags" element={<FeatureFlagsPage />} />
         <Route path="branding" element={<BrandingPage />} />

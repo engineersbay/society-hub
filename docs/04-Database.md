@@ -81,6 +81,10 @@
 | `notice_attachments` | Image/video blob refs for notices |
 | `notice_reads` | User/notice read receipts |
 | `notifications` | In-app notification inbox |
+| `communication_transactions` | Outbound WhatsApp ledger (reference, idempotency, status). Not SMS. |
+| `communication_attempts` | One row per provider HTTP call. No message body or secrets. |
+| `communication_provider_events` | Status callbacks, deduped by provider + message id + status + timestamp. |
+| `platform_integration_config` | Platform WhatsApp provider and encrypted credentials. No `tenant_id`. |
 | `complaint_status_events` | Status transition history on a complaint |
 
 ### Audit
@@ -310,6 +314,8 @@ Per-society profile for a user: structured emergency contact
 ### notices / notice_attachments / notice_reads / notifications / audit_logs
 
 As before — notices audience all|wing|flat; notifications in-app; audit_logs for mutations.
+
+`communication_transactions` is the WhatsApp source of truth inside Society Hub. `provider_message_id` stores the vendor id (Twilio SID, Gupshup id, or Meta wamid). Unique `(tenant_id, idempotency_key)` stops a repeated business event from sending a second message. Secrets on `platform_integration_config` are AES-256-GCM ciphertext; GET never returns them.
 
 ### societies (payment account + platform)
 
