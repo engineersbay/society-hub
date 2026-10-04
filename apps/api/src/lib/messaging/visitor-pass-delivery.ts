@@ -1,4 +1,3 @@
-import { enqueueWhatsApp } from "./communication-service";
 
 export type VisitorPassChannel = "sms" | "whatsapp";
 
@@ -67,6 +66,7 @@ export async function deliverVisitorPass(
     result.sms = await sendSms(input.phone, input.body);
   }
   if (input.channels.includes("whatsapp") && input.tenantId && input.visitorId) {
+    const { enqueueWhatsApp } = await import("./communication-service");
     const res = await enqueueWhatsApp({
       tenantId: input.tenantId,
       phone: input.phone,

@@ -2,7 +2,6 @@ import { and, eq, inArray } from "drizzle-orm";
 import { db } from "../../db/client";
 import { userRoles, users } from "../../db/schema";
 import { createEmailAdapter } from "./email";
-import { enqueueWhatsApp } from "./communication-service";
 
 const STAFF_NOTIFY_ROLES = [
   "chairperson",
@@ -85,23 +84,25 @@ export async function notifyStaffNewComplaint(
         if (s.phone && !seenPhone.has(s.phone)) {
           seenPhone.add(s.phone);
           tasks.push(
-            enqueueWhatsApp({
-              tenantId: input.tenantId,
-              userId: s.userId,
-              phone: s.phone,
-              templateKey: "complaint_staff_v1",
-              variables: {
-                ticketNumber: input.ticketNumber,
-                societyName: input.societyName,
-                flatNumber: input.flatNumber,
-                title: input.title,
-                link,
-              },
-              businessEntityType: "complaint",
-              businessEntityId: input.complaintId,
-              businessEventType: "complaint_created",
-              preferenceMode: "explicit",
-            }),
+            import("./communication-service").then(({ enqueueWhatsApp }) =>
+              enqueueWhatsApp({
+                tenantId: input.tenantId,
+                userId: s.userId,
+                phone: s.phone,
+                templateKey: "complaint_staff_v1",
+                variables: {
+                  ticketNumber: input.ticketNumber,
+                  societyName: input.societyName,
+                  flatNumber: input.flatNumber,
+                  title: input.title,
+                  link,
+                },
+                businessEntityType: "complaint",
+                businessEntityId: input.complaintId,
+                businessEventType: "complaint_created",
+                preferenceMode: "explicit",
+              }),
+            ),
           );
         }
         await Promise.all(tasks);

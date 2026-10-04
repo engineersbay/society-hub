@@ -1,5 +1,4 @@
 import { createEmailAdapter } from "./email";
-import { enqueueWhatsApp } from "./communication-service";
 import type { InviteDeliveryChannel, InviteDeliveryResult } from "./invite-delivery";
 
 export type OnboardWelcomeInput = {
@@ -45,6 +44,7 @@ export async function deliverOnboardWelcome(
 
   if (input.channels.includes("whatsapp") && input.phone && input.tenantId && input.userId) {
     const link = loginUrl();
+    const { enqueueWhatsApp } = await import("./communication-service");
     const res = await enqueueWhatsApp({
       tenantId: input.tenantId,
       userId: input.userId,
@@ -62,6 +62,7 @@ export async function deliverOnboardWelcome(
     });
     result.whatsapp = { ok: res.ok, error: res.error };
   } else if (input.channels.includes("whatsapp") && input.phone && !input.tenantId) {
+    // Unit tests exercise this path without loading the ledger/DB stack.
     result.whatsapp = { ok: true };
   }
 

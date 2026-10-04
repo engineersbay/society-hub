@@ -161,6 +161,10 @@ describe("whatsapp integration settings", () => {
     });
     const me = (await meRes.json()) as { id: string; tenantId: string; phone: string | null };
     expect(me.phone).toBeTruthy();
+    // Prior local/CI runs can leave rows that hit the per-tenant daily send cap.
+    await db
+      .delete(communicationTransactions)
+      .where(eq(communicationTransactions.tenantId, me.tenantId));
     const entityId = crypto.randomUUID();
     const input = {
       tenantId: me.tenantId,
@@ -174,8 +178,7 @@ describe("whatsapp integration settings", () => {
       preferenceMode: "explicit" as const,
     };
     const queued = await enqueueWhatsApp(input);
-    expect(queued.ok).toBe(true);
-    expect(queued.status).toBe("queued");
+    expect(queued).toMatchObject({ ok: true, status: "queued" });
     await processDueCommunications(20);
     const [row] = await db
       .select()

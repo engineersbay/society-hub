@@ -1,5 +1,4 @@
 import { createEmailAdapter } from "./email";
-import { enqueueWhatsApp } from "./communication-service";
 
 export type InviteDeliveryChannel = "email" | "whatsapp";
 
@@ -49,6 +48,7 @@ export async function deliverResidentInvite(
 
   if (input.channels.includes("whatsapp") && input.phone && input.tenantId) {
     const link = inviteLink(input.inviteToken);
+    const { enqueueWhatsApp } = await import("./communication-service");
     const res = await enqueueWhatsApp({
       tenantId: input.tenantId,
       phone: input.phone,
