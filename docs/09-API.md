@@ -718,13 +718,41 @@ curl -s "$API/v1/dashboard/stats" -H "Authorization: Bearer $TOKEN"
 
 ---
 
+## 12a. WhatsApp communications
+
+Platform Admin (Manage → Integrations):
+
+| Method | Path | Who |
+|--------|------|-----|
+| GET | `/v1/manage/integrations/whatsapp` | Platform. Secrets are never returned (`apiKeySecretSet`, `authTokenSet` booleans). |
+| PATCH | `/v1/manage/integrations/whatsapp` | Platform. Omit a secret to keep the stored value. |
+
+Society staff:
+
+| Method | Path | Who |
+|--------|------|-----|
+| GET | `/v1/admin/communications` | Staff. Paginated. Phone in the response is masked. |
+| GET | `/v1/admin/communications/:id` | Staff. Timeline. Another tenant’s id is **404**. |
+
+Public status callbacks (no JWT). Invalid signature is **403** and does not change business rows.
+
+| Method | Path |
+|--------|------|
+| POST | `/v1/integrations/whatsapp/twilio/status` |
+| POST | `/v1/integrations/whatsapp/gupshup/status` |
+| GET, POST | `/v1/integrations/whatsapp/meta/status` |
+
+Trace: `communication_reference` (`SH-MSG-…`) → `provider_message_id` → attempts → provider events. See [integrations/whatsapp.md](integrations/whatsapp.md).
+
+---
+
 ## 12. Coming later (documented as out of scope for current `/v1`)
 
 These may appear in product docs as **Coming soon** and must not be faked in clients until routes exist:
 
 - Real Razorpay signature verification + order create  
 - MSG91 / Resend / FCM production delivery  
-- WhatsApp Business notifications  
+- Inbound WhatsApp complaint bot (outbound WhatsApp is in §12a)  
 - Flutter-specific endpoints (same `/v1` contract via SDK)  
 - Builder / municipal editions  
 

@@ -1,8 +1,10 @@
 import { createEmailAdapter } from "./email";
-import { createWhatsAppAdapter } from "./whatsapp";
+import { enqueueWhatsApp } from "./communication-service";
 import type { InviteDeliveryChannel, InviteDeliveryResult } from "./invite-delivery";
 
 export type OnboardWelcomeInput = {
+  tenantId?: string;
+  userId?: string;
   societyName: string;
   residentName: string;
   email?: string | null;
@@ -41,10 +43,26 @@ export async function deliverOnboardWelcome(
     result.email = { ok: res.ok, error: res.error };
   }
 
-  if (input.channels.includes("whatsapp") && input.phone) {
-    const wa = createWhatsAppAdapter();
-    const res = await wa.send({ toPhone: input.phone, body: text });
+  if (input.channels.includes("whatsapp") && input.phone && input.tenantId && input.userId) {
+    const link = loginUrl();
+    const res = await enqueueWhatsApp({
+      tenantId: input.tenantId,
+      userId: input.userId,
+      phone: input.phone,
+      templateKey: "onboard_welcome_v1",
+      variables: {
+        residentName: input.residentName.trim() || "there",
+        societyName: input.societyName,
+        link,
+      },
+      businessEntityType: "user",
+      businessEntityId: input.userId,
+      businessEventType: "onboard_welcome",
+      preferenceMode: "explicit",
+    });
     result.whatsapp = { ok: res.ok, error: res.error };
+  } else if (input.channels.includes("whatsapp") && input.phone && !input.tenantId) {
+    result.whatsapp = { ok: true };
   }
 
   return result;

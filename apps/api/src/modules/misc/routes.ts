@@ -245,8 +245,13 @@ export const visitorRoutes = new Elysia({ prefix: "/v1/visitors" })
     const qrPayload = signVisitorQrPayload(claims.tenantId, passToken);
     const message = `SocietyHub visitor pass for ${existing.visitorName}. OTP: ${otp}. Show QR at gate. Valid until ${expires.toISOString()}. Ref: ${passToken.slice(0, 8)}`;
     await deliverVisitorPass({
+      tenantId: claims.tenantId,
+      visitorId: existing.id,
+      societyName: "your society",
       phone: existing.phone.trim(),
       body: message,
+      link: `pass:${passToken.slice(0, 8)}`,
+      otp,
       channels: parsed.channels,
     });
 

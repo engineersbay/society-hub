@@ -1,9 +1,11 @@
 import { createEmailAdapter } from "./email";
-import { createWhatsAppAdapter } from "./whatsapp";
+import { enqueueWhatsApp } from "./communication-service";
 
 export type InviteDeliveryChannel = "email" | "whatsapp";
 
 export type InviteDeliveryInput = {
+  tenantId?: string;
+  invitationId?: string;
   societyName: string;
   inviteToken: string;
   email?: string | null;
@@ -45,9 +47,18 @@ export async function deliverResidentInvite(
     result.email = { ok: res.ok, error: res.error };
   }
 
-  if (input.channels.includes("whatsapp") && input.phone) {
-    const wa = createWhatsAppAdapter();
-    const res = await wa.send({ toPhone: input.phone, body: text });
+  if (input.channels.includes("whatsapp") && input.phone && input.tenantId) {
+    const link = inviteLink(input.inviteToken);
+    const res = await enqueueWhatsApp({
+      tenantId: input.tenantId,
+      phone: input.phone,
+      templateKey: "resident_invite_v1",
+      variables: { societyName: input.societyName, link },
+      businessEntityType: "invitation",
+      businessEntityId: input.invitationId ?? input.inviteToken,
+      businessEventType: "resident_invite",
+      preferenceMode: "explicit",
+    });
     result.whatsapp = { ok: res.ok, error: res.error };
   }
 

@@ -920,6 +920,61 @@ export type IntegrationHealthDto = {
   googleSsoConfigured: boolean;
 };
 
+export type WhatsAppIntegrationDto = {
+  provider: "stub" | "twilio" | "gupshup" | "meta";
+  dailySendCap: number;
+  statusCallbackBaseUrl: string;
+  twilio: {
+    accountSid: string;
+    apiKeySid: string;
+    whatsappFrom: string;
+    apiKeySecretSet: boolean;
+    authTokenSet: boolean;
+    contentSids: Record<string, string>;
+  };
+  gupshup: {
+    source: string;
+    appName: string;
+    apiKeySet: boolean;
+    templateIds: Record<string, string>;
+  };
+  meta: {
+    phoneNumberId: string;
+    tokenSet: boolean;
+    appSecretSet: boolean;
+    verifyTokenSet: boolean;
+    templateNames: Record<string, string>;
+  };
+};
+
+export type CommunicationListItemDto = {
+  id: string;
+  communicationReference: string;
+  correlationId: string;
+  userId: string | null;
+  channel: string;
+  provider: string;
+  templateKey: string;
+  status: string;
+  providerMessageId: string | null;
+  businessEntityType: string;
+  businessEntityId: string;
+  businessEventType: string;
+  recipientMasked: string;
+  errorCategory: string | null;
+  requestedAt: string;
+  createdAt: string;
+};
+
+export type CommunicationTimelineDto = CommunicationListItemDto & {
+  events: Array<{
+    at: string;
+    kind: string;
+    status: string;
+    detail: string | null;
+  }>;
+};
+
 export type DashboardStatsDto = {
   openComplaints: number;
   totalComplaints: number;

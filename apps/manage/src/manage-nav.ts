@@ -84,11 +84,18 @@ export const ADMIN_NAV: ManageNavItem[] = [
     blurb: "Immutable trail of platform actions — who created societies, changed flags, billed whom.",
   },
   {
+    to: "/communications",
+    label: "Communications",
+    icon: "notices",
+    status: "live",
+    blurb: "WhatsApp delivery ledger for the signed-in society.",
+  },
+  {
     to: "/integrations",
     label: "Integrations",
     icon: "integrations",
     status: "live",
-    blurb: "MSG91 OTP, Resend email, Firebase push, Razorpay, and Azure Blob credentials per env.",
+    blurb: "WhatsApp provider credentials (Twilio, Gupshup, Meta) plus OTP/email/Razorpay health.",
   },
   {
     to: "/support",

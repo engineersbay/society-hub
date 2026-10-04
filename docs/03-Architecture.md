@@ -167,6 +167,7 @@ Cross-cutting: notifications, audit, tenancy middleware.
 - HTTP handlers enqueue BullMQ jobs; workers send email (Resend), push (FCM), SLA reminders/escalations.
 - Never block request path on external notification I/O.
 - Jobs are idempotent and retry-safe.
+- Outbound WhatsApp does not use BullMQ yet. A row in `communication_transactions` (`queued`) is the queue. An in-process worker calls the provider selected in Manage → Integrations (Twilio, Gupshup, or Meta WhatsApp Business API). HTTP acceptance is `accepted`; `delivered` comes only from the provider status callback. Payment and bill status stay independent of WhatsApp delivery.
 
 ## 10. File storage
 
@@ -233,7 +234,7 @@ See [04-Database.md](04-Database.md). Soft delete via `is_deleted`; audit column
 
 - New domain modules follow the same feature-first folder and `tenant_id` rules.
 - Flutter clients later consume the same API/`packages/sdk` contracts.
-- WhatsApp becomes another notification channel behind the same queue abstraction.
+- WhatsApp is a notification channel behind `communication_transactions`. The vendor is a Manage setting, not a business-code import.
 
 ## 17. Complaint state machine
 
