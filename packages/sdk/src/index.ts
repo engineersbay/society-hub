@@ -48,6 +48,9 @@ import type {
   PlatformAnnouncementDto,
   SupportTicketDto,
   IntegrationHealthDto,
+  WhatsAppIntegrationDto,
+  CommunicationListItemDto,
+  CommunicationTimelineDto,
   ResidentDocumentType,
   FamilyRelationship,
   FlatDetailDto,
@@ -1412,6 +1415,50 @@ export function createSocietyHubClient(opts: SocietyHubClientOptions) {
       }),
     getIntegrationsHealth: () =>
       request<IntegrationHealthDto>("/v1/manage/integrations/health"),
+    getWhatsAppIntegration: () =>
+      request<WhatsAppIntegrationDto>("/v1/manage/integrations/whatsapp"),
+    updateWhatsAppIntegration: (body: {
+      provider?: "stub" | "twilio" | "gupshup" | "meta";
+      dailySendCap?: number;
+      statusCallbackBaseUrl?: string | null;
+      twilio?: {
+        accountSid?: string | null;
+        apiKeySid?: string | null;
+        apiKeySecret?: string | null;
+        authToken?: string | null;
+        whatsappFrom?: string | null;
+        contentSids?: Record<string, string>;
+      };
+      gupshup?: {
+        source?: string | null;
+        appName?: string | null;
+        apiKey?: string | null;
+        templateIds?: Record<string, string>;
+      };
+      meta?: {
+        phoneNumberId?: string | null;
+        token?: string | null;
+        appSecret?: string | null;
+        verifyToken?: string | null;
+        templateNames?: Record<string, string>;
+      };
+    }) =>
+      request<WhatsAppIntegrationDto>("/v1/manage/integrations/whatsapp", {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
+    listCommunications: (params?: {
+      page?: number;
+      limit?: number;
+      reference?: string;
+      status?: string;
+      providerMessageId?: string;
+    }) =>
+      request<Paginated<CommunicationListItemDto>>(
+        `/v1/admin/communications${toQuery(params)}`,
+      ),
+    getCommunication: (id: string) =>
+      request<CommunicationTimelineDto>(`/v1/admin/communications/${id}`),
     updateManageSocietySettings: (
       id: string,
       body: {

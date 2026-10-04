@@ -62,6 +62,11 @@ import {
   vendorRoutes,
   visitorRoutes,
 } from "./modules/misc/routes";
+import {
+  communicationAdminRoutes,
+  whatsappSettingsRoutes,
+  whatsappWebhookRoutes,
+} from "./modules/communications/routes";
 
 /** Build the HTTP app without binding a port (used by server entry + in-process tests). */
 export function createApp() {
@@ -182,7 +187,10 @@ export function createApp() {
     .use(bookingRoutes)
     .use(assetRoutes)
     .use(vendorRoutes)
-    .use(eventRoutes);
+    .use(eventRoutes)
+    .use(whatsappSettingsRoutes)
+    .use(communicationAdminRoutes)
+    .use(whatsappWebhookRoutes);
 }
 
 export type App = ReturnType<typeof createApp>;

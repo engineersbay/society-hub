@@ -695,18 +695,155 @@ export function AnnouncementsPage() {
   );
 }
 
+const WHATSAPP_TEMPLATE_KEYS = [
+  "visitor_pass_v1",
+  "resident_invite_v1",
+  "onboard_welcome_v1",
+  "complaint_staff_v1",
+  "payment_credited_v1",
+  "payment_rejected_v1",
+  "bill_ready_v1",
+] as const;
+
+type WhatsAppProviderChoice = "stub" | "twilio" | "gupshup" | "meta";
+
+function emptyTemplateMap(): Record<string, string> {
+  return Object.fromEntries(WHATSAPP_TEMPLATE_KEYS.map((key) => [key, ""]));
+}
+
+function secretPlaceholder(set: boolean, label: string): string {
+  return set ? `${label} is set — enter a new one to replace` : label;
+}
+
 export function IntegrationsPage() {
   const { client, user } = useAuth();
   const allowed = user?.role === "superadmin";
   const [health, setHealth] = useState<IntegrationHealthDto | null>(null);
+  const [provider, setProvider] = useState<WhatsAppProviderChoice>("stub");
+  const [dailySendCap, setDailySendCap] = useState("200");
+  const [statusCallbackBaseUrl, setStatusCallbackBaseUrl] = useState("");
+  const [accountSid, setAccountSid] = useState("");
+  const [apiKeySid, setApiKeySid] = useState("");
+  const [apiKeySecret, setApiKeySecret] = useState("");
+  const [authToken, setAuthToken] = useState("");
+  const [whatsappFrom, setWhatsappFrom] = useState("");
+  const [twilioContentSids, setTwilioContentSids] = useState(emptyTemplateMap);
+  const [secretSet, setSecretSet] = useState(false);
+  const [tokenSet, setTokenSet] = useState(false);
+  const [gupshupSource, setGupshupSource] = useState("");
+  const [gupshupAppName, setGupshupAppName] = useState("");
+  const [gupshupApiKey, setGupshupApiKey] = useState("");
+  const [gupshupApiKeySet, setGupshupApiKeySet] = useState(false);
+  const [gupshupTemplateIds, setGupshupTemplateIds] = useState(emptyTemplateMap);
+  const [metaPhoneNumberId, setMetaPhoneNumberId] = useState("");
+  const [metaToken, setMetaToken] = useState("");
+  const [metaAppSecret, setMetaAppSecret] = useState("");
+  const [metaVerifyToken, setMetaVerifyToken] = useState("");
+  const [metaTokenSet, setMetaTokenSet] = useState(false);
+  const [metaAppSecretSet, setMetaAppSecretSet] = useState(false);
+  const [metaVerifyTokenSet, setMetaVerifyTokenSet] = useState(false);
+  const [metaTemplateNames, setMetaTemplateNames] = useState(emptyTemplateMap);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
   useEffect(() => {
     client.getIntegrationsHealth().then(setHealth);
+    client
+      .getWhatsAppIntegration()
+      .then((settings) => {
+        setProvider(settings.provider);
+        setDailySendCap(String(settings.dailySendCap));
+        setStatusCallbackBaseUrl(settings.statusCallbackBaseUrl ?? "");
+        setAccountSid(settings.twilio.accountSid);
+        setApiKeySid(settings.twilio.apiKeySid);
+        setWhatsappFrom(settings.twilio.whatsappFrom);
+        setTwilioContentSids({ ...emptyTemplateMap(), ...settings.twilio.contentSids });
+        setSecretSet(settings.twilio.apiKeySecretSet);
+        setTokenSet(settings.twilio.authTokenSet);
+        setGupshupSource(settings.gupshup.source);
+        setGupshupAppName(settings.gupshup.appName);
+        setGupshupApiKeySet(settings.gupshup.apiKeySet);
+        setGupshupTemplateIds({ ...emptyTemplateMap(), ...settings.gupshup.templateIds });
+        setMetaPhoneNumberId(settings.meta.phoneNumberId);
+        setMetaTokenSet(settings.meta.tokenSet);
+        setMetaAppSecretSet(settings.meta.appSecretSet);
+        setMetaVerifyTokenSet(settings.meta.verifyTokenSet);
+        setMetaTemplateNames({ ...emptyTemplateMap(), ...settings.meta.templateNames });
+      })
+      .catch(() => undefined);
   }, [client]);
+
+  function trimMap(map: Record<string, string>): Record<string, string> {
+    return Object.fromEntries(
+      Object.entries(map)
+        .map(([key, value]) => [key, value.trim()] as const)
+        .filter(([, value]) => value.length > 0),
+    );
+  }
+
+  async function save(event: FormEvent) {
+    event.preventDefault();
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const cap = Number(dailySendCap);
+      const saved = await client.updateWhatsAppIntegration({
+        provider,
+        dailySendCap: Number.isFinite(cap) && cap > 0 ? Math.floor(cap) : 200,
+        statusCallbackBaseUrl: statusCallbackBaseUrl.trim() || null,
+        twilio: {
+          accountSid: accountSid.trim() || null,
+          apiKeySid: apiKeySid.trim() || null,
+          whatsappFrom: whatsappFrom.trim() || null,
+          contentSids: trimMap(twilioContentSids),
+          ...(apiKeySecret.trim() ? { apiKeySecret: apiKeySecret.trim() } : {}),
+          ...(authToken.trim() ? { authToken: authToken.trim() } : {}),
+        },
+        gupshup: {
+          source: gupshupSource.trim() || null,
+          appName: gupshupAppName.trim() || null,
+          templateIds: trimMap(gupshupTemplateIds),
+          ...(gupshupApiKey.trim() ? { apiKey: gupshupApiKey.trim() } : {}),
+        },
+        meta: {
+          phoneNumberId: metaPhoneNumberId.trim() || null,
+          templateNames: trimMap(metaTemplateNames),
+          ...(metaToken.trim() ? { token: metaToken.trim() } : {}),
+          ...(metaAppSecret.trim() ? { appSecret: metaAppSecret.trim() } : {}),
+          ...(metaVerifyToken.trim() ? { verifyToken: metaVerifyToken.trim() } : {}),
+        },
+      });
+      setApiKeySecret("");
+      setAuthToken("");
+      setGupshupApiKey("");
+      setMetaToken("");
+      setMetaAppSecret("");
+      setMetaVerifyToken("");
+      setSecretSet(saved.twilio.apiKeySecretSet);
+      setTokenSet(saved.twilio.authTokenSet);
+      setGupshupApiKeySet(saved.gupshup.apiKeySet);
+      setMetaTokenSet(saved.meta.tokenSet);
+      setMetaAppSecretSet(saved.meta.appSecretSet);
+      setMetaVerifyTokenSet(saved.meta.verifyTokenSet);
+      setDailySendCap(String(saved.dailySendCap));
+      setStatusCallbackBaseUrl(saved.statusCallbackBaseUrl ?? "");
+      setMessage("Saved. Secrets are encrypted and are not shown again.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save WhatsApp settings");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   if (!allowed) return <Navigate to="/login" replace />;
   return (
-    <div>
+    <div data-testid="manage-integrations-page">
       <h1 className="font-display text-2xl">Integrations</h1>
-      <p className="text-sm text-black/55">Read-only health — secrets stay in environment variables.</p>
+      <p className="text-sm text-black/55">
+        Set WhatsApp provider credentials here. Secrets are encrypted on the server and never returned.
+      </p>
       {health && (
         <ul className="card mt-4 divide-y divide-[var(--sand)]">
           {[
@@ -718,11 +855,198 @@ export function IntegrationsPage() {
           ].map(([label, ok]) => (
             <li key={String(label)} className="flex justify-between px-4 py-3 text-sm">
               <span>{label}</span>
-              <span className={ok ? "text-[var(--leaf)]" : "text-black/40"}>{ok ? "Configured" : "Not set"}</span>
+              <span className={ok ? "text-[var(--leaf)]" : "text-black/40"}>
+                {ok ? "Configured" : "Not set"}
+              </span>
             </li>
           ))}
         </ul>
       )}
+      <form className="mt-4 grid max-w-2xl gap-4" onSubmit={save}>
+        <section className="card grid gap-2 p-4">
+          <h2 className="font-medium">WhatsApp provider</h2>
+          <label className="text-sm">
+            Active provider
+            <select
+              className="input mt-1"
+              value={provider}
+              onChange={(event) => setProvider(event.target.value as WhatsAppProviderChoice)}
+            >
+              <option value="stub">Stub (no paid send)</option>
+              <option value="twilio">Twilio</option>
+              <option value="gupshup">Gupshup</option>
+              <option value="meta">WhatsApp Business API (Meta)</option>
+            </select>
+          </label>
+          <label className="text-sm">
+            Daily send cap (per society)
+            <input
+              className="input mt-1"
+              type="number"
+              min={1}
+              value={dailySendCap}
+              onChange={(event) => setDailySendCap(event.target.value)}
+            />
+          </label>
+          <label className="text-sm">
+            Status callback base URL
+            <input
+              className="input mt-1"
+              placeholder="https://api.example.com"
+              value={statusCallbackBaseUrl}
+              onChange={(event) => setStatusCallbackBaseUrl(event.target.value)}
+            />
+          </label>
+        </section>
+
+        <section className="card grid gap-2 p-4">
+          <h2 className="font-medium">Twilio</h2>
+          <p className="text-sm text-black/55">
+            Account SID, API key SID, API key secret (sends), Auth Token (webhook signatures),
+            WhatsApp sender, and Content SIDs.
+          </p>
+          <input
+            className="input"
+            placeholder="Account SID (AC…)"
+            value={accountSid}
+            onChange={(event) => setAccountSid(event.target.value)}
+          />
+          <input
+            className="input"
+            placeholder="API Key SID (SK…)"
+            value={apiKeySid}
+            onChange={(event) => setApiKeySid(event.target.value)}
+          />
+          <input
+            className="input"
+            placeholder="WhatsApp sender (whatsapp:+E.164)"
+            value={whatsappFrom}
+            onChange={(event) => setWhatsappFrom(event.target.value)}
+          />
+          <input
+            className="input"
+            type="password"
+            autoComplete="off"
+            placeholder={secretPlaceholder(secretSet, "API key secret")}
+            value={apiKeySecret}
+            onChange={(event) => setApiKeySecret(event.target.value)}
+          />
+          <input
+            className="input"
+            type="password"
+            autoComplete="off"
+            placeholder={secretPlaceholder(tokenSet, "Auth token")}
+            value={authToken}
+            onChange={(event) => setAuthToken(event.target.value)}
+          />
+          <p className="mt-1 text-sm font-medium">Content SIDs</p>
+          {WHATSAPP_TEMPLATE_KEYS.map((key) => (
+            <label key={`twilio-${key}`} className="text-sm">
+              {key}
+              <input
+                className="input mt-1"
+                placeholder="HX…"
+                value={twilioContentSids[key] ?? ""}
+                onChange={(event) =>
+                  setTwilioContentSids((prev) => ({ ...prev, [key]: event.target.value }))
+                }
+              />
+            </label>
+          ))}
+        </section>
+
+        <section className="card grid gap-2 p-4">
+          <h2 className="font-medium">Gupshup</h2>
+          <input
+            className="input"
+            placeholder="Source number"
+            value={gupshupSource}
+            onChange={(event) => setGupshupSource(event.target.value)}
+          />
+          <input
+            className="input"
+            placeholder="App name"
+            value={gupshupAppName}
+            onChange={(event) => setGupshupAppName(event.target.value)}
+          />
+          <input
+            className="input"
+            type="password"
+            autoComplete="off"
+            placeholder={secretPlaceholder(gupshupApiKeySet, "API key")}
+            value={gupshupApiKey}
+            onChange={(event) => setGupshupApiKey(event.target.value)}
+          />
+          <p className="mt-1 text-sm font-medium">Template ids</p>
+          {WHATSAPP_TEMPLATE_KEYS.map((key) => (
+            <label key={`gupshup-${key}`} className="text-sm">
+              {key}
+              <input
+                className="input mt-1"
+                value={gupshupTemplateIds[key] ?? ""}
+                onChange={(event) =>
+                  setGupshupTemplateIds((prev) => ({ ...prev, [key]: event.target.value }))
+                }
+              />
+            </label>
+          ))}
+        </section>
+
+        <section className="card grid gap-2 p-4">
+          <h2 className="font-medium">Meta WhatsApp Business API</h2>
+          <input
+            className="input"
+            placeholder="Phone number id"
+            value={metaPhoneNumberId}
+            onChange={(event) => setMetaPhoneNumberId(event.target.value)}
+          />
+          <input
+            className="input"
+            type="password"
+            autoComplete="off"
+            placeholder={secretPlaceholder(metaTokenSet, "Access token")}
+            value={metaToken}
+            onChange={(event) => setMetaToken(event.target.value)}
+          />
+          <input
+            className="input"
+            type="password"
+            autoComplete="off"
+            placeholder={secretPlaceholder(metaAppSecretSet, "App secret")}
+            value={metaAppSecret}
+            onChange={(event) => setMetaAppSecret(event.target.value)}
+          />
+          <input
+            className="input"
+            type="password"
+            autoComplete="off"
+            placeholder={secretPlaceholder(metaVerifyTokenSet, "Webhook verify token")}
+            value={metaVerifyToken}
+            onChange={(event) => setMetaVerifyToken(event.target.value)}
+          />
+          <p className="mt-1 text-sm font-medium">Template names</p>
+          {WHATSAPP_TEMPLATE_KEYS.map((key) => (
+            <label key={`meta-${key}`} className="text-sm">
+              {key}
+              <input
+                className="input mt-1"
+                value={metaTemplateNames[key] ?? ""}
+                onChange={(event) =>
+                  setMetaTemplateNames((prev) => ({ ...prev, [key]: event.target.value }))
+                }
+              />
+            </label>
+          ))}
+        </section>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <button className="btn btn-primary" type="submit" disabled={saving}>
+            {saving ? "Saving…" : "Save WhatsApp settings"}
+          </button>
+          {message && <p className="text-sm text-[var(--leaf)]">{message}</p>}
+          {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
+        </div>
+      </form>
     </div>
   );
 }

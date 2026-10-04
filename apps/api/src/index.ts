@@ -1,6 +1,7 @@
 import { env } from "./config";
 import { createApp } from "./app";
 import { applyMigrations } from "./db/migrate";
+import { startCommunicationWorker } from "./lib/messaging/worker";
 
 async function main() {
   // Bind immediately so Render's /health check can pass while TiDB migrate runs.
@@ -12,6 +13,7 @@ async function main() {
     `SocietyHub API listening on http://0.0.0.0:${app.server?.port} (OpenAPI /docs)`,
   );
   await applyMigrations();
+  startCommunicationWorker();
 }
 
 main().catch((err) => {

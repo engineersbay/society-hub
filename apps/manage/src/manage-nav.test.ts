@@ -14,6 +14,7 @@ describe("manage-nav", () => {
     expect(live).toContain("/societies");
     expect(live).toContain("/users");
     expect(live).toContain("/audit");
+    expect(live).toContain("/communications");
     expect(live).toContain("/subscriptions");
     expect(live).toContain("/discounts");
     expect(live).toContain("/bills");

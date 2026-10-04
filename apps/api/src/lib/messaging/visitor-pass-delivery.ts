@@ -1,10 +1,14 @@
-import { createWhatsAppAdapter } from "./whatsapp";
 
 export type VisitorPassChannel = "sms" | "whatsapp";
 
 export type DeliverVisitorPassInput = {
+  tenantId?: string;
+  visitorId?: string;
+  societyName?: string;
   phone: string;
   body: string;
+  link?: string;
+  otp?: string;
   channels: VisitorPassChannel[];
 };
 
@@ -61,10 +65,25 @@ export async function deliverVisitorPass(
   if (input.channels.includes("sms")) {
     result.sms = await sendSms(input.phone, input.body);
   }
-  if (input.channels.includes("whatsapp")) {
-    const wa = createWhatsAppAdapter();
-    const res = await wa.send({ toPhone: input.phone, body: input.body });
+  if (input.channels.includes("whatsapp") && input.tenantId && input.visitorId) {
+    const { enqueueWhatsApp } = await import("./communication-service");
+    const res = await enqueueWhatsApp({
+      tenantId: input.tenantId,
+      phone: input.phone,
+      templateKey: "visitor_pass_v1",
+      variables: {
+        societyName: input.societyName ?? "your society",
+        otp: input.otp ?? "",
+        link: input.link ?? input.body,
+      },
+      businessEntityType: "visitor",
+      businessEntityId: input.visitorId,
+      businessEventType: "visitor_pass_issued",
+      preferenceMode: "explicit",
+    });
     result.whatsapp = { ok: res.ok, error: res.error };
+  } else if (input.channels.includes("whatsapp")) {
+    result.whatsapp = { ok: false, error: "missing_context" };
   }
   return result;
 }

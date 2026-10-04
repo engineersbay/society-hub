@@ -285,13 +285,13 @@ Staff attendance, CCTV requests, advanced vendor procurement, marketplace, AI as
 - FR-NTF-1: In-app notifications for complaint changes, new bills, new notices; mark read; deep-link.
 - FR-NTF-2: Email (Resend) for those critical events.
 - FR-NTF-3: Web push via FCM after opt-in; graceful if permission denied.
-- FR-NTF-4: WhatsApp channel remains **Future** (after Phase 2), not Phase 2 itself.
+- FR-NTF-4: Outbound transactional WhatsApp is live. Platform Admin chooses the provider in Manage → Integrations (`stub`, `twilio`, `gupshup`, or `meta`). Business routes call the communication ledger, not a vendor SDK. Delivery failure does not change payment or bill status. Inbound WhatsApp complaint bot remains future.
 
 ### 7.10a Phase 2 — visitors / gate pass
 
 - FR-VIS-1: Resident (own flat) or staff pre-registers a visitor (name, phone, purpose, expected time).
 - FR-VIS-2: Resident or staff **issues a digital pass**: opaque `pass_token`, 6-digit OTP (hashed at rest), `expires_at` default **4 hours** from `expected_at` or issue time (staff may set up to **24 hours**). Phone required to issue.
-- FR-VIS-3: On issue/re-issue, SocietyHub sends the visitor **SMS + WhatsApp** with pass link/QR payload and OTP (MSG91 / Gupshup when configured; stub/log in local `DEV_AUTH`). Response returns QR payload + OTP **once** for in-app display/share.
+- FR-VIS-3: On issue/re-issue, SocietyHub sends the visitor **SMS + WhatsApp** with pass link/QR payload and OTP (SMS via MSG91; WhatsApp via the provider selected in Manage; stub when that provider is `stub`). Response returns QR payload + OTP **once** for in-app display/share. OTP is not written to logs or audit.
 - FR-VIS-4: Staff **Gate** screen (Client App Admin + Flutter) previews a pass by token/QR, then **verifies** via QR signature and/or OTP. Success checks the visitor in, records verifier, audits `visitor.pass_verified` (no OTP in audit), notifies flat residents in-app.
 - FR-VIS-5: Expired, revoked, or already-used passes are rejected. Staff may **revoke** an issued pass. Cross-tenant pass ids return **404**.
 - FR-VIS-6: Walk-in: staff may create a visitor and issue a pass at the gate in the same session.
