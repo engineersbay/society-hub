@@ -43,7 +43,7 @@ Web preview does **not** wait for Mobile CI. A mobile-only PR still runs **CI** 
 |-----|---------|--------|
 | Analyze + test | Every mobile PR/push | `flutter analyze` + `flutter test` |
 | Android AAB | **Manual** Mobile CI, or tag `mobile-v*` | Signed `app-release.aab` artifact (needs keystore secrets) |
-| Play internal | **Manual** Mobile CI with `upload_play` + `ENABLE_PLAY_UPLOAD=true` | Upload + roll out **internal**. Never production. Tags build AAB only — do not tag and dispatch upload together (Play “edit has expired”). |
+| Play internal | **Manual** Mobile CI with `upload_play` + `ENABLE_PLAY_UPLOAD=true` | Upload + roll out **internal** (`track: internal` in `mobile.yml` — not `tracks`, which is ignored and defaults to production). Never production. Tags build AAB only — do not tag and dispatch upload together (Play “edit has expired”). |
 | iOS IPA | Same + `ENABLE_IOS_IPA=true` + `build_ios` | Skipped until Apple secrets |
 
 **Package / application id:** `com.societyhub.societyhub_mobile`
