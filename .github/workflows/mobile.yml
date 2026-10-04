@@ -189,7 +189,8 @@ jobs:
           # Must be `track` (singular). `tracks` is ignored and defaults to production.
           track: internal
           status: completed
-          changesNotSentForReview: true
+          # Do not set changesNotSentForReview — Play returns:
+          # "Changes are sent for review automatically…"
 
   ios-ipa:
     name: iOS IPA
