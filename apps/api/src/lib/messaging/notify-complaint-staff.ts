@@ -81,14 +81,15 @@ export async function notifyStaffNewComplaint(
             }),
           );
         }
-        if (s.phone && !seenPhone.has(s.phone)) {
-          seenPhone.add(s.phone);
+        const staffPhone = s.phone;
+        if (staffPhone && !seenPhone.has(staffPhone)) {
+          seenPhone.add(staffPhone);
           tasks.push(
             import("./communication-service").then(({ enqueueWhatsApp }) =>
               enqueueWhatsApp({
                 tenantId: input.tenantId,
                 userId: s.userId,
-                phone: s.phone,
+                phone: staffPhone,
                 templateKey: "complaint_staff_v1",
                 variables: {
                   ticketNumber: input.ticketNumber,
